@@ -25,7 +25,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 
 ## Instructions
 
-Instll the Pure Storage FlashBlade collection on your Ansible management host.
+Install the Pure Storage FlashBlade collection on your Ansible management host.
 
 - Using ansible-galaxy (Ansible 2.9 or later):
 `ansible-galaxy install purestorage.flashblade`
