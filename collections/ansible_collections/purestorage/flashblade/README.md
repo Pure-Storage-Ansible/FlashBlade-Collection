@@ -4,18 +4,18 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 
 ## Modules
 
-purefb_bucket - manage S3 buckets on a FlashBlade
-purefb_ds - manage Directory Services settings on a FlashBlade
-purefb_dsrole - manage Directory Service Roles on a FlashBlade
-purefb_fs - manage filesystems on a FlashBlade
-purefb_info - get information about the configuration of a FlashBlade
-purefb_network - manage the network settings for a FlashBlade
-purefb_ra - manage the Remote Assist connections on a FlashBlade
-purefb_s3acc - manage the object store accounts on a FlashBlade
-purefb_s3user - manage the object atore users on a FlashBlade
-purefb_smtp - manage SMTP settings on a FlashBlade
-purefb_snap - manage filesystem snapshots on a FlashBlade
-purefb_subnet - manage network subnets on a FlashBlade
+- purefb_bucket - manage S3 buckets on a FlashBlade
+- purefb_ds - manage Directory Services settings on a FlashBlade
+- purefb_dsrole - manage Directory Service Roles on a FlashBlade
+- purefb_fs - manage filesystems on a FlashBlade
+- purefb_info - get information about the configuration of a FlashBlade
+- purefb_network - manage the network settings for a FlashBlade
+- purefb_ra - manage the Remote Assist connections on a FlashBlade
+- purefb_s3acc - manage the object store accounts on a FlashBlade
+- purefb_s3user - manage the object atore users on a FlashBlade
+- purefb_smtp - manage SMTP settings on a FlashBlade
+- purefb_snap - manage filesystem snapshots on a FlashBlade
+- purefb_subnet - manage network subnets on a FlashBlade
 
 ## Requirements
 
@@ -28,7 +28,7 @@ purefb_subnet - manage network subnets on a FlashBlade
 Instll the Pure Storage FlashBlade collection on your Ansible management host.
 
 - Using ansible-galaxy (Ansible 2.9 or later):
-`ansible-glaxy install purestorage.flashblade`
+`ansible-galaxy install purestorage.flashblade`
 
 ## Example Playbook
 ```yaml
