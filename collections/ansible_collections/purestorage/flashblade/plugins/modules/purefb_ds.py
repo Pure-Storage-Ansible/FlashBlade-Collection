@@ -169,7 +169,7 @@ def enable_ds(module, blade):
                                                                directory_service=DirectoryService(enabled=True))
             changed = True
         except Exception:
-            module.fail_json(msg='Enable {0} Directory Service failed: Check Configuration'.format(module.params['dstype']))
+            module.fail_json(msg='Enable {0} Directory Service failed'.format(module.params['dstype']))
     module.exit_json(changed=changed)
 
 
@@ -246,7 +246,7 @@ def create_ds(module, blade):
                                                    bind_password=module.params['bind_password'],
                                                    enabled=module.params['enable'])
                 else:
-                    module.fail_json(msg="URI and associated params must be specified to create dstype {0}".format(module.params['dstype']))
+                    module.fail_json(msg="Incorrect parameters provided for dstype {0}".format(module.params['dstype']))
             elif module.params['dstype'] == 'smb':
                 if module.params['uri']:
                     smb_attrs = {'join_ou': module.params['join_ou']}
@@ -257,7 +257,7 @@ def create_ds(module, blade):
                                                    smb=smb_attrs,
                                                    enabled=module.params['enable'])
                 else:
-                    module.fail_json(msg="URI and associated params must be specified to create dstype {0}".format(module.params['dstype']))
+                    module.fail_json(msg="Incorrect parameters provided for dstype {0}".format(module.params['dstype']))
             elif module.params['dstype'] == 'nfs':
                 if module.params['nis_domain']:
                     nfs_attrs = {'nis_domains': [module.params['nis_domain']],
@@ -273,7 +273,7 @@ def create_ds(module, blade):
             blade.directory_services.update_directory_services(names=[module.params['dstype']],
                                                                directory_service=dir_service)
         except Exception:
-            module.fail_json(msg='Create {0} Directory Service failed: Check configuration'.format(module.params['dstype']))
+            module.fail_json(msg='Create {0} Directory Service failed'.format(module.params['dstype']))
     module.exit_json(changed=changed)
 
 
@@ -313,7 +313,7 @@ def main():
     if dirserv.items[0].base_dn is not None:
         ds_configured = True
     if (module.params['nis_domain'] or module.params['join_ou']) and (NIS_API_VERSION not in api_version):
-        module.fail_json(msg="NFS or SMB directory service attributes are not supported in your FlashBlade Purity version.")
+        module.fail_json(msg="NFS or SMB directory service attributes not supported by FlashBlade Purity version")
     ldap_uri = False
     set_ldap = False
     for uri in range(0, len(dirserv.items[0].uris)):

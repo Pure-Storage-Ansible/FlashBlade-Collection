@@ -28,18 +28,41 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 Install the Pure Storage FlashBlade collection on your Ansible management host.
 
 - Using ansible-galaxy (Ansible 2.9 or later):
-`ansible-galaxy install purestorage.flashblade`
+```
+ansible-galaxy install purestorage.flashblade
+```
 
 ## Example Playbook
 ```yaml
 - hosts: localhost
   gather_facts: true
-  collection:
+  collections:
     - puestorage.flashblade
   tasks:
     - name: Get FlashBlade information
       purefb_info:
-    
+        fb_url: 10.0.0.12
+        api_token: "T-9f276a18-50ab-446e-8a0c-666a3529a1b6"
+
+    - name: Create test filesystem
+      purefb_fs:
+        name: test_filesystem
+        fb_url : 10.21.200.12
+        api_token: "T-9f276a18-50ab-446e-8a0c-666a3529a1b6"
+        size: 1T
+        nfs: True
+        nfsv4: True
+        user_quota: 10k
+        group_quota: 10T
+        hard_limit: true
+        nfs_rules: '10.10.28.78/32(rw,no_root_squash)'
+        snapshot: True
+
+    - name: Create test snapshot
+      purefb_snap:
+        name: test_filesystem
+        state: present
+        suffix: snap-name
 ```
 
 ## License

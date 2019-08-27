@@ -91,9 +91,12 @@ def create_s3acc(module, blade):
 def delete_s3acc(module, blade):
     """Delete Object Store Account"""
     changed = False
-    count = len(blade.object_store_users.list_object_store_users(filter='name=\'' + module.params['name'] + '/*\'').items)
+    count = len(blade.object_store_users.list_object_store_users(filter='name=\''
+                                                                 + module.params['name']
+                                                                 + '/*\'').items)
     if count != 0:
-        module.fail_json(msg='Remove all Users from Object Store Account {0} before deletion'.format(module.params['name']))
+        module.fail_json(msg='Remove all Users from Object Store Account {0} \
+                             before deletion'.format(module.params['name']))
     else:
         try:
             blade.object_store_accounts.delete_object_store_accounts(names=[module.params['name']])
@@ -118,7 +121,7 @@ def main():
     versions = blade.api_version.list_versions().versions
 
     if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(msg='FlashBlade REST version not supported. Minimum version required: {0}'.format(MIN_REQUIRED_API_VERSION))
+        module.fail_json(msg='Minimum FlashBlade REST version required: {0}'.format(MIN_REQUIRED_API_VERSION))
 
     s3acc = get_s3acc(module, blade)
 

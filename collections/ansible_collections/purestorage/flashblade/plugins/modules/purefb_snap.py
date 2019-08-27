@@ -122,7 +122,8 @@ def create_snapshot(module, blade):
         source = []
         source.append(module.params['name'])
         try:
-            blade.file_system_snapshots.create_file_system_snapshots(sources=source, suffix=SnapshotSuffix(module.params['suffix']))
+            blade.file_system_snapshots.create_file_system_snapshots(sources=source,
+                                                                     suffix=SnapshotSuffix(module.params['suffix']))
             changed = True
         except Exception:
             changed = False
