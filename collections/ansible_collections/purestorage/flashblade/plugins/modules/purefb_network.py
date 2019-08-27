@@ -127,7 +127,7 @@ def create_iface(module, blade):
                                                            )
         changed = True
     except Exception:
-        module.fail_json(msg='Interface creation failed. Check valid subnet exists for IP address {0}'.format(module.params['address']))
+        module.fail_json(msg='Interface creation failed. Check subnet exists for {0}'.format(module.params['address']))
         changed = False
     module.exit_json(changed=changed)
 

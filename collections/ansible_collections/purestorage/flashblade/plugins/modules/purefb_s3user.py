@@ -179,7 +179,7 @@ def main():
     versions = blade.api_version.list_versions().versions
 
     if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(msg='FlashBlade REST version not supported. Minimum version required: {0}'.format(MIN_REQUIRED_API_VERSION))
+        module.fail_json(msg='Minimum FlashBlade REST version required: {0}'.format(MIN_REQUIRED_API_VERSION))
 
     s3acc = get_s3acc(module, blade)
     if not s3acc:
