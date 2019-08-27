@@ -29,7 +29,7 @@ Install the Pure Storage FlashBlade collection on your Ansible management host.
 
 - Using ansible-galaxy (Ansible 2.9 or later):
 ```
-ansible-galaxy install purestorage.flashblade
+ansible-galaxy collection install purestorage.flashblade -p ~/.ansible/collections
 ```
 
 ## Example Playbook
