@@ -33,13 +33,11 @@ __metaclass__ = type
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import PurityFb, FileSystem, FileSystemSnapshot, SnapshotSuffix, rest
+    from purity_fb import PurityFb
 except ImportError:
     HAS_PURITY_FB = False
 
-from functools import wraps
 from os import environ
-from os import path
 import platform
 
 VERSION = 1.3
@@ -65,7 +63,7 @@ def get_blade(module):
             blade.login(api)
             if API_AGENT_VERSION in blade.api_version.list_versions().versions:
                 blade._api_client.user_agent = user_agent
-        except rest.ApiException as e:
+        except Exception:
             module.fail_json(msg="Pure Storage FlashBlade authentication failed. Check your credentials")
     elif environ.get('PUREFB_URL') and environ.get('PUREFB_API'):
         blade = PurityFb(environ.get('PUREFB_URL'))
@@ -74,10 +72,11 @@ def get_blade(module):
             blade.login(environ.get('PUREFB_API'))
             if API_AGENT_VERSION in blade.api_version.list_versions().versions:
                 blade._api_client.user_agent = user_agent
-        except rest.ApiException as e:
+        except Exception:
             module.fail_json(msg="Pure Storage FlashBlade authentication failed. Check your credentials")
     else:
-        module.fail_json(msg="You must set PUREFB_URL and PUREFB_API environment variables or the fb_url and api_token module arguments")
+        module.fail_json(msg="You must set PUREFB_URL and PUREFB_API environment variables "
+                              "or the fb_url and api_token module arguments")
     return blade
 
 
