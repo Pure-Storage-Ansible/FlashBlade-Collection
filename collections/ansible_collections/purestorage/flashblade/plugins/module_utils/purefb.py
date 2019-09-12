@@ -76,7 +76,7 @@ def get_blade(module):
             module.fail_json(msg="Pure Storage FlashBlade authentication failed. Check your credentials")
     else:
         module.fail_json(msg="You must set PUREFB_URL and PUREFB_API environment variables "
-                              "or the fb_url and api_token module arguments")
+                             "or the fb_url and api_token module arguments")
     return blade
 
 
