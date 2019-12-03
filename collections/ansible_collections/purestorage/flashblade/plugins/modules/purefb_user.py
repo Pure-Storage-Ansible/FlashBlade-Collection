@@ -78,7 +78,6 @@ def get_user(module, blade):
 def update_user(module, blade):
     """Create or Update Local User Account"""
     changed = False
-    user = get_user(module, blade)
     if module.params['password']:
         if module.params['password'] != module.params['old_password']:
             try:
@@ -112,7 +111,6 @@ def main():
         module.fail_json(msg='purity_fb sdk is required for this module')
 
     blade = get_blade(module)
-    user = get_user(module, blade)
     api_version = blade.api_version.list_versions().versions
     if MIN_REQUIRED_API_VERSION not in api_version:
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")

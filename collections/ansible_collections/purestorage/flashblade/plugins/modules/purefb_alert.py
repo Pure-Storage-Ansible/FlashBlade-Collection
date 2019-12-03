@@ -151,7 +151,6 @@ def main():
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb SDK is required for this module')
 
-
     pattern = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
     if not pattern.match(module.params['address']):
         module.fail_json(msg='Valid email address not provided.')

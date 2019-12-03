@@ -60,7 +60,7 @@ MIN_REQUIRED_API_VERSION = "1.6"
 
 
 def enable_ph(module, blade):
-    """Enable """Phone HOme
+    """Enable Phone Hone"""
     changed = True
     if not module.check_mode:
         ph_settings = Support(phonehome_enabled=True)
