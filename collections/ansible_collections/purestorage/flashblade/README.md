@@ -4,18 +4,24 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 
 ## Modules
 
+- purefb_alert - manage alert email settings on a FlashBlade
+- purefb_bladename - manage FlashBlade name
 - purefb_bucket - manage S3 buckets on a FlashBlade
 - purefb_ds - manage Directory Services settings on a FlashBlade
 - purefb_dsrole - manage Directory Service Roles on a FlashBlade
 - purefb_fs - manage filesystems on a FlashBlade
 - purefb_info - get information about the configuration of a FlashBlade
 - purefb_network - manage the network settings for a FlashBlade
+- purefb_ntp - manage the NTP settings for a FlashBlade
+- purefb_phonehome - manage the phone home settings for a FlashBlade
+- purefb_proxy - manage the phone home HTTP proxy settings for a FlashBlade
 - purefb_ra - manage the Remote Assist connections on a FlashBlade
 - purefb_s3acc - manage the object store accounts on a FlashBlade
 - purefb_s3user - manage the object atore users on a FlashBlade
 - purefb_smtp - manage SMTP settings on a FlashBlade
 - purefb_snap - manage filesystem snapshots on a FlashBlade
 - purefb_subnet - manage network subnets on a FlashBlade
+- purefb_user - manage local *pureuser* account password on a FlashBlade
 
 ## Requirements
 
