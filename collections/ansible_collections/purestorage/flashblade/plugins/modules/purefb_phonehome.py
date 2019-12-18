@@ -72,7 +72,7 @@ def enable_ph(module, blade):
 
 
 def disable_ph(module, blade):
-    """Disable Phone HOme"""
+    """Disable Phone Home"""
     changed = True
     if not module.check_mode:
         ph_settings = Support(phonehome_enabled=False)

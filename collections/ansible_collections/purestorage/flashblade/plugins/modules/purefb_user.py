@@ -65,16 +65,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 MIN_REQUIRED_API_VERSION = '1.3'
 
 
-def get_user(module, blade):
-    """Return Local User Account or None"""
-    user = None
-    users = blade.admins.list_admins(expose=True)
-    for acct in range(0, len(users)):
-        if users.items[acct].name == module.params['name']:
-            user = users.items[acct]
-    return user
-
-
 def update_user(module, blade):
     """Create or Update Local User Account"""
     changed = False
