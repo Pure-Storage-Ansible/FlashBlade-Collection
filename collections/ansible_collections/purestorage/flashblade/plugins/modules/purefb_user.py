@@ -88,20 +88,19 @@ def update_user(module, blade):
                 changed = True
             except Exception:
                 module.fail_json(msg='Local User {0}: Password reset failed. '
-                                 'Check old password.'.format(module.params['name']))
+                                 'Check passwords. One of these is incorrect.'.format(module.params['name']))
         else:
             module.fail_json(msg='Local User Account {0}: Password change failed - '
-                             'Check both old and new passwords'.format(module.params['name']))
+                             'Old and new passwords are the same'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(dict(
-        name=dict(required=True, type='str', default='pureuser'),
+        name=dict(type='str', default='pureuser'),
         password=dict(required=True, type='str', no_log=True),
         old_password=dict(required=True, type='str', no_log=True),
-        api=dict(type='bool', default=False),
     ))
 
     module = AnsibleModule(argument_spec,
