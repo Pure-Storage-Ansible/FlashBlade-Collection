@@ -7,7 +7,7 @@ authors:
 description: Collection of modules to manage Pure Storage FlashBlades
 license:
  - GPL-3.0-or-later
- - BSD-2-clause
+ - BSD-2-Clause
 tags:
   - purestorage
   - flashblade
