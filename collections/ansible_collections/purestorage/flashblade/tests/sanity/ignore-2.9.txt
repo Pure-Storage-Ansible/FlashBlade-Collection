@@ -1,2 +1,1 @@
 plugins/modules/purefb_info.py validate-modules:return-syntax-error
-plugins/modules/purefb_info.py yamllint:return-syntax-error
