@@ -91,9 +91,7 @@ def create_s3acc(module, blade):
 def delete_s3acc(module, blade):
     """Delete Object Store Account"""
     changed = False
-    count = len(blade.object_store_users.list_object_store_users(filter='name=\''
-                                                                 + module.params['name']
-                                                                 + '/*\'').items)
+    count = len(blade.object_store_users.list_object_store_users(filter='name=\'' + module.params['name'] + '/*\'').items)
     if count != 0:
         module.fail_json(msg='Remove all Users from Object Store Account {0} \
                              before deletion'.format(module.params['name']))
