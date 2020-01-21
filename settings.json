@@ -1,8 +1,8 @@
 {
     "id": "FlashBlade-Collection",
-    "name": "Ansible Collection (FlashBlade)",
+    "name": "Ansible Collection for FlashBlade",
     "filter": "devops",
     "image": "http://code.purestorage.com/images/1_Ansible-Playbook.png",
-    "featured": 0,
+    "featured": 1,
     "priority": 3
 }
