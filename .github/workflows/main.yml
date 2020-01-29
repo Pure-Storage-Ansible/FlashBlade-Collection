@@ -42,7 +42,7 @@ jobs:
     - name: Run flake8
       run: |
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --isolated --ignore E402 --select E,F,W --max-line-length 160
+        flake8 . --exit-zero --isolated --ignore E402 --select E,F,W --max-line-length 160
     - name: Run pylint
       run: |
         cd collections/ansible_collections/purestorage/flashblade
