@@ -61,7 +61,8 @@ def get_blade(module):
         blade.disable_verify_ssl()
         try:
             blade.login(api)
-            if API_AGENT_VERSION in blade.api_version.list_versions().versions:
+            versions = blade.api_version.list_versions().versions
+            if API_AGENT_VERSION in versions:
                 blade._api_client.user_agent = user_agent
         except Exception:
             module.fail_json(msg="Pure Storage FlashBlade authentication failed. Check your credentials")
