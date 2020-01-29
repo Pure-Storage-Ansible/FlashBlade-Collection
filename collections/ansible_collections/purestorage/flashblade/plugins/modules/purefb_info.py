@@ -30,7 +30,7 @@ options:
     description:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
-        capacity, network, subnets, lags, filesystems and snapshots.
+        capacity, network, subnets, lags, filesystems, snapshots and buckets.
     required: false
     type: list
     default: minimum
@@ -588,6 +588,28 @@ def generate_snap_dict(blade):
     return snap_info
 
 
+def generate_bucket_dict(blade):
+    bucket_info = {}
+    buckets = blade.buckets.list_buckets()
+    for bckt in range(0, len(buckets.items)):
+        bucket = buckets.items[bckt].name
+        bucket_info[bucket] = {
+            'versioning': buckets.items[bckt].versioning,
+            'object_count': buckets.items[bckt].object_count,
+            'id': buckets.items[bckt].id,
+            'account_name': buckets.items[bckt].account.name,
+            'data_reduction': buckets.items[bckt].space.data_reduction,
+            'snapshot_space': buckets.items[bckt].space.snapshots,
+            'total_physical_space': buckets.items[bckt].space.total_physical,
+            'unique_space': buckets.items[bckt].space.unique,
+            'virtual_space': buckets.items[bckt].space.virtual,
+            'created': buckets.items[bckt].created,
+            'destroyed': buckets.items[bckt].destroyed,
+            'time_remaining': buckets.items[bckt].time_remaining,
+        }
+    return bucket_info
+
+
 def generate_fs_dict(blade):
     fs_info = {}
     fsys = blade.file_systems.list_file_systems()
@@ -629,7 +651,7 @@ def main():
     subset = [test.lower() for test in module.params['gather_subset']]
     valid_subsets = ('all', 'minimum', 'config', 'performance', 'capacity',
                      'network', 'subnets', 'lags',
-                     'filesystems', 'snapshots')
+                     'filesystems', 'snapshots', 'buckets')
     subset_test = (test in valid_subsets for test in subset)
     if not all(subset_test):
         module.fail_json(msg="value must gather_subset must be one or more of: %s, got: %s"
@@ -655,6 +677,8 @@ def main():
         info['filesystems'] = generate_fs_dict(blade)
     if 'snapshots' in subset or 'all' in subset:
         info['snapshots'] = generate_snap_dict(blade)
+    if 'buckets' in subset or 'all' in subset:
+        info['buckets'] = generate_bucket_dict(blade)
 
     module.exit_json(changed=False, purefb_info=info)
 
