@@ -29,39 +29,7 @@ Parameters
 ----------
 
   host (optional, str, None)
-    R
-
-    e
-
-    l
-
-    a
-
-    y
-
-     
-
-    s
-
-    e
-
-    r
-
-    v
-
-    e
-
-    r
-
-     
-
-    n
-
-    a
-
-    m
-
-    e
+    Relay server name
 
 
   fb_url (optional, str, None)
@@ -69,65 +37,7 @@ Parameters
 
 
   domain (True, str, None)
-    D
-
-    o
-
-    m
-
-    a
-
-    i
-
-    n
-
-     
-
-    n
-
-    a
-
-    m
-
-    e
-
-     
-
-    f
-
-    o
-
-    r
-
-     
-
-    a
-
-    l
-
-    e
-
-    r
-
-    t
-
-     
-
-    m
-
-    e
-
-    s
-
-    s
-
-    a
-
-    g
-
-    e
-
-    s
+    Domain name for alert messages
 
 
   api_token (optional, str, None)

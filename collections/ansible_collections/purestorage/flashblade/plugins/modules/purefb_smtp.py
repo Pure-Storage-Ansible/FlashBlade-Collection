@@ -23,10 +23,12 @@ author:
 - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   host:
-    description: Relay server name
+    description:
+    - Relay server name
     type: str
   domain:
-    description: Domain name for alert messages
+    description:
+    - Domain name for alert messages
     required: true
     type: str
 extends_documentation_fragment:
