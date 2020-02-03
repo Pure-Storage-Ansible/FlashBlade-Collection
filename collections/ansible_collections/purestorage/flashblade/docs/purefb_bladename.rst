@@ -29,51 +29,7 @@ Parameters
 ----------
 
   state (optional, str, present)
-    S
-
-    e
-
-    t
-
-     
-
-    t
-
-    h
-
-    e
-
-     
-
-    F
-
-    l
-
-    a
-
-    s
-
-    h
-
-    B
-
-    l
-
-    a
-
-    d
-
-    e
-
-     
-
-    n
-
-    a
-
-    m
-
-    e
+    Set the FlashBlade name
 
 
   fb_url (optional, str, None)
