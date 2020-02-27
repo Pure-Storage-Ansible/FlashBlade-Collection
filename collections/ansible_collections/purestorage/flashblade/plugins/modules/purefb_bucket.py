@@ -32,6 +32,13 @@ options:
       - Object Store Account for Bucket.
     required: true
     type: str
+  versioning:
+    description:
+      - State of S3 bucket versioning
+    required: false
+    default: absent
+    type: str
+    choices: [ "enabled", "suspended", "absent" ]
   state:
     description:
       - Create, delete or modifies a bucket.
@@ -65,6 +72,14 @@ EXAMPLES = '''
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
+- name: Change bucket versioning state
+  purefb_bucket:
+    name: foo
+    account: bar
+    versioning: enabled
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
 - name: Recover deleted bucket named foo in account bar
   purefb_bucket:
     name: foo
@@ -88,7 +103,7 @@ RETURN = '''
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import Bucket, Reference
+    from purity_fb import Bucket, Reference, BucketPatch
 except ImportError:
     HAS_PURITY_FB = False
 
@@ -97,6 +112,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 
 MIN_REQUIRED_API_VERSION = '1.5'
+VERSIONING_VERSION = '1.9'
 
 
 def get_s3acc(module, blade):
@@ -121,55 +137,76 @@ def get_bucket(module, blade):
 
 def create_bucket(module, blade):
     """Create bucket"""
-    changed = False
-    try:
-        attr = Bucket()
-        attr.account = Reference(name=module.params['account'])
-        blade.buckets.create_buckets(names=[module.params['name']], account=attr)
-        changed = True
-    except Exception:
-        module.fail_json(msg='Object Store Bucket {0}: Creation failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        try:
+            attr = Bucket()
+            attr.account = Reference(name=module.params['account'])
+            blade.buckets.create_buckets(names=[module.params['name']], account=attr)
+            api_version = blade.api_version.list_versions().versions
+            if module.params['versioning'] != 'absent' and VERSIONING_VERSION in api_version:
+                try:
+                    blade.buckets.update_buckets(names=[module.params['name']],
+                                                 bucket=BucketPatch(destroyed=True, versioning=module.params['versioning']))
+                except Exception:
+                    module.fail_json(msg='Object Store Bucket {0} Created but versioning state failed'.format(module.params['name']))
+        except Exception:
+            module.fail_json(msg='Object Store Bucket {0}: Creation failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def delete_bucket(module, blade):
     """ Delete Bucket"""
-    changed = False
-    try:
-        blade.buckets.update_buckets(names=[module.params['name']],
-                                     destroyed=Bucket(destroyed=True))
-        changed = True
-        if module.params['eradicate']:
-            try:
-                blade.buckets.delete_buckets(names=[module.params['name']])
-                changed = True
-            except Exception:
-                module.fail_json(msg='Object Store Bucket {0}: Eradication failed'.format(module.params['name']))
-    except Exception:
-        module.fail_json(msg='Object Store Bucket {0}: Deletion failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        try:
+            blade.buckets.update_buckets(names=[module.params['name']],
+                                         destroyed=Bucket(destroyed=True))
+            if module.params['eradicate']:
+                try:
+                    blade.buckets.delete_buckets(names=[module.params['name']])
+                except Exception:
+                    module.fail_json(msg='Object Store Bucket {0}: Eradication failed'.format(module.params['name']))
+        except Exception:
+            module.fail_json(msg='Object Store Bucket {0}: Deletion failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def recover_bucket(module, blade):
     """ Recover Bucket"""
-    changed = False
-    try:
-        blade.buckets.update_buckets(names=[module.params['name']],
-                                     destroyed=Bucket(destroyed=False))
-        changed = True
-    except Exception:
-        module.fail_json(msg='Object Store Bucket {0}: Recovery failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        try:
+            blade.buckets.update_buckets(names=[module.params['name']],
+                                         destroyed=Bucket(destroyed=False))
+        except Exception:
+            module.fail_json(msg='Object Store Bucket {0}: Recovery failed'.format(module.params['name']))
+    module.exit_json(changed=changed)
+
+
+def update_bucket(module, blade, bucket):
+    """ Update Bucket """
+    changed = True
+    if not module.check_mode:
+        api_version = blade.api_version.list_versions().versions
+        if VERSIONING_VERSION in api_version:
+            if bucket.versioning != module.params['versioning']:
+                try:
+                    blade.buckets.update_buckets(names=[module.params['name']],
+                                                 bucket=BucketPatch(destroyed=True, versioning=module.params['versioning']))
+                except Exception:
+                    module.fail_json(msg='Object Store Bucket {0}: Versioning change failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def eradicate_bucket(module, blade):
     """ Eradicate Bucket"""
-    changed = False
-    try:
-        blade.buckets.delete_buckets(names=[module.params['name']])
-        changed = True
-    except Exception:
-        module.fail_json(msg='Object Store Bucket {0}: Eradication failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        try:
+            blade.buckets.delete_buckets(names=[module.params['name']])
+        except Exception:
+            module.fail_json(msg='Object Store Bucket {0}: Eradication failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -180,11 +217,13 @@ def main():
             name=dict(required=True),
             account=dict(required=True),
             eradicate=dict(default='false', type='bool'),
+            versioning=dict(default='absent', choices=['enabled', 'suspended', 'absent']),
             state=dict(default='present', choices=['present', 'absent']),
         )
     )
 
-    module = AnsibleModule(argument_spec)
+    module = AnsibleModule(argument_spec,
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')
@@ -204,6 +243,8 @@ def main():
         recover_bucket(module, blade)
     elif state == 'absent' and bucket and not bucket.destroyed:
         delete_bucket(module, blade)
+    elif state == 'present' and bucket:
+        update_bucket(module, blade, bucket)
     elif state == 'absent' and bucket and bucket.destroyed and module.params['eradicate']:
         eradicate_bucket(module, blade)
     elif state == 'absent' and not bucket:
