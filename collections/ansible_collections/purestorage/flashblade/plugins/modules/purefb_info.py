@@ -30,7 +30,8 @@ options:
     description:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
-        capacity, network, subnets, lags, filesystems, snapshots and buckets.
+        capacity, network, subnets, lags, filesystems, snapshots, buckets,
+        replication, policies and arrays.
     required: false
     type: list
     default: minimum
@@ -381,6 +382,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 MIN_REQUIRED_API_VERSION = '1.3'
 HARD_LIMIT_API_VERSION = '1.4'
+POLICIES_API_VERSION = '1.5'
+CERT_GROUPS_API_VERSION = '1.8'
+REPLICATION_API_VERSION = '1.9'
 
 
 def generate_default_dict(blade):
@@ -398,8 +402,30 @@ def generate_default_dict(blade):
     default_info['object_store_accounts'] = \
         len(blade.object_store_accounts.list_object_store_accounts().items)
     default_info['blades'] = len(blade.blade.list_blades().items)
+    default_info['certificates'] = \
+        len(blade.certificates.list_certificates().items)
     default_info['total_capacity'] = \
         blade.arrays.list_arrays_space().items[0].capacity
+    api_version = blade.api_version.list_versions().versions
+    if POLICIES_API_VERSION in api_version:
+        default_info['policies'] = \
+            len(blade.policies.list_policies().items)
+    if CERT_GROUPS_API_VERSION in api_version:
+        default_info['certificate_groups'] = \
+            len(blade.certificate_groups.list_certificate_groups().items)
+    if REPLICATION_API_VERSION in api_version:
+        default_info['fs_replicas'] = \
+            len(blade.file_system_replica_links.list_file_system_replica_links().items)
+        default_info['remote_credentials'] = \
+            len(blade.object_store_remote_credentials.list_object_store_remote_credentials().items)
+        default_info['bucket_replicas'] = \
+            len(blade.bucket_replica_links.list_bucket_replica_links().items)
+        default_info['connected_arrays'] = \
+            len(blade.array_connections.list_array_connections().items)
+        default_info['targets'] = \
+            len(blade.targets.list_targets().items)
+        default_info['kerberos_keytabs'] = \
+            len(blade.keytabs.list_keytabs().items)
     return default_info
 
 
@@ -486,6 +512,38 @@ def generate_config_dict(blade):
     config_info['ntp'] = blade.arrays.list_arrays().items[0].ntp_servers
     config_info['ssl_certs'] = \
         blade.certificates.list_certificates().items[0].to_dict()
+    api_version = blade.api_version.list_versions().versions
+    if CERT_GROUPS_API_VERSION in api_version:
+        config_info['certificate_groups'] = \
+            blade.certificate_groups.list_certificate_groups().items[0].to_dict()
+    if REPLICATION_API_VERSION in api_version:
+        config_info['certificate_groups'] = \
+            blade.certificate_groups.list_certificate_groups().items[0].to_dict()
+        config_info['snmp_agents'] = {}
+        snmp_agents = blade.snmp_agents.list_snmp_agents()
+        for agent in range(0, len(snmp_agents.items)):
+            agent_name = snmp_agents.items[agent].name
+            config_info['snmp_agents'][agent_name] = {
+                'version': snmp_agents.items[agent].version,
+                'engine_id': snmp_agents.items[agent].engine_id
+            }
+            if config_info['snmp_agents'][agent_name]['version'] == 'v3':
+                config_info['snmp_agents'][agent_name]['auth_protocol'] = snmp_agents.items[agent].v3.auth_protocol
+                config_info['snmp_agents'][agent_name]['privacy_protocol'] = snmp_agents.items[agent].v3.privacy_protocol
+                config_info['snmp_agents'][agent_name]['user'] = snmp_agents.items[agent].v3.user
+        config_info['snmp_managers'] = {}
+        snmp_managers = blade.snmp_managers.list_snmp_managers()
+        for manager in range(0, len(snmp_managers.items)):
+            mgr_name = snmp_managers.items[manager].name
+            config_info['snmp_managers'][mgr_name] = {
+                'version': snmp_managers.items[manager].version,
+                'host': snmp_managers.items[manager].host,
+                'notification': snmp_managers.items[manager].notification
+            }
+            if config_info['snmp_managers'][mgr_name]['version'] == 'v3':
+                config_info['snmp_managers'][mgr_name]['auth_protocol'] = snmp_managers.items[manager].v3.auth_protocol
+                config_info['snmp_managers'][mgr_name]['privacy_protocol'] = snmp_managers.items[manager].v3.privacy_protocol
+                config_info['snmp_managers'][mgr_name]['user'] = snmp_managers.items[manager].v3.user
     return config_info
 
 
@@ -523,6 +581,54 @@ def generate_lag_dict(blade):
         for port in range(0, len(groups.items[groupcnt].ports)):
             lag_info[lag_name]['ports'].append({'name': groups.items[groupcnt].ports[port].name})
     return lag_info
+
+
+def generate_remote_creds_dict(blade):
+    remote_creds_info = {}
+    remote_creds = blade.object_store_remote_credentials.list_object_store_remote_credentials()
+    for cred_cnt in range(0, len(remote_creds.items)):
+        cred_name = remote_creds.items[cred_cnt].name
+        remote_creds_info[cred_name] = {
+            'access_key': remote_creds.items[cred_cnt].access_key_id,
+            'remote': remote_creds.items[cred_cnt].remote.name,
+            'created': remote_creds.items[cred_cnt].created,
+        }
+    return remote_creds_info
+
+
+def generate_file_repl_dict(blade):
+    file_repl_info = {}
+    file_links = blade.file_system_replica_links.list_file_system_replica_links()
+    for linkcnt in range(0, len(file_links.items)):
+        fs_name = file_links.items[linkcnt].local_file_system.name
+        file_repl_info[fs_name] = {
+            'direction': file_links.items[linkcnt].direction,
+            'lag': file_links.items[linkcnt].lag,
+            'status': file_links.items[linkcnt].status,
+            'remote_fs': file_links.items[linkcnt].remote.name + ":" + file_links.items[linkcnt].remote_file_system.name,
+            'recovery_point': file_links.items[linkcnt].recovery_point,
+        }
+        file_repl_info[fs_name]['policies'] = []
+        for policy_cnt in range(0, len(file_links.items[linkcnt].policies)):
+            file_repl_info[fs_name]['policies'].append(file_links.items[linkcnt].policies[policy_cnt].display_name)
+    return file_repl_info
+
+
+def generate_bucket_repl_dict(blade):
+    bucket_repl_info = {}
+    bucket_links = blade.bucket_replica_links.list_bucket_replica_links()
+    for linkcnt in range(0, len(bucket_links.items)):
+        bucket_name = bucket_links.items[linkcnt].local_bucket.name
+        bucket_repl_info[bucket_name] = {
+            'direction': bucket_links.items[linkcnt].direction,
+            'lag': bucket_links.items[linkcnt].lag,
+            'paused': bucket_links.items[linkcnt].paused,
+            'status': bucket_links.items[linkcnt].status,
+            'remote_bucket': bucket_links.items[linkcnt].remote_bucket.name,
+            'remote_credentials': bucket_links.items[linkcnt].remote_credentials.name,
+            'recovery_point': bucket_links.items[linkcnt].recovery_point,
+        }
+    return bucket_repl_info
 
 
 def generate_network_dict(blade):
@@ -577,6 +683,7 @@ def generate_capacity_dict(blade):
 def generate_snap_dict(blade):
     snap_info = {}
     snaps = blade.file_system_snapshots.list_file_system_snapshots()
+    api_version = blade.api_version.list_versions().versions
     for snap in range(0, len(snaps.items)):
         snapshot = snaps.items[snap].name
         snap_info[snapshot] = {
@@ -585,7 +692,61 @@ def generate_snap_dict(blade):
             'suffix': snaps.items[snap].suffix,
             'source_destroyed': snaps.items[snap].source_destroyed,
         }
+        if REPLICATION_API_VERSION in api_version:
+            snap_info[snapshot]['owner'] = snaps.items[snap].owner.name
+            snap_info[snapshot]['owner_destroyed'] = snaps.items[snap].owner_destroyed
+            snap_info[snapshot]['source_display_name'] = snaps.items[snap].source_display_name
+            snap_info[snapshot]['source_is_local'] = snaps.items[snap].source_is_local
+            snap_info[snapshot]['source_location'] = snaps.items[snap].source_location.name
     return snap_info
+
+
+def generate_snap_transfer_dict(blade):
+    snap_transfer_info = {}
+    snap_transfers = blade.file_system_snapshots.list_file_system_snapshots_transfer()
+    for snap_transfer in range(0, len(snap_transfers.items)):
+        transfer = snap_transfers.items[snap_transfer].name
+        snap_transfer_info[transfer] = {
+            'completed': snap_transfers.items[snap_transfer].completed,
+            'data_transferred': snap_transfers.items[snap_transfer].data_transferred,
+            'progress': snap_transfers.items[snap_transfer].progress,
+            'direction': snap_transfers.items[snap_transfer].direction,
+            'remote': snap_transfers.items[snap_transfer].remote.name,
+            'remote_snapshot': snap_transfers.items[snap_transfer].remote_snapshot.name,
+            'started': snap_transfers.items[snap_transfer].started,
+            'status': snap_transfers.items[snap_transfer].status
+        }
+    return snap_transfer_info
+
+
+def generate_array_conn_dict(blade):
+    array_conn_info = {}
+    arrays = blade.array_connections.list_array_connections()
+    for arraycnt in range(0, len(arrays.items)):
+        array = arrays.items[arraycnt].remote.name
+        array_conn_info[array] = {
+            'encrypted': arrays.items[arraycnt].encrypted,
+            'replication_addresses': arrays.items[arraycnt].replication_addresses,
+            'management_address': arrays.items[arraycnt].management_address,
+            'id': arrays.items[arraycnt].remote.id,
+            'status': arrays.items[arraycnt].status,
+            'version': arrays.items[arraycnt].version,
+        }
+        if arrays.items[arraycnt].encrypted:
+            array_conn_info[array].ca_certificate_group = arrays.items[arraycnt].ca_certificate_group
+    return array_conn_info
+
+
+def generate_policies_dict(blade):
+    policies_info = {}
+    policies = blade.policies.list_policies()
+    for policycnt in range(0, len(policies.items)):
+        policy = policies.items[policycnt].name
+        policies_info[policy] = {}
+        policies_info[policy]['enabled'] = policies.items[policycnt].enabled
+        if policies.items[policycnt].rules:
+            policies_info[policy]['rules'] = policies.items[policycnt].rules[0].to_dict()
+    return policies_info
 
 
 def generate_bucket_dict(blade):
@@ -630,7 +791,14 @@ def generate_fs_dict(blade):
         api_version = blade.api_version.list_versions().versions
         if HARD_LIMIT_API_VERSION in api_version:
             fs_info[share]['hard_limit'] = fsys.items[fsystem].hard_limit_enabled
-
+        if REPLICATION_API_VERSION in api_version:
+            fs_info[share]['promotion_status'] = fsys.items[fsystem].promotion_status
+            fs_info[share]['requested_promotion_state'] = fsys.items[fsystem].requested_promotion_state
+            fs_info[share]['writable'] = fsys.items[fsystem].writable
+            fs_info[share]['source'] = {
+                'is_local': fsys.items[fsystem].source.is_local,
+                'name': fsys.items[fsystem].source.name
+            }
     return fs_info
 
 
@@ -650,8 +818,8 @@ def main():
 
     subset = [test.lower() for test in module.params['gather_subset']]
     valid_subsets = ('all', 'minimum', 'config', 'performance', 'capacity',
-                     'network', 'subnets', 'lags',
-                     'filesystems', 'snapshots', 'buckets')
+                     'network', 'subnets', 'lags', 'filesystems', 'snapshots',
+                     'buckets', 'arrays', 'replication', 'policies')
     subset_test = (test in valid_subsets for test in subset)
     if not all(subset_test):
         module.fail_json(msg="value must gather_subset must be one or more of: %s, got: %s"
@@ -679,6 +847,18 @@ def main():
         info['snapshots'] = generate_snap_dict(blade)
     if 'buckets' in subset or 'all' in subset:
         info['buckets'] = generate_bucket_dict(blade)
+    api_version = blade.api_version.list_versions().versions
+    if POLICIES_API_VERSION in api_version:
+        if 'policies' in subset or 'all' in subset:
+            info['policies'] = generate_policies_dict(blade)
+    if REPLICATION_API_VERSION in api_version:
+        if 'arrays' in subset or 'all' in subset:
+            info['arrays'] = generate_array_conn_dict(blade)
+        if 'replication' in subset or 'all' in subset:
+            info['file_replication'] = generate_file_repl_dict(blade)
+            info['bucket_replication'] = generate_bucket_repl_dict(blade)
+            info['snap_transfers'] = generate_snap_transfer_dict(blade)
+            info['remote_credentials'] = generate_remote_creds_dict(blade)
 
     module.exit_json(changed=False, purefb_info=info)
 
