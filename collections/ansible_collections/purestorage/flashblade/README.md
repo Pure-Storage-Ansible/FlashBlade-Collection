@@ -21,6 +21,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - purefb_s3user - manage the object atore users on a FlashBlade
 - purefb_smtp - manage SMTP settings on a FlashBlade
 - purefb_snap - manage filesystem snapshots on a FlashBlade
+- purefb_snmp_agent - modify the FlashBlade SNMP Agent
 - purefb_subnet - manage network subnets on a FlashBlade
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 
