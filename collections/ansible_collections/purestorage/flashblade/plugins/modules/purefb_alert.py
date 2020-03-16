@@ -39,6 +39,13 @@ options:
     default: true
     description:
     - Set specified email address to be enabled or disabled
+  severity:
+    type: str
+    description:
+    - The minimum severity that an alert must have in order for
+      emails to be sent to the array's alert watchers
+    default: info
+    choices: [ info, warning, critical ]
 extends_documentation_fragment:
 - purestorage.fb
 '''
@@ -75,52 +82,66 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
 
 
+MIN_REQUIRED_API_VERSION = '1.9'
+
+
 def create_alert(module, blade):
     """Create Alert Email"""
-    changed = False
+    changed = True
     if not module.check_mode:
-        try:
-            blade.alert_watchers.create_alert_watchers(name=[module.params['address']])
-            changed = True
-        except Exception:
-            module.fail_json(msg='Failed to create alert email: {0}'.format(module.params['address']))
-
-        if not module.params['enabled']:
+        api_version = blade.api_version.list_versions().versions
+        if MIN_REQUIRED_API_VERSION in api_version:
+            watcher_settings = AlertWatcher(minimum_notification_severity=module.params['severity'])
             try:
-                watcher_settings = AlertWatcher(enabled=False)
+                blade.alert_watchers.create_alert_watchers(names=[module.params['address']],
+                                                           watcher_settings=watcher_settings)
+            except Exception:
+                module.fail_json(msg='Failed to create alert email: {0}'.format(module.params['address']))
+        else:
+            try:
+                blade.alert_watchers.create_alert_watchers(names=[module.params['address']])
+            except Exception:
+                module.fail_json(msg='Failed to create alert email: {0}'.format(module.params['address']))
+        if not module.params['enabled']:
+            watcher_settings = AlertWatcher(enabled=module.params['enabled'])
+            try:
                 blade.alert_watchers.update_alert_watchers(names=[module.params['address']], watcher_settings=watcher_settings)
             except Exception:
-                module.fail_json(msg='Failed to enable alert email: {0}'.format(module.params['address']))
-    changed = True
-
+                module.fail_json(msg='Failed to disable during create alert email: {0}'.format(module.params['address']))
     module.exit_json(changed=changed)
 
 
-def enable_alert(module, blade):
-    """Enable Alert Email"""
-    changed = False
-    if not module.check_mode:
-        try:
-            watcher_settings = AlertWatcher(enabled=True)
-            blade.alert_watchers.update_alert_watchers(names=[module.params['address']], watcher_settings=watcher_settings)
-        except Exception:
-            module.fail_json(msg='Failed to enable alert email: {0}'.format(module.params['address']))
+def update_alert(module, blade):
+    """Update alert Watcher"""
     changed = True
-
-    module.exit_json(changed=changed)
-
-
-def disable_alert(module, blade):
-    """Disable Alert Email"""
-    changed = False
     if not module.check_mode:
+        api_version = blade.api_version.list_versions().versions
+        attr = {}
+        mod_alert = False
         try:
-            watcher_settings = AlertWatcher(enabled=False)
-            blade.alert_watchers.update_alert_watchers(names=[module.params['address']], watcher_settings=watcher_settings)
+            alert = blade.alert_watchers.list_alert_watchers(names=[module.params['address']])
         except Exception:
-            module.fail_json(msg='Failed to disable alert email: {0}'.format(module.params['address']))
-    changed = True
-
+            module.fail_json(msg='Failed to get information for alert email: {0}'.format(module.params['address']))
+        current_state = {'enabled': alert.items[0].enabled,
+                         'severity': alert.items[0].minimum_notification_severity
+                         }
+        if current_state['enabled'] != module.params['enabled']:
+            mod_alert = True
+        if MIN_REQUIRED_API_VERSION in api_version:
+            if current_state['severity'] != module.params['severity']:
+                mod_alert = True
+        if mod_alert:
+            if MIN_REQUIRED_API_VERSION in api_version:
+                watcher_settings = AlertWatcher(enabled=module.params['enabled'],
+                                                minimum_notification_severity=module.params['severity'])
+            else:
+                watcher_settings = AlertWatcher(enabled=module.params['enabled'])
+            try:
+                blade.alert_watchers.update_alert_watchers(names=[module.params['address']], watcher_settings=watcher_settings)
+            except Exception:
+                module.fail_json(msg='Failed to update alert email: {0}'.format(module.params['address']))
+        else:
+            changed = False
     module.exit_json(changed=changed)
 
 
@@ -129,7 +150,7 @@ def delete_alert(module, blade):
     changed = False
     if not module.check_mode:
         try:
-            blade.alert_watchers.delete_alert_watchers(name=[module.params['address']])
+            blade.alert_watchers.delete_alert_watchers(names=[module.params['address']])
         except Exception:
             module.fail_json(msg='Failed to delete alert email: {0}'.format(module.params['address']))
     changed = True
@@ -142,6 +163,7 @@ def main():
     argument_spec.update(dict(
         address=dict(type='str', required=True),
         enabled=dict(type='bool', default=True),
+        severity=dict(type='str', default='info', choices=['info', 'warning', 'critical']),
         state=dict(type='str', default='present', choices=['absent', 'present']),
     ))
 
@@ -165,14 +187,11 @@ def main():
     for email in range(0, len(emails.items)):
         if emails.items[email].name == module.params['address']:
             exists = True
-            enabled = emails.items[email].enabled
             break
     if module.params['state'] == 'present' and not exists:
         create_alert(module, blade)
-    elif module.params['state'] == 'present' and exists and not enabled and module.params['enabled']:
-        enable_alert(module, blade)
-    elif module.params['state'] == 'present' and exists and enabled:
-        disable_alert(module, blade)
+    elif module.params['state'] == 'present' and exists:
+        update_alert(module, blade)
     elif module.params['state'] == 'absent' and exists:
         delete_alert(module, blade)
 
