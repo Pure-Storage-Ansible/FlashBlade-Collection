@@ -431,6 +431,7 @@ def generate_default_dict(blade):
 
 def generate_perf_dict(blade):
     perf_info = {}
+    api_version = blade.api_version.list_versions().versions
     total_perf = blade.arrays.list_arrays_performance()
     http_perf = blade.arrays.list_arrays_performance(protocol='http')
     s3_perf = blade.arrays.list_arrays_performance(protocol='s3')
@@ -483,7 +484,19 @@ def generate_perf_dict(blade):
         'write_bytes_per_sec': nfs_perf.items[0].write_bytes_per_sec,
         'writes_per_sec': nfs_perf.items[0].writes_per_sec,
     }
-
+    if REPLICATION_API_VERSION in api_version:
+        file_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='file-system')
+        obj_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='object-store')
+        if len(file_repl_perf.total):
+            perf_info['file_replication'] = {
+                'received_bytes_per_sec': file_repl_perf.total[0].async.received_bytes_per_sec,
+                'transmitted_bytes_per_sec': file_repl_perf.total[0].async.transmitted_bytes_per_sec,
+            }
+        if len(obj_repl_perf.total):
+            perf_info['object_replication'] = {
+                'received_bytes_per_sec': obj_repl_perf.total[0].async.received_bytes_per_sec,
+                'transmitted_bytes_per_sec': obj_repl_perf.total[0].async.transmitted_bytes_per_sec,
+            }
     return perf_info
 
 

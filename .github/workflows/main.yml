@@ -25,7 +25,7 @@ jobs:
         pip install ansible==2.9.1
     - name: Run pycodestyle
       run: |
-        pycodestyle --max-line-length=160 --ignore=E305,E402,W503,W504,E722,E741 ./
+        pycodestyle --max-line-length=160 --ignore=E305,E402,W503,W504,E722,E741,W606 ./
     - name: Run yamlint
       run: |
         cd collections/ansible_collections/purestorage/flashblade
@@ -34,10 +34,10 @@ jobs:
       run: |
         cd collections/ansible_collections/purestorage/flashblade
         ansible-test sanity --docker=default --test validate-modules plugins/modules/*
-    - name: Run pep8
-      run: |
-        cd collections/ansible_collections/purestorage/flashblade
-        ansible-test sanity --docker=default --test pep8 plugins/modules/*
+        #    - name: Run pep8
+        #      run: |
+        #        cd collections/ansible_collections/purestorage/flashblade
+        #        ansible-test sanity --docker=default --test pep8 plugins/modules/*
     - name: Run flake8
       run: |
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide

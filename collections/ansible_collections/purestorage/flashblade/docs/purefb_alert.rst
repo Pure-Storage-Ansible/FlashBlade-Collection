@@ -32,20 +32,24 @@ Parameters
     FlashBlade management IP address or Hostname.
 
 
-  state (optional, str, present)
-    Create or delete alert email
+  severity (optional, any, info)
+    The minimum severity that an alert must have in order for emails to be sent to the array's alert watchers
 
 
-  api_token (optional, str, None)
-    FlashBlade API token for admin privileged user.
+  address (True, str, None)
+    Email address (valid format required)
 
 
   enabled (optional, bool, True)
     Set specified email address to be enabled or disabled
 
 
-  address (True, str, None)
-    Email address (valid format required)
+  state (optional, str, present)
+    Create or delete alert email
+
+
+  api_token (optional, str, None)
+    FlashBlade API token for admin privileged user.
 
 
 
