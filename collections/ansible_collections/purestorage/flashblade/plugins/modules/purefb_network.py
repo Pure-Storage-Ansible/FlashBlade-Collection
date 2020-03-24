@@ -46,7 +46,7 @@ options:
     description:
       - Define which services are configured for the interfaces.
     required: false
-    choices: [ "data" ]
+    choices: [ "data", "replication" ]
     default: data
     type: str
   itype:
@@ -167,7 +167,7 @@ def main():
             name=dict(required=True),
             state=dict(default='present', choices=['present', 'absent']),
             address=dict(),
-            services=dict(default='data', choices=['data']),
+            services=dict(default='data', choices=['data', 'replication']),
             itype=dict(default='vip', choices=['vip']),
         )
     )
