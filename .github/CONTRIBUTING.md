@@ -12,7 +12,7 @@ By contributing you agree that these contributions are your own (or approved by 
 
 ## BUG TO REPORT ?
 
-You can report bugs or make enhancement requests at the [Ansible GitHub issue page](http://github.com/Pure-Storage-Ansible/FlashArray-Collection/issues/new/choose) by filling out the issue template that will be presented.
+You can report bugs or make enhancement requests at the [Ansible GitHub issue page](http://github.com/Pure-Storage-Ansible/FlashBlade-Collection/issues/new/choose) by filling out the issue template that will be presented.
 
 Also please make sure you are testing on the latest released version of Ansible or the development branch; see the [Installation Guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) for details.
 
