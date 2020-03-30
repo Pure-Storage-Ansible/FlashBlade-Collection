@@ -40,9 +40,9 @@ except ImportError:
 from os import environ
 import platform
 
-VERSION = 1.3
+VERSION = '1.3'
 USER_AGENT_BASE = 'Ansible'
-API_AGENT_VERSION = 1.5
+API_AGENT_VERSION = '1.5'
 
 
 def get_blade(module):
