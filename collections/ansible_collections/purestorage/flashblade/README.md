@@ -32,6 +32,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - Ansible 2.9 or later
 - Pure Storage FlashBlade system running Purity 2.1.2  or later
 - purity_fb Python SDK
+- netaddr
 
 ## Instructions
 
