@@ -20,6 +20,8 @@ The below requirements are needed on the host that executes this module.
 
 - python >= 2.7
 - purity_fb >= 1.1
+- netaddr
+- pytz
 
 
 

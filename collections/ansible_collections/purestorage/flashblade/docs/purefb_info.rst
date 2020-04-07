@@ -20,6 +20,8 @@ The below requirements are needed on the host that executes this module.
 
 - python >= 2.7
 - purity_fb >= 1.1
+- netaddr
+- pytz
 
 
 
@@ -27,7 +29,7 @@ Parameters
 ----------
 
   gather_subset (False, list, minimum)
-    When supplied, this argument will define the information to be collected. Possible values for this include all, minimum, config, performance, capacity, network, subnets, lags, filesystems, snapshots and buckets.
+    When supplied, this argument will define the information to be collected. Possible values for this include all, minimum, config, performance, capacity, network, subnets, lags, filesystems, snapshots, buckets, replication, policies and arrays.
 
 
   fb_url (optional, str, None)
