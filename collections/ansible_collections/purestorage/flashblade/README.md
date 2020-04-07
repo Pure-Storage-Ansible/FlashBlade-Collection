@@ -12,6 +12,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - purefb_ds - manage Directory Services settings on a FlashBlade
 - purefb_dsrole - manage Directory Service Roles on a FlashBlade
 - purefb_fs - manage filesystems on a FlashBlade
+- purefb_fs_replica - manage filesystem replica links on a FlashBlade
 - purefb_inventory - get information about the hardware inventory of a FlashBlade
 - purefb_info - get information about the configuration of a FlashBlade
 - purefb_network - manage the network settings for a FlashBlade
