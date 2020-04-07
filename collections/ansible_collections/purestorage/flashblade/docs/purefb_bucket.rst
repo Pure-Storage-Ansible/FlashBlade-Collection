@@ -20,6 +20,8 @@ The below requirements are needed on the host that executes this module.
 
 - python >= 2.7
 - purity_fb >= 1.1
+- netaddr
+- pytz
 
 
 
@@ -44,6 +46,10 @@ Parameters
 
   api_token (optional, str, None)
     FlashBlade API token for admin privileged user.
+
+
+  versioning (False, str, absent)
+    State of S3 bucket versioning
 
 
   eradicate (False, bool, False)
@@ -81,6 +87,14 @@ Examples
         name: foo
         account: bar
         state: absent
+        fb_url: 10.10.10.2
+        api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+    
+    - name: Change bucket versioning state
+      purefb_bucket:
+        name: foo
+        account: bar
+        versioning: enabled
         fb_url: 10.10.10.2
         api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
     

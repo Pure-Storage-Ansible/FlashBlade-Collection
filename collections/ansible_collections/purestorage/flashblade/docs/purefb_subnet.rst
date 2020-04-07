@@ -21,6 +21,7 @@ The below requirements are needed on the host that executes this module.
 - netaddr
 - purity_fb >= 1.1
 - python >= 2.7
+- pytz
 
 
 

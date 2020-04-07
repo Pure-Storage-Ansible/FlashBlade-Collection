@@ -22,6 +22,8 @@ The below requirements are needed on the host that executes this module.
 
 - python >= 2.7
 - purity_fb >= 1.1
+- netaddr
+- pytz
 
 
 
@@ -32,7 +34,7 @@ Parameters
     FlashBlade management IP address or Hostname.
 
 
-  severity (optional, any, info)
+  severity (optional, str, info)
     The minimum severity that an alert must have in order for emails to be sent to the array's alert watchers
 
 
