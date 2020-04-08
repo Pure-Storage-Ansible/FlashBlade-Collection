@@ -17,6 +17,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade
 - purefb_phonehome - manage the phone home settings for a FlashBlade
+- purefb_policy - manage the filesystem snapshot policies for a FlashBlade
 - purefb_proxy - manage the phone home HTTP proxy settings for a FlashBlade
 - purefb_ra - manage the Remote Assist connections on a FlashBlade
 - purefb_s3acc - manage the object store accounts on a FlashBlade

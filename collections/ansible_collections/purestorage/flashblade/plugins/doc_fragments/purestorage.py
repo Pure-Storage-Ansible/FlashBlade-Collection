@@ -35,4 +35,5 @@ requirements:
   - python >= 2.7
   - purity_fb >= 1.1
   - netaddr
+  - pytz
 '''
