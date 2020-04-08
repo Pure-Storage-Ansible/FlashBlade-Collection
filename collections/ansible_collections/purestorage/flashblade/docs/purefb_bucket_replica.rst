@@ -1,5 +1,5 @@
 
-purefb_fs_replica -- Manage filesystem replica links between Pure Storage FlashBlades
+purefb_bucket_replica -- Manage bucket replica links between Pure Storage FlashBlades
 =====================================================================================
 
 .. contents::
@@ -10,7 +10,7 @@ purefb_fs_replica -- Manage filesystem replica links between Pure Storage FlashB
 Synopsis
 --------
 
-This module manages filesystem replica links between Pure Storage FlashBlades.
+This module manages bucket replica links between Pure Storage FlashBlades.
 
 
 
@@ -28,24 +28,28 @@ The below requirements are needed on the host that executes this module.
 Parameters
 ----------
 
+  paused (optional, bool, False)
+    State of the bucket replica link
+
+
+  credential (False, str, None)
+    Name of remote credential name to use.
+
+
+  state (False, str, present)
+    Creates or modifies a bucket replica link
+
+
   fb_url (optional, str, None)
     FlashBlade management IP address or Hostname.
 
 
   name (True, str, None)
-    Local Filesystem Name.
+    Local Bucket Name.
 
 
-  target_array (False, str, None)
-    Remote array name to create replica on.
-
-
-  state (False, str, present)
-    Creates or modifies a filesystem replica link
-
-
-  target_fs (False, str, None)
-    Name of target filesystem name
+  target_bucket (False, str, None)
+    Name of target bucket name
 
     If not supplied, will default to *name*.
 
@@ -54,8 +58,8 @@ Parameters
     FlashBlade API token for admin privileged user.
 
 
-  policy (False, str, None)
-    Name of filesystem snapshot policy to apply to the replica link.
+  target (False, str, None)
+    Remote array or target name to create replica on.
 
 
 
@@ -77,27 +81,26 @@ Examples
 .. code-block:: yaml+jinja
 
     
-    - name: Create new filesystem replica from foo to bar on arrayB
-      purefb_fs_replica:
+    - name: Create new bucket replica from foo to bar on arrayB
+      purefb_bucket_replica:
         name: foo
-        target_array: arrayB
-        target_fs: bar
-        policy: daily
+        target: arrayB
+        target_bucket: bar
+        credentials: cred_1
         state: present
         fb_url: 10.10.10.2
         api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
     
-    - name: Add new snapshot policy to exisitng filesystem replica link
-      purefb_fs_replica:
+    - name: Pause exisitng bucket replica link
+      purefb_bucket_replica:
         name: foo
-        policy: weekly
+        paused: true
         fb_url: 10.10.10.2
         api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
     
-    - name: Delete snapshot policy from filesystem replica foo
+    - name: Delete bucket replica link foo
       purefb_fs_replica:
         name: foo
-        policy: weekly
         state: absent
         fb_url: 10.10.10.2
         api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
