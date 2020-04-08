@@ -746,7 +746,7 @@ def generate_array_conn_dict(blade):
             'version': arrays.items[arraycnt].version,
         }
         if arrays.items[arraycnt].encrypted:
-            array_conn_info[array].ca_certificate_group = arrays.items[arraycnt].ca_certificate_group
+            array_conn_info[array]['ca_certificate_group'] = arrays.items[arraycnt].ca_certificate_group
     return array_conn_info
 
 
