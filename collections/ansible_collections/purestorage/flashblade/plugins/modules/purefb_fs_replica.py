@@ -64,7 +64,7 @@ EXAMPLES = '''
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
-- name: Add new snapshot policy to exisitng filesystem repkica link
+- name: Add new snapshot policy to exisitng filesystem replica link
   purefb_fs_replica:
     name: foo
     policy: weekly
@@ -94,10 +94,8 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 def get_local_fs(module, blade):
     """Return Filesystem or None"""
-    fsys = []
-    fsys.append(module.params['name'])
     try:
-        res = blade.file_systems.list_file_systems(names=fsys)
+        res = blade.file_systems.list_file_systems(names=module.params['name'])
         return res.items[0]
     except Exception:
         return None
@@ -105,8 +103,6 @@ def get_local_fs(module, blade):
 
 def get_local_rl(module, blade):
     """Return Filesystem Replica Link or None"""
-    rlink = []
-    rlink.append(module.params['name'])
     try:
         res = blade.file_system_replica_links.list_file_system_replica_links(local_file_system_names=[module.params['name']])
         return res.items[0]
