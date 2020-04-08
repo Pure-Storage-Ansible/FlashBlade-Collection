@@ -28,7 +28,7 @@ options:
     type: str
   state:
     description:
-      - Createx or modifies a filesystem.replica link
+      - Creates or modifies a filesystem replica link
     required: false
     default: present
     type: str
@@ -92,10 +92,6 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
 
 
-HARD_LIMIT_API_VERSION = '1.4'
-NFSV4_API_VERSION = '1.6'
-
-
 def get_local_fs(module, blade):
     """Return Filesystem or None"""
     fsys = []
@@ -129,7 +125,7 @@ def _check_connected(module, blade):
 
 
 def create_rl(module, blade):
-    """Create Filesyste Replica Link"""
+    """Create Filesystem Replica Link"""
     changed = True
     if not module.check_mode:
         try:
@@ -156,7 +152,7 @@ def create_rl(module, blade):
 
 
 def add_rl_policy(module, blade):
-    """Add Policy to Filesyste Replica Link"""
+    """Add Policy to Filesystem Replica Link"""
     changed = True
     if not module.check_mode:
         if not module.params['target_array']:
