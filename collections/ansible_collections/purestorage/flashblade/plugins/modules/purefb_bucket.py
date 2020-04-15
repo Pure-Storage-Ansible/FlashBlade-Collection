@@ -103,7 +103,7 @@ RETURN = '''
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import Bucket, Reference, BucketPatch
+    from purity_fb import Bucket, Reference, BucketPatch, BucketPost
 except ImportError:
     HAS_PURITY_FB = False
 
@@ -140,14 +140,19 @@ def create_bucket(module, blade):
     changed = True
     if not module.check_mode:
         try:
-            attr = Bucket()
-            attr.account = Reference(name=module.params['account'])
-            blade.buckets.create_buckets(names=[module.params['name']], account=attr)
             api_version = blade.api_version.list_versions().versions
+            if VERSIONING_VERSION in api_version:
+                attr = BucketPost()
+                attr.account = Reference(name=module.params['account'])
+                blade.buckets.create_buckets(names=[module.params['name']], bucket=attr)
+            else:
+                attr = Bucket()
+                attr.account = Reference(name=module.params['account'])
+                blade.buckets.create_buckets(names=[module.params['name']], account=attr)
             if module.params['versioning'] != 'absent' and VERSIONING_VERSION in api_version:
                 try:
                     blade.buckets.update_buckets(names=[module.params['name']],
-                                                 bucket=BucketPatch(destroyed=True, versioning=module.params['versioning']))
+                                                 bucket=BucketPatch(versioning=module.params['versioning']))
                 except Exception:
                     module.fail_json(msg='Object Store Bucket {0} Created but versioning state failed'.format(module.params['name']))
         except Exception:
@@ -160,8 +165,13 @@ def delete_bucket(module, blade):
     changed = True
     if not module.check_mode:
         try:
-            blade.buckets.update_buckets(names=[module.params['name']],
-                                         destroyed=Bucket(destroyed=True))
+            api_version = blade.api_version.list_versions().versions
+            if VERSIONING_VERSION in api_version:
+                blade.buckets.update_buckets(names=[module.params['name']],
+                                             bucket=BucketPatch(destroyed=True))
+            else:
+                blade.buckets.update_buckets(names=[module.params['name']],
+                                             destroyed=Bucket(destroyed=True))
             if module.params['eradicate']:
                 try:
                     blade.buckets.delete_buckets(names=[module.params['name']])
@@ -177,8 +187,13 @@ def recover_bucket(module, blade):
     changed = True
     if not module.check_mode:
         try:
-            blade.buckets.update_buckets(names=[module.params['name']],
-                                         destroyed=Bucket(destroyed=False))
+            api_version = blade.api_version.list_versions().versions
+            if VERSIONING_VERSION in api_version:
+                blade.buckets.update_buckets(names=[module.params['name']],
+                                             bucket=BucketPatch(destroyed=False))
+            else:
+                blade.buckets.update_buckets(names=[module.params['name']],
+                                             destroyed=Bucket(destroyed=False))
         except Exception:
             module.fail_json(msg='Object Store Bucket {0}: Recovery failed'.format(module.params['name']))
     module.exit_json(changed=changed)
@@ -193,7 +208,7 @@ def update_bucket(module, blade, bucket):
             if bucket.versioning != module.params['versioning']:
                 try:
                     blade.buckets.update_buckets(names=[module.params['name']],
-                                                 bucket=BucketPatch(destroyed=True, versioning=module.params['versioning']))
+                                                 bucket=BucketPatch(versioning=module.params['versioning']))
                 except Exception:
                     module.fail_json(msg='Object Store Bucket {0}: Versioning change failed'.format(module.params['name']))
     module.exit_json(changed=changed)
