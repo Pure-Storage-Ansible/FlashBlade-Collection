@@ -7,6 +7,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - purefb_alert - manage alert email settings on a FlashBlade
 - purefb_bladename - manage FlashBlade name
 - purefb_bucket - manage S3 buckets on a FlashBlade
+- purefb_bucket_replica - manage bucket replica links on a FlashBlade
 - purefb_connect - manage connections between FlashBlades
 - purefb_dns - manage DNS settings on a FlashBlade
 - purefb_ds - manage Directory Services settings on a FlashBlade
