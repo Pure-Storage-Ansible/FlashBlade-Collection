@@ -116,7 +116,6 @@ def update_alert(module, blade):
     changed = True
     if not module.check_mode:
         api_version = blade.api_version.list_versions().versions
-        attr = {}
         mod_alert = False
         try:
             alert = blade.alert_watchers.list_alert_watchers(names=[module.params['address']])
