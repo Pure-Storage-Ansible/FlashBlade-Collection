@@ -2,7 +2,24 @@
 
 The Pure Storage FlashBlade collection consists of the latest versions of the FlashBlade modules.
 
-## Modules
+## Supported Platforms
+
+- Pure Storage FlashBlade with Purity 2.1.2 or later
+- Certain modules and functionality require higher versions of Purity. Modules will inform you if your Purity version is not high enough to use a module.
+
+## Prerequisites
+
+- Ansible 2.9 or later
+- Pure Storage FlashBlade system running Purity 2.1.2 or later
+- purity_fb Python SDK 1.18 or higher
+- Python >=v2.7, <3.7
+- netaddr
+
+## Idempotency
+
+All modules are idempotent with the exception of modules that change or set passwords. Due to security requirements exisitng passwords can be validated against and therefore will always be modified, even if there is no change.
+
+## Available Modules
 
 - purefb_alert - manage alert email settings on a FlashBlade
 - purefb_bladename - manage FlashBlade name
@@ -32,13 +49,6 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - purefb_subnet - manage network subnets on a FlashBlade
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 
-## Requirements
-
-- Ansible 2.9 or later
-- Pure Storage FlashBlade system running Purity 2.1.2  or later
-- purity_fb Python SDK
-- netaddr
-
 ## Instructions
 
 Install the Pure Storage FlashBlade collection on your Ansible management host.
@@ -48,38 +58,7 @@ Install the Pure Storage FlashBlade collection on your Ansible management host.
 ansible-galaxy collection install purestorage.flashblade -p ~/.ansible/collections
 ```
 
-## Example Playbook
-```yaml
-- hosts: localhost
-  gather_facts: true
-  collections:
-    - puestorage.flashblade
-  tasks:
-    - name: Get FlashBlade information
-      purefb_info:
-        fb_url: 10.0.0.12
-        api_token: "T-9f276a18-50ab-446e-8a0c-666a3529a1b6"
-
-    - name: Create test filesystem
-      purefb_fs:
-        name: test_filesystem
-        fb_url : 10.21.200.12
-        api_token: "T-9f276a18-50ab-446e-8a0c-666a3529a1b6"
-        size: 1T
-        nfs: True
-        nfsv4: True
-        user_quota: 10k
-        group_quota: 10T
-        hard_limit: true
-        nfs_rules: '10.10.28.78/32(rw,no_root_squash)'
-        snapshot: True
-
-    - name: Create test snapshot
-      purefb_snap:
-        name: test_filesystem
-        state: present
-        suffix: snap-name
-```
+All servers that execute the modules must have the appropriate Pure Storage Python SDK installed on the host.
 
 ## License
 
