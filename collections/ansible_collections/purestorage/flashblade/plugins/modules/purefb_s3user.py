@@ -107,62 +107,62 @@ def get_s3user(module, blade):
 
 def update_s3user(module, blade):
     """Update Object Store User"""
-    changed = False
-    s3user_facts = {}
-    user = module.params['account'] + "/" + module.params['name']
-    if module.params['access_key']:
-        key_count = 0
-        keys = blade.object_store_access_keys.list_object_store_access_keys()
-        for key in range(0, len(keys.items)):
-            if keys.items[key].user.name == user:
-                key_count += 1
-        if key_count < 2:
-            try:
-                result = blade.object_store_access_keys.create_object_store_access_keys(
-                    object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
-                s3user_facts['fb_s3user'] = {'user': user,
-                                             'access_key': result.items[0].secret_access_key,
-                                             'access_id': result.items[0].name}
-                changed = True
-            except Exception:
-                module.fail_json(msg='Object Store User {0}: Access Key creation failed'.format(user))
-        else:
-            module.warn('Object Store User {0}: Maximum Access Key count reached'.format(user))
+    changed = True
+    if not module.check_mode:
+        s3user_facts = {}
+        user = module.params['account'] + "/" + module.params['name']
+        if module.params['access_key']:
+            key_count = 0
+            keys = blade.object_store_access_keys.list_object_store_access_keys()
+            for key in range(0, len(keys.items)):
+                if keys.items[key].user.name == user:
+                    key_count += 1
+            if key_count < 2:
+                try:
+                    result = blade.object_store_access_keys.create_object_store_access_keys(
+                        object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
+                    s3user_facts['fb_s3user'] = {'user': user,
+                                                 'access_key': result.items[0].secret_access_key,
+                                                 'access_id': result.items[0].name}
+                except Exception:
+                    module.fail_json(msg='Object Store User {0}: Access Key creation failed'.format(user))
+            else:
+                module.warn('Object Store User {0}: Maximum Access Key count reached'.format(user))
     module.exit_json(changed=changed, s3user_info=s3user_facts)
 
 
 def create_s3user(module, blade):
     """Create Object Store Account"""
     s3user_facts = {}
-    changed = False
-    user = module.params['account'] + "/" + module.params['name']
-    try:
-        blade.object_store_users.create_object_store_users(names=[user])
-        if module.params['access_key']:
-            try:
-                result = blade.object_store_access_keys.create_object_store_access_keys(
-                    object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
-                s3user_facts['fb_s3user'] = {'user': user,
-                                             'access_key': result.items[0].secret_access_key,
-                                             'access_id': result.items[0].name}
-            except Exception:
-                delete_s3user(module, blade)
-                module.fail_json(msg='Object Store User {0}: Creation failed'.format(user))
-        changed = True
-    except Exception:
-        module.fail_json(msg='Object Store User {0}: Creation failed'.format(user))
+    changed = True
+    if not module.check_mode:
+        user = module.params['account'] + "/" + module.params['name']
+        try:
+            blade.object_store_users.create_object_store_users(names=[user])
+            if module.params['access_key']:
+                try:
+                    result = blade.object_store_access_keys.create_object_store_access_keys(
+                        object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
+                    s3user_facts['fb_s3user'] = {'user': user,
+                                                 'access_key': result.items[0].secret_access_key,
+                                                 'access_id': result.items[0].name}
+                except Exception:
+                    delete_s3user(module, blade)
+                    module.fail_json(msg='Object Store User {0}: Creation failed'.format(user))
+        except Exception:
+            module.fail_json(msg='Object Store User {0}: Creation failed'.format(user))
     module.exit_json(changed=changed, s3user_info=s3user_facts)
 
 
 def delete_s3user(module, blade):
     """Delete Object Store Account"""
-    changed = False
-    user = module.params['account'] + "/" + module.params['name']
-    try:
-        blade.object_store_users.delete_object_store_users(names=[user])
-        changed = True
-    except Exception:
-        module.fail_json(msg='Object Store Account {0}: Deletion failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        user = module.params['account'] + "/" + module.params['name']
+        try:
+            blade.object_store_users.delete_object_store_users(names=[user])
+        except Exception:
+            module.fail_json(msg='Object Store Account {0}: Deletion failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -176,7 +176,7 @@ def main():
     ))
 
     module = AnsibleModule(argument_spec,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')

@@ -64,14 +64,13 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 def update_name(module, blade):
     """Change aray name"""
-    changed = False
-
-    try:
-        blade_settings = PureArray(name=module.params['name'])
-        blade.arrays.update_arrays(array_settings=blade_settings)
-        changed = True
-    except Exception:
-        module.fail_json(msg='Failed to change array name to {0}'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        try:
+            blade_settings = PureArray(name=module.params['name'])
+            blade.arrays.update_arrays(array_settings=blade_settings)
+        except Exception:
+            module.fail_json(msg='Failed to change array name to {0}'.format(module.params['name']))
 
     module.exit_json(changed=changed)
 
@@ -84,7 +83,7 @@ def main():
     ))
 
     module = AnsibleModule(argument_spec,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')

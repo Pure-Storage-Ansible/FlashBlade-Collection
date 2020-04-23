@@ -95,45 +95,45 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 def update_role(module, blade):
     """Update Directory Service Role"""
-    changed = False
-    role = blade.directory_services.list_directory_services_roles(names=[module.params['role']])
-    if role.items[0].group_base != module.params['group_base'] or role.items[0].group != module.params['group']:
-        try:
-            role = DirectoryServiceRole(group_base=module.params['group_base'],
-                                        group=module.params['group'])
-            blade.directory_services.update_directory_services_roles(names=[module.params['role']],
-                                                                     directory_service_role=role)
-            changed = True
-        except Exception:
-            module.fail_json(msg='Update Directory Service Role {0} failed'.format(module.params['role']))
+    changed = True
+    if not module.check_mode:
+        role = blade.directory_services.list_directory_services_roles(names=[module.params['role']])
+        if role.items[0].group_base != module.params['group_base'] or role.items[0].group != module.params['group']:
+            try:
+                role = DirectoryServiceRole(group_base=module.params['group_base'],
+                                            group=module.params['group'])
+                blade.directory_services.update_directory_services_roles(names=[module.params['role']],
+                                                                         directory_service_role=role)
+            except Exception:
+                module.fail_json(msg='Update Directory Service Role {0} failed'.format(module.params['role']))
     module.exit_json(changed=changed)
 
 
 def delete_role(module, blade):
     """Delete Directory Service Role"""
-    changed = False
-    try:
-        role = DirectoryServiceRole(group_base='',
-                                    group='')
-        blade.directory_services.update_directory_services_roles(names=[module.params['role']],
-                                                                 directory_service_role=role)
-        changed = True
-    except Exception:
-        module.fail_json(msg='Delete Directory Service Role {0} failed'.format(module.params['role']))
+    changed = True
+    if not module.check_mode:
+        try:
+            role = DirectoryServiceRole(group_base='',
+                                        group='')
+            blade.directory_services.update_directory_services_roles(names=[module.params['role']],
+                                                                     directory_service_role=role)
+        except Exception:
+            module.fail_json(msg='Delete Directory Service Role {0} failed'.format(module.params['role']))
     module.exit_json(changed=changed)
 
 
 def create_role(module, blade):
     """Create Directory Service Role"""
-    changed = False
-    try:
-        role = DirectoryServiceRole(group_base=module.params['group_base'],
-                                    group=module.params['group'])
-        blade.directory_services.update_directory_services_roles(names=[module.params['role']],
-                                                                 directory_service_role=role)
-        changed = True
-    except Exception:
-        module.fail_json(msg='Create Directory Service Role {0} failed'.format(module.params['role']))
+    changed = True
+    if not module.check_mode:
+        try:
+            role = DirectoryServiceRole(group_base=module.params['group_base'],
+                                        group=module.params['group'])
+            blade.directory_services.update_directory_services_roles(names=[module.params['role']],
+                                                                     directory_service_role=role)
+        except Exception:
+            module.fail_json(msg='Create Directory Service Role {0} failed'.format(module.params['role']))
     module.exit_json(changed=changed)
 
 
@@ -150,7 +150,7 @@ def main():
 
     module = AnsibleModule(argument_spec,
                            required_together=required_together,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')

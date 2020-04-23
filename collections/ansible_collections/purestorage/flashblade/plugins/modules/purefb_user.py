@@ -67,21 +67,21 @@ MIN_REQUIRED_API_VERSION = '1.3'
 
 def update_user(module, blade):
     """Create or Update Local User Account"""
-    changed = False
-    if module.params['password']:
-        if module.params['password'] != module.params['old_password']:
-            try:
-                newAdmin = Admin()
-                newAdmin.password = module.params['password']
-                newAdmin.old_password = module.params['old_password']
-                blade.admins.update_admins(names=[module.params['name']], admin=newAdmin)
-                changed = True
-            except Exception:
-                module.fail_json(msg='Local User {0}: Password reset failed. '
-                                 'Check passwords. One of these is incorrect.'.format(module.params['name']))
-        else:
-            module.fail_json(msg='Local User Account {0}: Password change failed - '
-                             'Old and new passwords are the same'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        if module.params['password']:
+            if module.params['password'] != module.params['old_password']:
+                try:
+                    newAdmin = Admin()
+                    newAdmin.password = module.params['password']
+                    newAdmin.old_password = module.params['old_password']
+                    blade.admins.update_admins(names=[module.params['name']], admin=newAdmin)
+                except Exception:
+                    module.fail_json(msg='Local User {0}: Password reset failed. '
+                                     'Check passwords. One of these is incorrect.'.format(module.params['name']))
+            else:
+                module.fail_json(msg='Local User Account {0}: Password change failed - '
+                                 'Old and new passwords are the same'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -94,7 +94,7 @@ def main():
     ))
 
     module = AnsibleModule(argument_spec,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')

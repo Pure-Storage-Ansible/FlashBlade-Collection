@@ -113,50 +113,50 @@ def get_iface(module, blade):
 
 def create_iface(module, blade):
     """Create Network Interface"""
-
-    iface = []
-    services = []
-    iface.append(module.params['name'])
-    services.append(module.params['services'])
-    try:
-        blade.network_interfaces.create_network_interfaces(names=iface,
-                                                           network_interface=NetworkInterface(address=module.params['address'],
-                                                                                              services=services,
-                                                                                              type=module.params['itype']
-                                                                                              )
-                                                           )
-        changed = True
-    except Exception:
-        module.fail_json(msg='Interface creation failed. Check subnet exists for {0}'.format(module.params['address']))
-        changed = False
+    changed = True
+    if not module.check_mode:
+        iface = []
+        services = []
+        iface.append(module.params['name'])
+        services.append(module.params['services'])
+        try:
+            blade.network_interfaces.create_network_interfaces(names=iface,
+                                                               network_interface=NetworkInterface(address=module.params['address'],
+                                                                                                  services=services,
+                                                                                                  type=module.params['itype']
+                                                                                                  )
+                                                               )
+        except Exception:
+            module.fail_json(msg='Interface creation failed. Check subnet exists for {0}'.format(module.params['address']))
     module.exit_json(changed=changed)
 
 
 def modify_iface(module, blade):
     """Modify Network Interface IP address"""
-    changed = False
-    iface = get_iface(module, blade)
-    iface_new = []
-    iface_new.append(module.params['name'])
-    if module.params['address'] != iface.address:
-        try:
-            blade.network_interfaces.update_network_interfaces(names=iface_new,
-                                                               network_interface=NetworkInterface(address=module.params['address']))
-            changed = True
-        except Exception:
-            changed = False
+    changed = True
+    if not module.check_mode:
+        iface = get_iface(module, blade)
+        iface_new = []
+        iface_new.append(module.params['name'])
+        if module.params['address'] != iface.address:
+            try:
+                blade.network_interfaces.update_network_interfaces(names=iface_new,
+                                                                   network_interface=NetworkInterface(address=module.params['address']))
+            except Exception:
+                module.fail_json(msg='Failed to modify Interface {0}'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def delete_iface(module, blade):
     """ Delete Network Interface"""
-    iface = []
-    iface.append(module.params['name'])
-    try:
-        blade.network_interfaces.delete_network_interfaces(names=iface)
-        changed = True
-    except Exception:
-        changed = False
+    changed = True
+    if not module.check_mode:
+        iface = []
+        iface.append(module.params['name'])
+        try:
+            blade.network_interfaces.delete_network_interfaces(names=iface)
+        except Exception:
+            module.fail_json(msg='Failed to delete network {0}'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -176,7 +176,7 @@ def main():
 
     module = AnsibleModule(argument_spec,
                            required_if=required_if,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')
