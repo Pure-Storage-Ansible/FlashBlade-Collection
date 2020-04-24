@@ -73,34 +73,36 @@ def get_s3acc(module, blade):
 
 def update_s3acc(module, blade):
     """Update Object Store Account"""
-    changed = False
+    changed = True
+    if not module.check_mode:
+        changed = False
     module.exit_json(changed=changed)
 
 
 def create_s3acc(module, blade):
     """Create Object Store Account"""
-    changed = False
-    try:
-        blade.object_store_accounts.create_object_store_accounts(names=[module.params['name']])
-        changed = True
-    except Exception:
-        module.fail_json(msg='Object Store Account {0}: Creation failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        try:
+            blade.object_store_accounts.create_object_store_accounts(names=[module.params['name']])
+        except Exception:
+            module.fail_json(msg='Object Store Account {0}: Creation failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def delete_s3acc(module, blade):
     """Delete Object Store Account"""
-    changed = False
-    count = len(blade.object_store_users.list_object_store_users(filter='name=\'' + module.params['name'] + '/*\'').items)
-    if count != 0:
-        module.fail_json(msg='Remove all Users from Object Store Account {0} \
-                             before deletion'.format(module.params['name']))
-    else:
-        try:
-            blade.object_store_accounts.delete_object_store_accounts(names=[module.params['name']])
-            changed = True
-        except Exception:
-            module.fail_json(msg='Object Store Account {0}: Deletion failed'.format(module.params['name']))
+    changed = True
+    if not module.check_mode:
+        count = len(blade.object_store_users.list_object_store_users(filter='name=\'' + module.params['name'] + '/*\'').items)
+        if count != 0:
+            module.fail_json(msg='Remove all Users from Object Store Account {0} \
+                                 before deletion'.format(module.params['name']))
+        else:
+            try:
+                blade.object_store_accounts.delete_object_store_accounts(names=[module.params['name']])
+            except Exception:
+                module.fail_json(msg='Object Store Account {0}: Deletion failed'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -112,7 +114,7 @@ def main():
     ))
 
     module = AnsibleModule(argument_spec,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     state = module.params['state']
     blade = get_blade(module)

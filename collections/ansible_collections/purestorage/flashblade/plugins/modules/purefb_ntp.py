@@ -86,28 +86,28 @@ def remove(duplicate):
 
 def delete_ntp(module, blade):
     """Delete NTP Servers"""
-    changed = False
-    if blade.arrays.list_arrays().items[0].ntp_servers != []:
-        try:
-            blade_settings = PureArray(ntp_servers=[])
-            blade.arrays.update_arrays(array_settings=blade_settings)
-            changed = True
-        except Exception:
-            module.fail_json(msg='Deletion of NTP servers failed')
+    changed = True
+    if not module.check_mode:
+        if blade.arrays.list_arrays().items[0].ntp_servers != []:
+            try:
+                blade_settings = PureArray(ntp_servers=[])
+                blade.arrays.update_arrays(array_settings=blade_settings)
+            except Exception:
+                module.fail_json(msg='Deletion of NTP servers failed')
     module.exit_json(changed=changed)
 
 
 def create_ntp(module, blade):
     """Set NTP Servers"""
-    changed = False
-    if not module.params['ntp_servers']:
-        module.params['ntp_servers'] = ['0.pool.ntp.org']
-    try:
-        blade_settings = PureArray(ntp_servers=module.params['ntp_servers'][0:4])
-        blade.arrays.update_arrays(array_settings=blade_settings)
-        changed = True
-    except Exception:
-        module.fail_json(msg='Update of NTP servers failed')
+    changed = True
+    if not module.check_mode:
+        if not module.params['ntp_servers']:
+            module.params['ntp_servers'] = ['0.pool.ntp.org']
+        try:
+            blade_settings = PureArray(ntp_servers=module.params['ntp_servers'][0:4])
+            blade.arrays.update_arrays(array_settings=blade_settings)
+        except Exception:
+            module.fail_json(msg='Update of NTP servers failed')
     module.exit_json(changed=changed)
 
 
@@ -123,7 +123,7 @@ def main():
 
     module = AnsibleModule(argument_spec,
                            required_if=required_if,
-                           supports_check_mode=False)
+                           supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')
