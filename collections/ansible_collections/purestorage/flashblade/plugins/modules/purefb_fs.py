@@ -154,7 +154,7 @@ EXAMPLES = '''
     nfsv4 : true
     user_quota: 10K
     group_quota: 25M
-    nfs_rules: '*(ro)'
+    nfs_rules: '10.21.255.0/24(ro)'
     snapshot: true
     fastremove: true
     hard_limit: true

@@ -213,7 +213,7 @@ purefb_info:
                 "destroyed": false,
                 "fast_remove": false,
                 "hard_limit": true,
-                "nfs_rules": "*(rw,no_root_squash)",
+                "nfs_rules": "10.21.255.0/24(rw,no_root_squash)",
                 "provisioned": 21474836480,
                 "snapshot_enabled": false
             },
