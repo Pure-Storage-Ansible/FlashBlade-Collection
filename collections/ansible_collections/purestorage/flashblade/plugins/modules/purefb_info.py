@@ -484,20 +484,20 @@ def generate_perf_dict(blade):
         'write_bytes_per_sec': nfs_perf.items[0].write_bytes_per_sec,
         'writes_per_sec': nfs_perf.items[0].writes_per_sec,
     }
-    if REPLICATION_API_VERSION in api_version:
-        file_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='file-system')
-        obj_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='object-store')
-        # TODO (SD): Only add in when new python SDK exists that support Python 3.7
-        # if len(file_repl_perf.total):
-        #     perf_info['file_replication'] = {
-        #         'received_bytes_per_sec': file_repl_perf.total[0].async.received_bytes_per_sec,
-        #         'transmitted_bytes_per_sec': file_repl_perf.total[0].async.transmitted_bytes_per_sec,
-        #     }
-        # if len(obj_repl_perf.total):
-        #     perf_info['object_replication'] = {
-        #         'received_bytes_per_sec': obj_repl_perf.total[0].async.received_bytes_per_sec,
-        #         'transmitted_bytes_per_sec': obj_repl_perf.total[0].async.transmitted_bytes_per_sec,
-        #     }
+    # TODO (SD): Only add in when new python SDK exists that support Python 3.7
+    # if REPLICATION_API_VERSION in api_version:
+    #     file_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='file-system')
+    #     obj_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='object-store')
+    #     if len(file_repl_perf.total):
+    #         perf_info['file_replication'] = {
+    #             'received_bytes_per_sec': file_repl_perf.total[0].async.received_bytes_per_sec,
+    #             'transmitted_bytes_per_sec': file_repl_perf.total[0].async.transmitted_bytes_per_sec,
+    #         }
+    #     if len(obj_repl_perf.total):
+    #         perf_info['object_replication'] = {
+    #             'received_bytes_per_sec': obj_repl_perf.total[0].async.received_bytes_per_sec,
+    #             'transmitted_bytes_per_sec': obj_repl_perf.total[0].async.transmitted_bytes_per_sec,
+    #         }
     return perf_info
 
 
