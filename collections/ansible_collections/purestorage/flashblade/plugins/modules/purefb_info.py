@@ -431,7 +431,6 @@ def generate_default_dict(blade):
 
 def generate_perf_dict(blade):
     perf_info = {}
-    api_version = blade.api_version.list_versions().versions
     total_perf = blade.arrays.list_arrays_performance()
     http_perf = blade.arrays.list_arrays_performance(protocol='http')
     s3_perf = blade.arrays.list_arrays_performance(protocol='s3')
@@ -485,6 +484,7 @@ def generate_perf_dict(blade):
         'writes_per_sec': nfs_perf.items[0].writes_per_sec,
     }
     # TODO (SD): Only add in when new python SDK exists that support Python 3.7
+    # api_version = blade.api_version.list_versions().versions
     # if REPLICATION_API_VERSION in api_version:
     #     file_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='file-system')
     #     obj_repl_perf = blade.array_connections.list_array_connections_performance_replication(type='object-store')
