@@ -42,7 +42,7 @@ options:
     type: bool
     default: 'no'
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

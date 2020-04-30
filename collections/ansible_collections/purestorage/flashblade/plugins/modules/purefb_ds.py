@@ -89,7 +89,7 @@ options:
     type: str
     version_added: 2.9
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

@@ -28,7 +28,7 @@ options:
     default: present
     choices: [ present, absent ]
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

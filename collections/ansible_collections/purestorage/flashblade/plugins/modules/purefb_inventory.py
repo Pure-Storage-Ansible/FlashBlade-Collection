@@ -25,7 +25,7 @@ description:
 author:
   - Pure Storage ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 extends_documentation_fragment:
-  - purestorage.fb
+  - purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

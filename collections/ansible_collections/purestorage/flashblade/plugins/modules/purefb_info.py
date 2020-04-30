@@ -36,7 +36,7 @@ options:
     type: list
     default: minimum
 extends_documentation_fragment:
-  - purestorage.fb
+  - purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

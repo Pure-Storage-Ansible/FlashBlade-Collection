@@ -40,7 +40,7 @@ options:
     - Ordered list of domain names to search
     type: list
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''
