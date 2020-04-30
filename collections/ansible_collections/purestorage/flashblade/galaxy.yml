@@ -16,5 +16,5 @@ tags:
   - nfs
 dependencies: {}
 repository: https://github.com/Pure-Storage-Ansible/FlashBlade-Collection
-documentation: https://github.com/Pure-Storage-Ansible/FlashBlade-Collection/tree/master/collections/ansible_collections/purestorage/flashblade/docs
+documentation: https://github.com/Pure-Storage-Ansible/FlashBlade-Collection
 issues: https://github.com/Pure-Storage-Ansible/FlashBlade-Collection/issues
