@@ -32,7 +32,7 @@ options:
     - The name of object store account
     type: str
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

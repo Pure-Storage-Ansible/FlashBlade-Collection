@@ -58,11 +58,7 @@ options:
     default: 0
     type: int
 extends_documentation_fragment:
-    - purestorage.fb
-notes:
-    - Requires the netaddr Python package on the host.
-requirements:
-    - netaddr
+    - purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = '''

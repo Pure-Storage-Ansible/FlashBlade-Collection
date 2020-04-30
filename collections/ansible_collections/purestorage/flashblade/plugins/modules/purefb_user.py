@@ -37,7 +37,7 @@ options:
     type: str
     required: true
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

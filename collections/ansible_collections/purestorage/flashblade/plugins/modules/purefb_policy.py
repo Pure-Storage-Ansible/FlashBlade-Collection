@@ -57,7 +57,7 @@ options:
     - If not provided, the module will attempt to get the current local timezone from the server
     type: str
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

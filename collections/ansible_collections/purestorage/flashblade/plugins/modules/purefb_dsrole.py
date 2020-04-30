@@ -51,7 +51,7 @@ options:
     - Common Names should not exceed 64 characters in length.
     type: str
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''
