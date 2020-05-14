@@ -166,7 +166,7 @@ def main():
         create_connection(module, blade)
     elif state == 'present' and target_blade:
         update_connection(module, blade, target_blade)
-    elif state == 'absent'and target_blade:
+    elif state == 'absent' and target_blade:
         break_connection(module, blade, target_blade)
 
     module.exit_json(changed=False)

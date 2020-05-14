@@ -360,9 +360,9 @@ def main():
 
     if policy and state == 'present':
         update_policy(module, blade, policy.items[0])
-    elif state == 'present'and not policy:
+    elif state == 'present' and not policy:
         create_policy(module, blade)
-    elif state == 'absent'and policy:
+    elif state == 'absent' and policy:
         delete_policy(module, blade)
 
     module.exit_json(changed=False)
