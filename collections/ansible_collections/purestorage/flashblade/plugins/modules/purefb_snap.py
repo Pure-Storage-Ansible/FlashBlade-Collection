@@ -18,6 +18,8 @@ version_added: '2.6'
 short_description: Manage filesystem snapshots on Pure Storage FlashBlades
 description:
 - Create or delete volumes and filesystem snapshots on Pure Storage FlashBlades.
+- Restoring a filesystem from a snapshot is only supported using
+  the latest snapshot.
 author:
 - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
@@ -33,7 +35,7 @@ options:
   state:
     description:
     - Define whether the filesystem snapshot should exist or not.
-    choices: [ absent, present ]
+    choices: [ absent, present, restore ]
     default: present
     type: str
   eradicate:
@@ -51,7 +53,7 @@ EXAMPLES = r'''
     name: foo
     suffix: ansible
     fb_url: 10.10.10.2
-    fb_api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: present
 
 - name: Delete snapshot named foo.snap
@@ -59,7 +61,7 @@ EXAMPLES = r'''
     name: foo
     suffix: snap
     fb_url: 10.10.10.2
-    fb_api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: absent
 
 - name: Recover deleted snapshot foo.ansible
@@ -67,8 +69,15 @@ EXAMPLES = r'''
     name: foo
     suffix: ansible
     fb_url: 10.10.10.2
-    fb_api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: present
+
+- name: Restore filesystem foo (uses latest snapshot)
+  purefb_snap:
+    name: foo
+    fb_url: 10.10.10.2
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    state: restore
 
 - name: Eradicate snapshot named foo.snap
   purefb_snap:
@@ -76,7 +85,7 @@ EXAMPLES = r'''
     suffix: snap
     eradicate: true
     fb_url: 10.10.10.2
-    fb_api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: absent
 '''
 
@@ -90,18 +99,32 @@ from datetime import datetime
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import FileSystemSnapshot, SnapshotSuffix
+    from purity_fb import FileSystemSnapshot, SnapshotSuffix, FileSystem, Reference
 except ImportError:
     HAS_PURITY_FB = False
 
 
 def get_fs(module, blade):
     """Return Filesystem or None"""
-    fs = []
-    fs.append(module.params['name'])
+    filesystem = []
+    filesystem.append(module.params['name'])
     try:
-        res = blade.file_systems.list_file_systems(names=fs)
+        res = blade.file_systems.list_file_systems(names=filesystem)
         return res.items[0]
+    except Exception:
+        return None
+
+
+def get_latest_fssnapshot(module, blade):
+    """ Get the name of the latest snpshot or None"""
+    try:
+        filt = 'source=\'' + module.params['name'] + '\''
+        all_snaps = blade.file_system_snapshots.list_file_system_snapshots(filter=filt)
+        if not all_snaps.items[0].destroyed:
+            return all_snaps.items[0].name
+        else:
+            module.fail_json(msg='Latest snapshot {0} is destroyed.'
+                                 ' Eradicate or recover this first.'.format(all_snaps.items[0].name))
     except Exception:
         return None
 
@@ -127,6 +150,25 @@ def create_snapshot(module, blade):
             changed = True
         except Exception:
             changed = False
+    module.exit_json(changed=changed)
+
+
+def restore_snapshot(module, blade):
+    """Restore a filesystem back from the latest snapshot"""
+    if not module.check_mode:
+        snapname = get_latest_fssnapshot(module, blade)
+        if snapname is not None:
+            fs_attr = FileSystem(name=module.params['name'],
+                                 source=Reference(name=snapname))
+            try:
+                blade.file_systems.create_file_systems(overwrite=True,
+                                                       discard_non_snapshotted_data=True,
+                                                       file_system=fs_attr)
+                changed = True
+            except Exception:
+                changed = False
+        else:
+            module.fail_json(msg='Filesystem {0} has no snapshots to restore from.'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -187,7 +229,7 @@ def main():
             name=dict(required=True),
             suffix=dict(type='str'),
             eradicate=dict(default='false', type='bool'),
-            state=dict(default='present', choices=['present', 'absent'])
+            state=dict(default='present', choices=['present', 'absent', 'restore'])
         )
     )
 
@@ -203,24 +245,28 @@ def main():
 
     state = module.params['state']
     blade = get_blade(module)
-    fs = get_fs(module, blade)
+    filesystem = get_fs(module, blade)
     snap = get_fssnapshot(module, blade)
 
-    if state == 'present' and fs and not fs.destroyed and not snap:
+    if state == 'present' and filesystem and not filesystem.destroyed and not snap:
         create_snapshot(module, blade)
-    elif state == 'present' and fs and not fs.destroyed and snap and not snap.destroyed:
+    elif state == 'present' and filesystem and not filesystem.destroyed and snap and not snap.destroyed:
         update_snapshot(module, blade)
-    elif state == 'present' and fs and not fs.destroyed and snap and snap.destroyed:
+    elif state == 'present' and filesystem and not filesystem.destroyed and snap and snap.destroyed:
         recover_snapshot(module, blade)
-    elif state == 'present' and fs and fs.destroyed:
+    elif state == 'present' and filesystem and filesystem.destroyed:
         update_snapshot(module, blade)
-    elif state == 'present' and not fs:
+    elif state == 'present' and not filesystem:
         update_snapshot(module, blade)
+    elif state == 'restore' and filesystem:
+        restore_snapshot(module, blade)
     elif state == 'absent' and snap and not snap.destroyed:
         delete_snapshot(module, blade)
     elif state == 'absent' and snap and snap.destroyed:
         eradicate_snapshot(module, blade)
     elif state == 'absent' and not snap:
+        module.exit_json(changed=False)
+    else:
         module.exit_json(changed=False)
 
 
