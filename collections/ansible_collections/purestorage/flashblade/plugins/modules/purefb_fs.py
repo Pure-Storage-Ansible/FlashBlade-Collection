@@ -43,9 +43,9 @@ options:
   size:
     description:
       - Volume size in M, G, T or P units. See examples.
+      - If size is not set at filesystem creation time it defaults to 32G
     type: str
     required: false
-    default: 32G
   nfsv3:
     description:
       - Define whether to NFSv3 protocol is enabled for the filesystem.
@@ -63,8 +63,8 @@ options:
   nfs_rules:
     description:
       - Define the NFS rules in operation.
+      - If not set at filesystem creation time it defaults to I(*(rw,no_root_squash))
     required: false
-    default: '*(rw,no_root_squash)'
     type: str
   smb:
     description:
@@ -84,6 +84,17 @@ options:
     required: false
     type: bool
     default: false
+  writable:
+    description:
+      - Define if a filesystem is writeable.
+    required: false
+    type: bool
+  promote:
+    description:
+      - Promote/demote a filesystem.
+      - Can only demote the file-system if it is in a replica-link relationship.
+    required: false
+    type: bool
   fastremove:
     description:
       - Define whether the fast remove directory is enabled for the filesystem.
@@ -146,6 +157,20 @@ EXAMPLES = '''
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
+- name: Promote filesystem named foo ready for failover
+  purefb_fs:
+    name: foo
+    promote: true
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Demote filesystem named foo after failover
+  purefb_fs:
+    name: foo
+    promote: false
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
 - name: Modify attributes of an existing filesystem named foo
   purefb_fs:
     name: foo
@@ -154,7 +179,7 @@ EXAMPLES = '''
     nfsv4 : true
     user_quota: 10K
     group_quota: 25M
-    nfs_rules: '10.21.255.0/24(ro)'
+    nfs_rules: '10.21.200.0/24(ro)'
     snapshot: true
     fastremove: true
     hard_limit: true
@@ -178,6 +203,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 HARD_LIMIT_API_VERSION = '1.4'
 NFSV4_API_VERSION = '1.6'
+REPLICATION_API_VERSION = '1.9'
 
 
 def get_fs(module, blade):
@@ -196,7 +222,8 @@ def create_fs(module, blade):
     changed = True
     if not module.check_mode:
         try:
-
+            if not module.params['nfs_rules']:
+                module.params['nfs_rules'] = '*(rw,no_root_squash)'
             if not module.params['size']:
                 module.params['size'] = '32G'
 
@@ -285,9 +312,10 @@ def modify_fs(module, blade):
                 attr['nfs'] = NfsRule(v4_1_enabled=module.params['nfsv4'])
                 mod_fs = True
             if module.params['nfsv3'] or module.params['nfsv4'] and fsys.nfs.v3_enabled or fsys.nfs.v4_1_enabled:
-                if fsys.nfs.rules != module.params['nfs_rules']:
-                    attr['nfs'] = NfsRule(rules=module.params['nfs_rules'])
-                    mod_fs = True
+                if module.params['nfs_rules'] is not None:
+                    if fsys.nfs.rules != module.params['nfs_rules']:
+                        attr['nfs'] = NfsRule(rules=module.params['nfs_rules'])
+                        mod_fs = True
             if module.params['user_quota'] and user_quota != fsys.default_user_quota:
                 attr['default_user_quota'] = user_quota
                 mod_fs = True
@@ -336,6 +364,25 @@ def modify_fs(module, blade):
                 mod_fs = True
             if module.params['hard_limit'] and not fsys.hard_limit_enabled:
                 attr['hard_limit_enabled'] = module.params['hard_limit']
+                mod_fs = True
+        if REPLICATION_API_VERSION in api_version:
+            if module.params['writable'] is not None:
+                if not module.params['writable'] and fsys.writable:
+                    attr['writable'] = module.params['writable']
+                    mod_fs = True
+                if module.params['writable'] and not fsys.writable and fsys.promotion_status == 'promoted':
+                    attr['writable'] = module.params['writable']
+                    mod_fs = True
+            if module.params['promote'] and fsys.promotion_status != 'promoted':
+                attr['requested_promotion_state'] = 'promoted'
+                mod_fs = True
+            if not module.params['promote'] and fsys.promotion_status == 'promoted':
+                # Demotion only allowed on filesystems in a replica-link
+                try:
+                    blade.file_system_replica_links.list_file_system_replica_links(local_file_system_names=[module.params['name']]).items[0]
+                except Exception:
+                    module.fail_json(msg='Filesystem {0} not demoted. Not in a replica-link'.format(module.params['name']))
+                attr['requested_promotion_state'] = module.params['promote']
                 mod_fs = True
         if mod_fs:
             n_attr = FileSystem(**attr)
@@ -395,20 +442,22 @@ def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
-            name=dict(required=True),
+            name=dict(type='str', required=True),
             eradicate=dict(default='false', type='bool'),
             nfsv3=dict(default='true', type='bool'),
             nfsv4=dict(default='true', type='bool'),
-            nfs_rules=dict(default='*(rw,no_root_squash)'),
+            nfs_rules=dict(type='str'),
             smb=dict(default='false', type='bool'),
             http=dict(default='false', type='bool'),
             snapshot=dict(default='false', type='bool'),
+            writable=dict(type='bool'),
+            promote=dict(type='bool'),
             fastremove=dict(default='false', type='bool'),
             hard_limit=dict(default='false', type='bool'),
             user_quota=dict(type='str'),
             group_quota=dict(type='str'),
             state=dict(default='present', choices=['present', 'absent']),
-            size=dict(default='32G')
+            size=dict(type='str')
         )
     )
 
