@@ -92,6 +92,8 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+MIN_REQUIRED_API_VERSION = '1.9'
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
 
@@ -214,6 +216,11 @@ def main():
     state = module.params['state']
     module.params['name'] = module.params['name'].lower()
     blade = get_blade(module)
+    versions = blade.api_version.list_versions().versions
+
+    if MIN_REQUIRED_API_VERSION not in versions:
+        module.fail_json(msg='Minimum FlashBlade REST version required: {0}'.format(MIN_REQUIRED_API_VERSION))
+
     local_bucket = get_local_bucket(module, blade)
     local_replica_link = get_local_rl(module, blade)
     target = get_connected(module, blade)
