@@ -88,6 +88,8 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+MIN_REQUIRED_API_VERSION = '1.9'
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
 
@@ -160,7 +162,7 @@ def add_rl_policy(module, blade):
                 local_file_system_names=[module.params['name']],
                 policy_names=[module.params['policy']],
                 remote_names=[remote_array.remote.name])
-            if len(already_a_policy.items) != 0:
+            if already_a_policy.items:
                 changed = False
             else:
                 blade.file_system_replica_links.create_file_system_replica_link_policies(
@@ -179,7 +181,7 @@ def delete_rl_policy(module, blade):
         current_policy = blade.file_system_replica_links.list_file_system_replica_link_policies(
             local_file_system_names=[module.params['name']],
             policy_names=[module.params['policy']])
-        if len(current_policy.items) != 0:
+        if current_policy.items:
             try:
                 blade.file_system_replica_links.delete_file_system_replica_link_policies(
                     policy_names=[module.params['policy']],
@@ -215,6 +217,11 @@ def main():
 
     state = module.params['state']
     blade = get_blade(module)
+    versions = blade.api_version.list_versions().versions
+
+    if MIN_REQUIRED_API_VERSION not in versions:
+        module.fail_json(msg='Minimum FlashBlade REST version required: {0}'.format(MIN_REQUIRED_API_VERSION))
+
     local_fs = get_local_fs(module, blade)
     local_replica_link = get_local_rl(module, blade)
 

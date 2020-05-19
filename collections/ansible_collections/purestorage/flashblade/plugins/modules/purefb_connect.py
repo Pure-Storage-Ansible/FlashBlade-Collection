@@ -73,7 +73,7 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
 
 
-MINIMUM_API_VERSION = '1.9'
+MIN_REQUIRED_API_VERSION = '1.9'
 
 
 def _check_connected(module, blade):
@@ -158,6 +158,11 @@ def main():
 
     state = module.params['state']
     blade = get_blade(module)
+    versions = blade.api_version.list_versions().versions
+
+    if MIN_REQUIRED_API_VERSION not in versions:
+        module.fail_json(msg='Minimum FlashBlade REST version required: {0}'.format(MIN_REQUIRED_API_VERSION))
+
     target_blade = _check_connected(module, blade)
     if state == 'present' and not target_blade:
         # TODO: SD - Update with new max when fan-out is supported
