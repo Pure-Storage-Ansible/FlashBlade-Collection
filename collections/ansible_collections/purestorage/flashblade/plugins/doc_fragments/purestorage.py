@@ -36,7 +36,7 @@ notes:
     if I(fb_url) and I(api_token) arguments are not passed to the module directly
 requirements:
   - python >= 2.7
-  - purity_fb >= 1.1
+  - purity_fb >= 1.9
   - netaddr
   - pytz
 '''

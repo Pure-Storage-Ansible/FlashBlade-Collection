@@ -597,6 +597,19 @@ def generate_lag_dict(blade):
     return lag_info
 
 
+def generate_targets_dict(blade):
+    targets_info = {}
+    targets = blade.targets.list_targets()
+    for target in range(0, len(targets.items)):
+        target_name = targets.items[target].name
+        targets_info[target_name] = {
+            'address': targets.items[target].address,
+            'status': targets.items[target].status,
+            'status_details': targets.items[target].status_details,
+        }
+    return targets_info
+
+
 def generate_remote_creds_dict(blade):
     remote_creds_info = {}
     remote_creds = blade.object_store_remote_credentials.list_object_store_remote_credentials()
@@ -604,8 +617,7 @@ def generate_remote_creds_dict(blade):
         cred_name = remote_creds.items[cred_cnt].name
         remote_creds_info[cred_name] = {
             'access_key': remote_creds.items[cred_cnt].access_key_id,
-            'remote': remote_creds.items[cred_cnt].remote.name,
-            'created': remote_creds.items[cred_cnt].created,
+            'remote_array': remote_creds.items[cred_cnt].remote.name,
         }
     return remote_creds_info
 
@@ -873,6 +885,7 @@ def main():
             info['bucket_replication'] = generate_bucket_repl_dict(blade)
             info['snap_transfers'] = generate_snap_transfer_dict(blade)
             info['remote_credentials'] = generate_remote_creds_dict(blade)
+            info['targets'] = generate_targets_dict(blade)
 
     module.exit_json(changed=False, purefb_info=info)
 
