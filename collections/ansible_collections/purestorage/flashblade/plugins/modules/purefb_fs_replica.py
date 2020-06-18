@@ -97,7 +97,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 def get_local_fs(module, blade):
     """Return Filesystem or None"""
     try:
-        res = blade.file_systems.list_file_systems(names=module.params['name'])
+        res = blade.file_systems.list_file_systems(names=[module.params['name']])
         return res.items[0]
     except Exception:
         return None
