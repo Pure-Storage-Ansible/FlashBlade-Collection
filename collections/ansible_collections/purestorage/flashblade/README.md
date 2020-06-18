@@ -11,7 +11,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 
 - Ansible 2.9 or later
 - Pure Storage FlashBlade system running Purity 2.1.2 or later
-- purity_fb Python SDK 1.8 or higher
+- purity_fb Python SDK 1.9 or higher
 - Python >=v2.7, <3.7
 - netaddr
 
@@ -47,6 +47,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_snmp_mgr - manage SNMP Managers on a FlashBlade
 - purefb_snmp_agent - modify the FlashBlade SNMP Agent
 - purefb_subnet - manage network subnets on a FlashBlade
+- purefb_target - manage remote S3-capable targets for a FlashBlade
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 
 ## Instructions
