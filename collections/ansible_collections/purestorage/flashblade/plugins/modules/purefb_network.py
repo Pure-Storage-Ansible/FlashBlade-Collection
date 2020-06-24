@@ -135,6 +135,7 @@ def modify_iface(module, blade):
     """Modify Network Interface IP address"""
     changed = True
     if not module.check_mode:
+        changed = False
         iface = get_iface(module, blade)
         iface_new = []
         iface_new.append(module.params['name'])
@@ -142,6 +143,7 @@ def modify_iface(module, blade):
             try:
                 blade.network_interfaces.update_network_interfaces(names=iface_new,
                                                                    network_interface=NetworkInterface(address=module.params['address']))
+                changed = True
             except Exception:
                 module.fail_json(msg='Failed to modify Interface {0}'.format(module.params['name']))
     module.exit_json(changed=changed)
