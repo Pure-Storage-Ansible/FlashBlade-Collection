@@ -56,6 +56,16 @@ options:
     - Time Zone used for the I(at) parameter
     - If not provided, the module will attempt to get the current local timezone from the server
     type: str
+  filesystem:
+    description:
+    - List of filesystems to add to a policy on creation
+    - To amend policy members use the I(purefb_fs) module
+    type: list
+  replica_link:
+    description:
+    - List of filesystem replica links to add to a policy on creation
+    - To amend policy members use the I(purefb_fs_replica) module
+    type: list
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
@@ -64,6 +74,17 @@ EXAMPLES = r'''
 - name: Create a simple policy with no rules
   purefb_policy:
     name: test_policy
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create a policy and connect to existing filesystems and filesystem replica links
+  purefb_policy:
+    name: test_policy_with_members
+    filesystem:
+    - fs1
+    - fs2
+    replica_link:
+    - rl1
+    - rl2
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create a policy with rules
@@ -241,6 +262,27 @@ def create_policy(module, blade):
             blade.policies.create_policies(names=[module.params['name']], policy=attr)
         except Exception:
             module.fail_json(msg="Failed to create policy {0}.".format(module.params['name']))
+        if module.params['filesystem']:
+            try:
+                blade.file_systems.list_file_systems(names=module.params['filesystem'])
+                blade.policies.create_policy_filesystems(policy_names=[module.params['name']],
+                                                         member_names=module.params['filesystem'])
+            except Exception:
+                delete_policy(module, blade)
+                module.fail_json(msg="Failed to connect filesystems to policy {0}, "
+                                 "or one of {1} doesn't exist.".format(module.params['name'],
+                                                                       module.params['filesystem']))
+        if module.params['replica_link']:
+            for link in module.params['replica_link']:
+                remote_array = blade.file_system_replica_links.list_file_system_replica_links(local_file_system_names=[link])
+                try:
+                    blade.policies.create_policy_file_system_replica_links(policy_names=[module.params['name']],
+                                                                           member_names=[link],
+                                                                           remote_names=[remote_array.items[0].remote.name])
+                except Exception:
+                    delete_policy(module, blade)
+                    module.fail_json(msg="Failed to connect filesystem replicsa link {0} to policy {1}. "
+                                     "Replica Link {0} does not exist.".format(link, module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -340,6 +382,8 @@ def main():
         at=dict(type='str'),
         every=dict(type='int'),
         keep_for=dict(type='int'),
+        filesystem=dict(type='list'),
+        replica_link=dict(type='list'),
     ))
 
     required_together = [['keep_for', 'every']]
