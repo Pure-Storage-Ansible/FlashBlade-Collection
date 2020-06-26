@@ -505,8 +505,11 @@ def generate_config_dict(blade):
     config_info = {}
     config_info['dns'] = blade.dns.list_dns().items[0].to_dict()
     config_info['smtp'] = blade.smtp.list_smtp().items[0].to_dict()
-    config_info['alert_watchers'] = \
-        blade.alert_watchers.list_alert_watchers().items[0].to_dict()
+    try:
+        config_info['alert_watchers'] = \
+            blade.alert_watchers.list_alert_watchers().items[0].to_dict()
+    except Exception:
+        config_info['alert_watchers'] = ''
     api_version = blade.api_version.list_versions().versions
     if HARD_LIMIT_API_VERSION in api_version:
         config_info['array_management'] = \
@@ -528,11 +531,12 @@ def generate_config_dict(blade):
         blade.certificates.list_certificates().items[0].to_dict()
     api_version = blade.api_version.list_versions().versions
     if CERT_GROUPS_API_VERSION in api_version:
-        config_info['certificate_groups'] = \
-            blade.certificate_groups.list_certificate_groups().items[0].to_dict()
+        try:
+            config_info['certificate_groups'] = \
+                blade.certificate_groups.list_certificate_groups().items[0].to_dict()
+        except Exception:
+            config_info['certificate_groups'] = ''
     if REPLICATION_API_VERSION in api_version:
-        config_info['certificate_groups'] = \
-            blade.certificate_groups.list_certificate_groups().items[0].to_dict()
         config_info['snmp_agents'] = {}
         snmp_agents = blade.snmp_agents.list_snmp_agents()
         for agent in range(0, len(snmp_agents.items)):
