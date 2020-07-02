@@ -600,7 +600,6 @@ def main():
         eradicate_fs(module, blade)
     elif state == 'absent' and not fsys:
         module.exit_json(changed=False)
-    
     module.exit_json(changed=False)
 
 if __name__ == '__main__':
