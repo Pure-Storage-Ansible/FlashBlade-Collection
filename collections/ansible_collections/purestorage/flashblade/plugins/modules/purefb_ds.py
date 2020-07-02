@@ -293,8 +293,7 @@ def main():
     ))
 
     required_together = [['uri', 'bind_password', 'bind_user', 'base_dn'],
-                         ['nis_servers', 'nis_domain'],
-                         ['join_ou', 'uri']]
+                         ['nis_servers', 'nis_domain']]
     mutually_exclusive = [['uri', 'nis_domain']]
 
     module = AnsibleModule(argument_spec,
