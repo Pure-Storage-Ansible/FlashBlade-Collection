@@ -598,11 +598,10 @@ def main():
         delete_fs(module, blade)
     elif state == 'absent' and fsys and fsys.destroyed and module.params['eradicate']:
         eradicate_fs(module, blade)
-    elif state == 'absent' and fsys and fsys.destroyed:
-        module.exit_json(changed=False)
     elif state == 'absent' and not fsys:
         module.exit_json(changed=False)
-
+    
+    module.exit_json(changed=False)
 
 if __name__ == '__main__':
     main()
