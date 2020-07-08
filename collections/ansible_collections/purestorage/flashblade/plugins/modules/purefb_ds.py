@@ -17,11 +17,12 @@ module: purefb_ds
 version_added: '2.8'
 short_description: Configure FlashBlade Directory Service
 description:
-- Create or erase directory services configurations. There is no facility
-  to SSL certificates at this time. Use the FlashBlade GUI for this
+- Create, modify or erase directory services configurations. There is no
+  facility to SSL certificates at this time. Use the FlashBlade GUI for this
   additional configuration work.
-- To modify an existing directory service configuration you must first delete
-  an exisitng configuration and then recreate with new settings.
+- If updating a directory service and i(bind_password) is provided this
+  will always cause a change, even if the password given isn't different from
+  the current. This makes this part of the module non-idempotent..
 author:
 - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
@@ -152,14 +153,6 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
 
 
-def update_ds(module, blade):
-    """Update Directory Service"""
-# This module is a place-holder until we figure out a way to
-# update the config on the fly rather than deleting and resetting
-    changed = False
-    module.exit_json(changed=changed)
-
-
 def enable_ds(module, blade):
     """Enable Directory Service"""
     changed = True
@@ -230,6 +223,60 @@ def delete_ds(module, blade):
                                                                    directory_service=dir_service)
         except Exception:
             module.fail_json(msg='Delete {0} Directory Service failed'.format(module.params['dstype']))
+    module.exit_json(changed=changed)
+
+
+def update_ds(module, blade):
+    """Update Directory Service"""
+    changed = True
+    if not module.check_mode:
+        changed = False
+        mod_ds = False
+        attr = {}
+        try:
+            ds_now = blade.directory_services.list_directory_services(names=[module.params['dstype']]).items[0]
+            if module.params['dstype'] in ['management', 'smb']:
+                if module.params['dstype'] == 'nfs':
+                    if module.params['nis_servers']:
+                        if sorted(module.params['nis_servers']) != sorted(ds_now.nfs.nis_servers) or \
+                                module.params['nis_domain'] != ''.join(map(str, ds_now.nfs.nis_domains)):
+                            attr['nfs'] = {'nis_domains': [module.params['nis_domain']],
+                                           'nis_servers': module.params['nis_servers'][0:30]}
+                            mod_ds = True
+                    else:
+                        if module.params['uri']:
+                            if sorted(module.params['uri'][0:30]) != sorted(ds_now.uris):
+                                attr['uris'] = module.params['uri'][0:30]
+                                mod_ds = True
+                        if module.params['base_dn']:
+                            if module.params['base_dn'] != ds_now.base_dn:
+                                attr['base_dn'] = module.params['base_dn']
+                                mod_ds = True
+                        if module.params['bind_user']:
+                            if module.params['bind_user'] != ds_now.bind_user:
+                                attr['bind_user'] = module.params['bind_user']
+                                mod_ds = True
+                        if module.params['enable']:
+                            if module.params['enable'] != ds_now.enabled:
+                                attr['enabled'] = module.params['enable']
+                                mod_ds = True
+                        if module.params['bind_password']:
+                            attr['bind_password'] = module.params['bind_password']
+                            mod_ds = True
+                        if module.params['dstype'] == 'smb':
+                            if module.params['join_ou'] != ds_now.smb.join_ou:
+                                attr['smb'] = {'join_ou': module.params['join_ou']}
+                                mod_ds = True
+            if mod_ds:
+                n_attr = DirectoryService(**attr)
+                try:
+                    blade.directory_services.update_directory_services(names=[module.params['dstype']],
+                                                                       directory_service=n_attr)
+                except Exception:
+                    module.fail_json(msg='Failed to change {0} directory service.'.format(module.params['dstype']))
+        except Exception:
+            module.fail_json(msg='Failed to get current {0} directory service.'.format(module.params['dstype']))
+        changed = True
     module.exit_json(changed=changed)
 
 
