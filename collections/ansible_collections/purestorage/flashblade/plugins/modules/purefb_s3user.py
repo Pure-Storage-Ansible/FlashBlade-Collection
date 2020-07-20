@@ -40,7 +40,7 @@ options:
     - Create secret access key.
     - Key can be exposed using the I(debug) module
     type: bool
-    default: true
+    default: false
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
@@ -50,6 +50,7 @@ EXAMPLES = r'''
   purefb_s3user:
     name: foo
     account: bar
+    access_key: true
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
   register: result
@@ -109,6 +110,7 @@ def update_s3user(module, blade):
     """Update Object Store User"""
     changed = True
     if not module.check_mode:
+        changed = False
         s3user_facts = {}
         user = module.params['account'] + "/" + module.params['name']
         if module.params['access_key']:
@@ -121,6 +123,7 @@ def update_s3user(module, blade):
                 try:
                     result = blade.object_store_access_keys.create_object_store_access_keys(
                         object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
+                    changed = True
                     s3user_facts['fb_s3user'] = {'user': user,
                                                  'access_key': result.items[0].secret_access_key,
                                                  'access_id': result.items[0].name}
@@ -171,7 +174,7 @@ def main():
     argument_spec.update(dict(
         name=dict(required=True, type='str'),
         account=dict(required=True, type='str'),
-        access_key=dict(default='true', type='bool'),
+        access_key=dict(default='false', type='bool'),
         state=dict(default='present', choices=['present', 'absent']),
     ))
 
