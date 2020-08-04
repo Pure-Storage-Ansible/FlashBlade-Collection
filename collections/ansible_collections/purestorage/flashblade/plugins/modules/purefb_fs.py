@@ -590,6 +590,9 @@ def main():
     blade = get_blade(module)
     fsys = get_fs(module, blade)
 
+    if module.params['eradicate'] and state == 'present':
+        module.warn('Eradicate flag ignored without state=absent')
+
     if state == 'present' and not fsys:
         create_fs(module, blade)
     elif state == 'present' and fsys:

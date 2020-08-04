@@ -267,6 +267,9 @@ def main():
     if not get_s3acc(module, blade):
         module.fail_json(msg="Object Store Account {0} does not exist.".format(module.params['account']))
 
+    if module.params['eradicate'] and state == 'present':
+        module.warn('Eradicate flag ignored without state=absent')
+
     if state == 'present' and not bucket:
         create_bucket(module, blade)
     elif state == 'present' and bucket and bucket.destroyed:
