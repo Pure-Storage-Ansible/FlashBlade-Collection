@@ -16,7 +16,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = '''
 ---
 module: purefb_bucket
-version_added: "2.8"
+version_added: "1.0.0"
 short_description:  Manage Object Store Buckets on a  Pure Storage FlashBlade.
 description:
     - This module managess object store (s3) buckets on Pure Storage FlashBlade.

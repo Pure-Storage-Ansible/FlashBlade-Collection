@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_remote_cred
+version_added: '1.0.0'
 short_description: Create, modify and delete FlashBlade object store remote credentials
 description:
 - Create, modify and delete object store remote credentials

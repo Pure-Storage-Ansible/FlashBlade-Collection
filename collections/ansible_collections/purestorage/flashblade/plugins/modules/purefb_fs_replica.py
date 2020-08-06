@@ -16,6 +16,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = '''
 ---
 module: purefb_fs_replica
+version_added: '1.0.0'
 short_description:  Manage filesystem replica links between Pure Storage FlashBlades
 description:
     - This module manages filesystem replica links between Pure Storage FlashBlades.

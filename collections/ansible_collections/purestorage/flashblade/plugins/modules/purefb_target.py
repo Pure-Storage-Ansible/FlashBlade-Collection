@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_target
+version_added: '1.0.0'
 short_description: Manage remote S3-capable targets for a FlashBlade
 description:
 - Manage remote S3-capable targets for a FlashBlade system
@@ -38,7 +39,7 @@ options:
     - Address of S3-capable target (IP or FQDN)
     type: str
 extends_documentation_fragment:
-- purestorage.fb
+- purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''

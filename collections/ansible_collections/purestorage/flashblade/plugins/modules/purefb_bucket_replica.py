@@ -16,6 +16,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = '''
 ---
 module: purefb_bucket_replica
+version_added: '1.0.0'
 short_description:  Manage bucket replica links between Pure Storage FlashBlades
 description:
     - This module manages bucket replica links between Pure Storage FlashBlades.

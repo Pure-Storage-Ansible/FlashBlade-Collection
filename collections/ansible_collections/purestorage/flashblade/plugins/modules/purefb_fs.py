@@ -16,7 +16,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = '''
 ---
 module: purefb_fs
-version_added: "2.6"
+version_added: "1.0.0"
 short_description:  Manage filesystemon Pure Storage FlashBlade`
 description:
     - This module manages filesystems on Pure Storage FlashBlade.
@@ -52,14 +52,12 @@ options:
     required: false
     type: bool
     default: true
-    version_added: 2.9
   nfsv4:
     description:
       - Define whether to NFSv4.1 protocol is enabled for the filesystem.
     required: false
     type: bool
     default: true
-    version_added: 2.9
   nfs_rules:
     description:
       - Define the NFS rules in operation.
@@ -119,19 +117,16 @@ options:
     required: false
     type: bool
     default: false
-    version_added: 2.8
   user_quota:
     description:
       - Default quota in M, G, T or P units for a user under this file system.
     required: false
     type: str
-    version_added: 2.9
   group_quota:
     description:
       - Default quota in M, G, T or P units for a group under this file system.
     required: false
     type: str
-    version_added: 2.9
   policy:
     description:
       - Filesystem policy to assign to or remove from a filesystem.

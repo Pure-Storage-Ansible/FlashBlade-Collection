@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_snap
-version_added: '2.6'
+version_added: '1.0.0'
 short_description: Manage filesystem snapshots on Pure Storage FlashBlades
 description:
 - Create or delete volumes and filesystem snapshots on Pure Storage FlashBlades.

@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_user
-version_added: '2.10'
+version_added: '1.0.0'
 short_description: Modify FlashBlade local user account password
 description:
 - Modify local user's password on a Pure Stoage FlashBlade.
