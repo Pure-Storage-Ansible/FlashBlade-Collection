@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_connect
+version_added: '1.0.0'
 short_description: Manage replication connections between two FlashBlades
 description:
 - Manage replication connections to specified remote FlashBlade system

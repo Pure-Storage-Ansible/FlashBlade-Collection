@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_dsrole
-version_added: '2.8'
+version_added: '1.0.0'
 short_description: Configure FlashBlade  Management Directory Service Roles
 description:
 - Set or erase directory services role configurations.
@@ -32,6 +32,7 @@ options:
     - The directory service role to work on
     choices: [ array_admin, ops_admin, readonly, storage_admin ]
     type: str
+    required: true
   group_base:
     description:
     - Specifies where the configured group is located in the directory

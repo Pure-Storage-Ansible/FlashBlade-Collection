@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_ds
-version_added: '2.8'
+version_added: '1.0.0'
 short_description: Configure FlashBlade Directory Service
 description:
 - Create, modify or erase directory services configurations. There is no
@@ -37,6 +37,7 @@ options:
     - The type of directory service to work on
     choices: [ management, nfs, smb ]
     type: str
+    required: true
   enable:
     description:
     - Whether to enable or disable directory service support.
@@ -50,6 +51,7 @@ options:
       the directory service with the hostname "ad" in the domain "company.com"
       while specifying the unencrypted LDAP protocol.
     type: list
+    elements: str
   base_dn:
     description:
     - Sets the base of the Distinguished Name (DN) of the directory service
@@ -57,7 +59,6 @@ options:
       base_dn will populate with a default value when a URI is entered by
       parsing domain components from the URI. The base DN should specify DC=
       for each domain component and multiple DCs should be separated by commas.
-    required: true
     type: str
   bind_password:
     description:
@@ -76,19 +77,17 @@ options:
     - A list of up to 30 IP addresses or FQDNs for NIS servers.
     - This cannot be used in conjunction with LDAP configurations.
     type: list
-    version_added: 2.9
+    elements: str
   nis_domain:
     description:
     - The NIS domain to search
     - This cannot be used in conjunction with LDAP configurations.
     type: str
-    version_added: 2.9
   join_ou:
     description:
       - The optional organizational unit (OU) where the machine account
         for the directory service will be created.
     type: str
-    version_added: 2.9
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
@@ -327,7 +326,7 @@ def create_ds(module, blade):
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(dict(
-        uri=dict(type='list'),
+        uri=dict(type='list', elements='str'),
         dstype=dict(required=True, type='str', choices=['management', 'nfs', 'smb']),
         state=dict(type='str', default='present', choices=['absent', 'present']),
         enable=dict(type='bool', default=False),
@@ -336,7 +335,7 @@ def main():
         base_dn=dict(type='str'),
         join_ou=dict(type='str'),
         nis_domain=dict(type='str'),
-        nis_servers=dict(type='list'),
+        nis_servers=dict(type='list', elements='str'),
     ))
 
     required_together = [['uri', 'bind_password', 'bind_user', 'base_dn'],

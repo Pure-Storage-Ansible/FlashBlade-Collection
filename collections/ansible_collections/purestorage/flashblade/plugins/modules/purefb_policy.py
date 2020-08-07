@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_policy
+version_added: '1.0.0'
 short_description: Manage FlashBlade policies
 description:
 - Manage policies for filesystem and file replica links
@@ -30,7 +31,6 @@ options:
     description:
     - Name of the policy
     type: str
-    required: True
   enabled:
     description:
     - State of policy
@@ -61,11 +61,13 @@ options:
     - List of filesystems to add to a policy on creation
     - To amend policy members use the I(purefb_fs) module
     type: list
+    elements: str
   replica_link:
     description:
     - List of filesystem replica links to add to a policy on creation
     - To amend policy members use the I(purefb_fs_replica) module
     type: list
+    elements: str
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
@@ -113,10 +115,15 @@ try:
 except ImportError:
     HAS_PURITYFB = False
 
+HAS_PYTZ = True
+try:
+    import pytz
+except ImportError:
+    HAS_PYTX = False
+
 import os
 import re
 import platform
-import pytz
 
 from ansible.module_utils.common.process import get_bin_path
 from ansible.module_utils.facts.utils import get_file_content
@@ -382,8 +389,8 @@ def main():
         at=dict(type='str'),
         every=dict(type='int'),
         keep_for=dict(type='int'),
-        filesystem=dict(type='list'),
-        replica_link=dict(type='list'),
+        filesystem=dict(type='list', elements='str'),
+        replica_link=dict(type='list', elements='str'),
     ))
 
     required_together = [['keep_for', 'every']]
@@ -394,6 +401,8 @@ def main():
 
     if not HAS_PURITYFB:
         module.fail_json(msg='purity_fb sdk is required for this module')
+    if not HAS_PYTZ:
+        module.fail_json(msg='pytz is required for this module')
 
     state = module.params['state']
     blade = get_blade(module)

@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_ra
-version_added: '2.9'
+version_added: '1.0.0'
 short_description: Enable or Disable Pure Storage FlashBlade Remote Assist
 description:
 - Enablke or Disable Remote Assist for a Pure Storage FlashBlade.

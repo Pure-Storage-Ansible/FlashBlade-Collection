@@ -16,7 +16,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = '''
 ---
 module: purefb_subnet
-version_added: "2.8"
+version_added: "1.0.0"
 short_description:  Manage network subnets in a Pure Storage FlashBlade
 description:
     - This module manages network subnets on Pure Storage FlashBlade.

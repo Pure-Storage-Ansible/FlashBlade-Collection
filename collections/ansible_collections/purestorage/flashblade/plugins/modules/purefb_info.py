@@ -15,7 +15,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_info
-version_added: '2.9'
+version_added: '1.0.0'
 short_description: Collect information from Pure Storage FlashBlade
 description:
   - Collect information from a Pure Storage FlashBlade running the
@@ -34,6 +34,7 @@ options:
         replication, policies and arrays.
     required: false
     type: list
+    elements: str
     default: minimum
 extends_documentation_fragment:
   - purestorage.flashblade.purestorage.fb
@@ -835,7 +836,7 @@ def generate_fs_dict(blade):
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(dict(
-        gather_subset=dict(default='minimum', type='list',)
+        gather_subset=dict(default='minimum', type='list', elements='str')
     ))
 
     module = AnsibleModule(argument_spec, supports_check_mode=False)

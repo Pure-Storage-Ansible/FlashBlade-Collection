@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_ntp
-version_added: '2.9'
+version_added: '1.0.0'
 short_description: Configure Pure Storage FlashBlade NTP settings
 description:
 - Set or erase NTP configuration for Pure Storage FlashBlades.
@@ -29,6 +29,7 @@ options:
     choices: [ absent, present ]
   ntp_servers:
     type: list
+    elements: str
     description:
     - A list of up to 4 alternate NTP servers. These may include IPv4,
       IPv6 or FQDNs. Invalid IP addresses will cause the module to fail.
@@ -115,7 +116,7 @@ def main():
 
     argument_spec = purefb_argument_spec()
     argument_spec.update(dict(
-        ntp_servers=dict(type='list'),
+        ntp_servers=dict(type='list', elements='str'),
         state=dict(type='str', default='present', choices=['absent', 'present']),
     ))
 

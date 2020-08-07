@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_s3acc
-version_added: '2.8'
+version_added: '1.0.0'
 short_description: Create or delete FlashBlade Object Store accounts
 description:
 - Create or delete object store accounts on a Pure Stoage FlashBlade.
@@ -31,6 +31,7 @@ options:
     description:
     - The name of object store account
     type: str
+    required: true
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''

@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_dns
+version_added: '1.0.0'
 short_description: Configure Pure Storage FlashBlade DNS settings
 description:
 - Set or erase DNS configuration for Pure Storage FlashBlades.
@@ -35,10 +36,12 @@ options:
     - List of up to 3 unique DNS server IP addresses. These can be
       IPv4 or IPv6 - No validation is done of the addresses is performed.
     type: list
+    elements: str
   search:
     description:
     - Ordered list of domain names to search
     type: list
+    elements: str
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
@@ -134,8 +137,8 @@ def main():
 
     argument_spec = purefb_argument_spec()
     argument_spec.update(dict(
-        nameservers=dict(type='list'),
-        search=dict(type='list'),
+        nameservers=dict(type='list', elements='str'),
+        search=dict(type='list', elements='str'),
         domain=dict(type='str'),
         state=dict(type='str', default='present', choices=['absent', 'present']),
     ))

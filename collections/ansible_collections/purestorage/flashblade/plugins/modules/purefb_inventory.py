@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_inventory
-version_added: '2.9'
+version_added: '1.0.0'
 short_description: Collect information from Pure Storage FlashBlade
 description:
   - Collect information from a Pure Storage FlashBlade running the

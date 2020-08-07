@@ -14,7 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_smtp
-version_added: '2.9'
+version_added: '1.0.0'
 short_description: Configure SMTP for Pure Storage FlashBlade
 description:
 - Configure SMTP for a Pure Storage FlashBlade.

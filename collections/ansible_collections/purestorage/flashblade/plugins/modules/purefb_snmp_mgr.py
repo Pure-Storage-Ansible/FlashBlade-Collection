@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_snmp_mgr
+version_added: '1.0.0'
 short_description: Configure FlashBlade SNMP Managers
 description:
 - Manage SNMP managers on a Pure Storage FlashBlade.

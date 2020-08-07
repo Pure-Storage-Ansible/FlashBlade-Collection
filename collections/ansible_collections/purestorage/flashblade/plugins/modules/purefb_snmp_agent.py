@@ -14,6 +14,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = r'''
 ---
 module: purefb_snmp_agent
+version_added: '1.0.0'
 short_description: Configure the FlashBlade SNMP Agent
 description:
 - Configure the management SNMP Agent on a Pure Storage FlashBlade.
