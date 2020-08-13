@@ -43,7 +43,7 @@ options:
   size:
     description:
       - Volume size in M, G, T or P units. See examples.
-      - If size is not set at filesystem creation time it defaults to 32G
+      - If size is not set at filesystem creation time the filesystem size becomes unlimited.
     type: str
     required: false
   nfsv3:
@@ -241,10 +241,10 @@ def create_fs(module, blade):
         try:
             if not module.params['nfs_rules']:
                 module.params['nfs_rules'] = '*(rw,no_root_squash)'
-            if not module.params['size']:
-                module.params['size'] = '32G'
-
-            size = human_to_bytes(module.params['size'])
+            if module.params['size']:
+                size = human_to_bytes(module.params['size'])
+            else:
+                size = 0
 
             if module.params['user_quota']:
                 user_quota = human_to_bytes(module.params['user_quota'])
@@ -530,7 +530,7 @@ def delete_fs(module, blade):
 
             if module.params['eradicate']:
                 try:
-                    blade.file_systems.delete_file_systems(module.params['name'])
+                    blade.file_systems.delete_file_systems(name=module.params['name'])
                 except Exception:
                     module.fail_json(msg="Failed to delete filesystem {0}.".format(module.params['name']))
         except Exception:
@@ -543,7 +543,7 @@ def eradicate_fs(module, blade):
     changed = True
     if not module.check_mode:
         try:
-            blade.file_systems.delete_file_systems(module.params['name'])
+            blade.file_systems.delete_file_systems(name=module.params['name'])
         except Exception:
             module.fail_json(msg="Failed to eradicate filesystem {0}.".format(module.params['name']))
     module.exit_json(changed=changed)
