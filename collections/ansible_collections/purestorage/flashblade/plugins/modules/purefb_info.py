@@ -214,6 +214,10 @@ purefb_info:
                 "destroyed": false,
                 "fast_remove": false,
                 "hard_limit": true,
+                "policies": [
+                    "weekly", 
+                    "daily"
+                ],
                 "nfs_rules": "10.21.255.0/24(rw,no_root_squash)",
                 "provisioned": 21474836480,
                 "snapshot_enabled": false
@@ -222,6 +226,7 @@ purefb_info:
                 "destroyed": false,
                 "fast_remove": false,
                 "hard_limit": false,
+                "policies": [],
                 "provisioned": 1073741824,
                 "snapshot_enabled": false
             }
