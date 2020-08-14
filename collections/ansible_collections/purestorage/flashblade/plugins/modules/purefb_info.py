@@ -804,6 +804,7 @@ def generate_bucket_dict(blade):
 
 def generate_fs_dict(blade):
     fs_info = {}
+    fpolicy = blade.file_systems.list_filesystem_policies()
     fsys = blade.file_systems.list_file_systems()
     for fsystem in range(0, len(fsys.items)):
         share = fsys.items[fsystem].name
@@ -830,6 +831,10 @@ def generate_fs_dict(blade):
                 'is_local': fsys.items[fsystem].source.is_local,
                 'name': fsys.items[fsystem].source.name
             }
+        fs_info[share]['policies'] = []
+        for item in fpolicy.items:
+            if item.member.name == share:
+               fs_info[share]['policies'].append(item.policy.name)
     return fs_info
 
 
@@ -897,3 +902,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    
