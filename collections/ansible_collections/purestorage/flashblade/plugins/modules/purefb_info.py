@@ -214,9 +214,7 @@ purefb_info:
                 "destroyed": false,
                 "fast_remove": false,
                 "hard_limit": true,
-                "policies": [
-                    "weekly", 
-                    "daily"
+                "policies": ["weekly", "daily"]
                 ],
                 "nfs_rules": "10.21.255.0/24(rw,no_root_squash)",
                 "provisioned": 21474836480,
@@ -839,7 +837,7 @@ def generate_fs_dict(blade):
         fs_info[share]['policies'] = []
         for item in fpolicy.items:
             if item.member.name == share:
-               fs_info[share]['policies'].append(item.policy.name)
+                fs_info[share]['policies'].append(item.policy.name)
     return fs_info
 
 
