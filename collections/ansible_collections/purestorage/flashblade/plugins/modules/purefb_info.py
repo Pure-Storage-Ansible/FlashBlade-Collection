@@ -830,10 +830,6 @@ def generate_fs_dict(blade):
                 'is_local': fsys.items[fsystem].source.is_local,
                 'name': fsys.items[fsystem].source.name
             }
-            fs_info[share]['policies'] = []
-            fpolicy = blade.file_systems.list_filesystem_policies(member_names=[share])
-            for item in fpolicy.items:
-                fs_info[share]['policies'].append(item.policy.name)
     return fs_info
 
 
