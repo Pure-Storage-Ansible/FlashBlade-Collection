@@ -145,7 +145,7 @@ def main():
         state=dict(type='str', default='present', choices=['absent', 'present']),
         encrypted=dict(type='bool', default=False),
         target_url=dict(type='str', required=True),
-        target_api=dict(type='str'),
+        target_api=dict(type='str', no_log=True),
     ))
 
     required_if = [('state', 'present', ['target_api'])]
