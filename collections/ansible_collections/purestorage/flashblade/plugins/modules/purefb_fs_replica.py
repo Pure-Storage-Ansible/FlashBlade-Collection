@@ -229,9 +229,6 @@ def main():
     if not local_fs:
         module.fail_json(msg='Selected local filesystem {0} does not exist.'.format(module.params['name']))
 
-    if local_replica_link:
-        if local_replica_link.status == 'unhealthy':
-            module.fail_json(msg='Replca Link unhealthy - please check remote array')
     if module.params['policy']:
         try:
             policy = blade.policies.list_policies(names=[module.params['policy']])
