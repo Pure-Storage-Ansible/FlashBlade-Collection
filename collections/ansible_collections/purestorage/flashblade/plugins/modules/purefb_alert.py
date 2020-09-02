@@ -21,7 +21,7 @@ description:
 - Add or delete an individual syslog server to the existing
   list of serves.
 author:
-- Simon Dodsley (@sdodsley)
+- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     type: str
