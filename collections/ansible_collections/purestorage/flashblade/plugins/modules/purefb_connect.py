@@ -80,6 +80,15 @@ MIN_REQUIRED_API_VERSION = '1.9'
 def _check_connected(module, blade):
     connected_blades = blade.array_connections.list_array_connections()
     for target in range(0, len(connected_blades.items)):
+        if connected_blades.items[target].management_address is None:
+            try:
+                remote_system = PurityFb(module.params['target_url'])
+                remote_system.login(module.params['target_api'])
+                remote_array = remote_system.arrays.list_arrays().items[0].name
+                if connected_blades.items[target].remote.name == remote_array:
+                    return connected_blades.items[target]
+            except Exception:
+                module.fail_json(msg="Failed to connect to remote array {0}.".format(module.params['target_url']))
         if connected_blades.items[target].management_address == module.params['target_url'] and \
            connected_blades.items[target].status in ["connected", "connecting", "partially_connected"]:
             return connected_blades.items[target]
