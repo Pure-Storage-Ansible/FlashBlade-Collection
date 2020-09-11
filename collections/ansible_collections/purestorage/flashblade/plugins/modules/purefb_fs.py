@@ -139,6 +139,18 @@ options:
     default: present
     type: str
     choices: [ "absent", "present" ]
+  delete_link:
+    description:
+      - Define if the filesystem can be deleted even if it has a replica link
+    required: false
+    default: false
+    type: bool
+  discard_snaps:
+    description:
+      - Allow a filesystem to be demoted.
+    required: false
+    default: false
+    type: bool
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 '''
@@ -476,11 +488,19 @@ def modify_fs(module, blade):
                     mod_fs = True
         if mod_fs:
             n_attr = FileSystem(**attr)
-            try:
-                blade.file_systems.update_file_systems(name=module.params['name'], attributes=n_attr)
-                changed = True
-            except Exception:
-                module.fail_json(msg="Failed to update filesystem {0}.".format(module.params['name']))
+            if REPLICATION_API_VERSION in api_version:
+                try:
+                    blade.file_systems.update_file_systems(name=module.params['name'], attributes=n_attr,
+                                                           discard_non_snapshotted_data=module.params['discard_snaps'])
+                    changed = True
+                except Exception:
+                    module.fail_json(msg="Failed to update filesystem {0}.".format(module.params['name']))
+            else:
+                try:
+                    blade.file_systems.update_file_systems(name=module.params['name'], attributes=n_attr)
+                    changed = True
+                except Exception:
+                    module.fail_json(msg="Failed to update filesystem {0}.".format(module.params['name']))
     module.exit_json(changed=changed)
 
 
@@ -512,22 +532,40 @@ def delete_fs(module, blade):
     if not module.check_mode:
         try:
             api_version = blade.api_version.list_versions().versions
-            if NFSV4_API_VERSION in api_version:
-                blade.file_systems.update_file_systems(name=module.params['name'],
-                                                       attributes=FileSystem(nfs=NfsRule(v3_enabled=False,
-                                                                                         v4_1_enabled=False),
-                                                                             smb=ProtocolRule(enabled=False),
-                                                                             http=ProtocolRule(enabled=False),
-                                                                             destroyed=True)
-                                                       )
+            if REPLICATION_API_VERSION in api_version:
+                if NFSV4_API_VERSION in api_version:
+                    blade.file_systems.update_file_systems(name=module.params['name'],
+                                                           attributes=FileSystem(nfs=NfsRule(v3_enabled=False,
+                                                                                             v4_1_enabled=False),
+                                                                                 smb=ProtocolRule(enabled=False),
+                                                                                 http=ProtocolRule(enabled=False),
+                                                                                 destroyed=True),
+                                                           delete_link_on_eradication=module.params['delete_link']
+                                                           )
+                else:
+                    blade.file_systems.update_file_systems(name=module.params['name'],
+                                                           attributes=FileSystem(nfs=NfsRule(enabled=False),
+                                                                                 smb=ProtocolRule(enabled=False),
+                                                                                 http=ProtocolRule(enabled=False),
+                                                                                 destroyed=True),
+                                                           delete_link_on_eradication=module.params['delete_link']
+                                                           )
             else:
-                blade.file_systems.update_file_systems(name=module.params['name'],
-                                                       attributes=FileSystem(nfs=NfsRule(enabled=False),
-                                                                             smb=ProtocolRule(enabled=False),
-                                                                             http=ProtocolRule(enabled=False),
-                                                                             destroyed=True)
-                                                       )
-
+                if NFSV4_API_VERSION in api_version:
+                    blade.file_systems.update_file_systems(name=module.params['name'],
+                                                           attributes=FileSystem(nfs=NfsRule(v3_enabled=False,
+                                                                                             v4_1_enabled=False),
+                                                                                 smb=ProtocolRule(enabled=False),
+                                                                                 http=ProtocolRule(enabled=False),
+                                                                                 destroyed=True)
+                                                           )
+                else:
+                    blade.file_systems.update_file_systems(name=module.params['name'],
+                                                           attributes=FileSystem(nfs=NfsRule(enabled=False),
+                                                                                 smb=ProtocolRule(enabled=False),
+                                                                                 http=ProtocolRule(enabled=False),
+                                                                                 destroyed=True)
+                                                           )
             if module.params['eradicate']:
                 try:
                     blade.file_systems.delete_file_systems(name=module.params['name'])
@@ -571,6 +609,8 @@ def main():
             smb_aclmode=dict(type='str', default='shared', choices=['shared', 'native']),
             policy_state=dict(default='present', choices=['present', 'absent']),
             state=dict(default='present', choices=['present', 'absent']),
+            delete_link=dict(default=False, type='bool'),
+            discard_snaps=dict(default=False, type='bool'),
             size=dict(type='str')
         )
     )
