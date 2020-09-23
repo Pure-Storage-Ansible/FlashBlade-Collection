@@ -103,7 +103,7 @@ def break_connection(module, blade, target_blade):
         try:
             if target_blade.management_address is None:
                 module.fail_json(msg="disconnect can only happen from the array that formed the connection")
-            blade.array_connections.delete_array_connections(name=target_blade.remote.name, ids=[target_blade.id])
+            blade.array_connections.delete_array_connections(remote_names=[target_blade.remote.name])
         except Exception:
             module.fail_json(msg="Failed to disconnect {0} from {1}.".format(target_blade.remote.name, source_blade))
     module.exit_json(changed=changed)
