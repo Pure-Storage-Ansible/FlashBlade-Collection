@@ -235,7 +235,6 @@ def update_ds(module, blade):
         try:
             ds_now = blade.directory_services.list_directory_services(names=[module.params['dstype']]).items[0]
             if module.params['dstype'] == 'nfs':
-                module.fail_json(msg='I am here {0}'.format('test'))
                 if module.params['nis_servers']:
                     if sorted(module.params['nis_servers']) != sorted(ds_now.nfs.nis_servers) or \
                             module.params['nis_domain'] != ''.join(map(str, ds_now.nfs.nis_domains)):
@@ -244,7 +243,6 @@ def update_ds(module, blade):
                         mod_ds = True
                 else:
                     if module.params['uri']:
-                        module.fail_json(msg='I am here {0}'.format('test'))
                         if sorted(module.params['uri'][0:30]) != sorted(ds_now.uris):
                             attr['uris'] = module.params['uri'][0:30]
                             mod_ds = True
@@ -270,7 +268,6 @@ def update_ds(module, blade):
 
             if module.params['dstype'] in ['management', 'smb']:
                 if module.params['uri']:
-                    module.fail_json(msg='I am here {0}'.format('test'))
                     if sorted(module.params['uri'][0:30]) != sorted(ds_now.uris):
                         attr['uris'] = module.params['uri'][0:30]
                         mod_ds = True
@@ -293,6 +290,7 @@ def update_ds(module, blade):
                     if module.params['join_ou'] != ds_now.smb.join_ou:
                         attr['smb'] = {'join_ou': module.params['join_ou']}
                         mod_ds = True
+
             if mod_ds:
                 n_attr = DirectoryService(**attr)
                 try:
