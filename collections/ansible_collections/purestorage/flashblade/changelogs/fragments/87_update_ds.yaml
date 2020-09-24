@@ -1,0 +1,2 @@
+minor_changes:
+  - purefb_ds - Fix error in updating directory services configuration

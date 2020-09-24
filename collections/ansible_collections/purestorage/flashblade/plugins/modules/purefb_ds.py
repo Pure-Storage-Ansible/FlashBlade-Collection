@@ -234,38 +234,65 @@ def update_ds(module, blade):
         attr = {}
         try:
             ds_now = blade.directory_services.list_directory_services(names=[module.params['dstype']]).items[0]
+            if module.params['dstype'] == 'nfs':
+                module.fail_json(msg='I am here {0}'.format('test'))
+                if module.params['nis_servers']:
+                    if sorted(module.params['nis_servers']) != sorted(ds_now.nfs.nis_servers) or \
+                            module.params['nis_domain'] != ''.join(map(str, ds_now.nfs.nis_domains)):
+                        attr['nfs'] = {'nis_domains': [module.params['nis_domain']],
+                                        'nis_servers': module.params['nis_servers'][0:30]}
+                        mod_ds = True
+                else:
+                    if module.params['uri']:
+                        module.fail_json(msg='I am here {0}'.format('test'))
+                        if sorted(module.params['uri'][0:30]) != sorted(ds_now.uris):
+                            attr['uris'] = module.params['uri'][0:30]
+                            mod_ds = True
+                    if module.params['base_dn']:
+                        if module.params['base_dn'] != ds_now.base_dn:
+                            attr['base_dn'] = module.params['base_dn']
+                            mod_ds = True
+                    if module.params['bind_user']:
+                        if module.params['bind_user'] != ds_now.bind_user:
+                            attr['bind_user'] = module.params['bind_user']
+                            mod_ds = True
+                    if module.params['enable']:
+                        if module.params['enable'] != ds_now.enabled:
+                            attr['enabled'] = module.params['enable']
+                            mod_ds = True
+                    if module.params['bind_password']:
+                        attr['bind_password'] = module.params['bind_password']
+                        mod_ds = True
+                    if module.params['dstype'] == 'smb':
+                        if module.params['join_ou'] != ds_now.smb.join_ou:
+                            attr['smb'] = {'join_ou': module.params['join_ou']}
+                            mod_ds = True
+
             if module.params['dstype'] in ['management', 'smb']:
-                if module.params['dstype'] == 'nfs':
-                    if module.params['nis_servers']:
-                        if sorted(module.params['nis_servers']) != sorted(ds_now.nfs.nis_servers) or \
-                                module.params['nis_domain'] != ''.join(map(str, ds_now.nfs.nis_domains)):
-                            attr['nfs'] = {'nis_domains': [module.params['nis_domain']],
-                                           'nis_servers': module.params['nis_servers'][0:30]}
-                            mod_ds = True
-                    else:
-                        if module.params['uri']:
-                            if sorted(module.params['uri'][0:30]) != sorted(ds_now.uris):
-                                attr['uris'] = module.params['uri'][0:30]
-                                mod_ds = True
-                        if module.params['base_dn']:
-                            if module.params['base_dn'] != ds_now.base_dn:
-                                attr['base_dn'] = module.params['base_dn']
-                                mod_ds = True
-                        if module.params['bind_user']:
-                            if module.params['bind_user'] != ds_now.bind_user:
-                                attr['bind_user'] = module.params['bind_user']
-                                mod_ds = True
-                        if module.params['enable']:
-                            if module.params['enable'] != ds_now.enabled:
-                                attr['enabled'] = module.params['enable']
-                                mod_ds = True
-                        if module.params['bind_password']:
-                            attr['bind_password'] = module.params['bind_password']
-                            mod_ds = True
-                        if module.params['dstype'] == 'smb':
-                            if module.params['join_ou'] != ds_now.smb.join_ou:
-                                attr['smb'] = {'join_ou': module.params['join_ou']}
-                                mod_ds = True
+                if module.params['uri']:
+                    module.fail_json(msg='I am here {0}'.format('test'))
+                    if sorted(module.params['uri'][0:30]) != sorted(ds_now.uris):
+                        attr['uris'] = module.params['uri'][0:30]
+                        mod_ds = True
+                if module.params['base_dn']:
+                    if module.params['base_dn'] != ds_now.base_dn:
+                        attr['base_dn'] = module.params['base_dn']
+                        mod_ds = True
+                if module.params['bind_user']:
+                    if module.params['bind_user'] != ds_now.bind_user:
+                        attr['bind_user'] = module.params['bind_user']
+                        mod_ds = True
+                if module.params['enable']:
+                    if module.params['enable'] != ds_now.enabled:
+                        attr['enabled'] = module.params['enable']
+                        mod_ds = True
+                if module.params['bind_password']:
+                    attr['bind_password'] = module.params['bind_password']
+                    mod_ds = True
+                if module.params['dstype'] == 'smb':
+                    if module.params['join_ou'] != ds_now.smb.join_ou:
+                        attr['smb'] = {'join_ou': module.params['join_ou']}
+                        mod_ds = True
             if mod_ds:
                 n_attr = DirectoryService(**attr)
                 try:
