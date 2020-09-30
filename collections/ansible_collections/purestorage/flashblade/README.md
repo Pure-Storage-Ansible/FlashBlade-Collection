@@ -23,9 +23,12 @@ All modules are idempotent with the exception of modules that change or set pass
 ## Available Modules
 
 - purefb_alert - manage alert email settings on a FlashBlade
+- purefb_banner - manage FlashBlade login banner
 - purefb_bladename - manage FlashBlade name
 - purefb_bucket - manage S3 buckets on a FlashBlade
 - purefb_bucket_replica - manage bucket replica links on a FlashBlade
+- purefb_certs - manage FlashBlade SSL certificates
+- purefb_certgrp - manage FlashBlade certificate groups
 - purefb_connect - manage connections between FlashBlades
 - purefb_dns - manage DNS settings on a FlashBlade
 - purefb_ds - manage Directory Services settings on a FlashBlade
@@ -34,6 +37,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_fs_replica - manage filesystem replica links on a FlashBlade
 - purefb_inventory - get information about the hardware inventory of a FlashBlade
 - purefb_info - get information about the configuration of a FlashBlade
+- purefb_lifecycle - manage FlashBlade Bucket Lifecycle Rules
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade
 - purefb_phonehome - manage the phone home settings for a FlashBlade
@@ -48,6 +52,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_snmp_mgr - manage SNMP Managers on a FlashBlade
 - purefb_snmp_agent - modify the FlashBlade SNMP Agent
 - purefb_subnet - manage network subnets on a FlashBlade
+- purefb_syslog - manage FlashBlade syslog server configuration
 - purefb_target - manage remote S3-capable targets for a FlashBlade
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 
