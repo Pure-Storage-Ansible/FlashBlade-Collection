@@ -102,8 +102,8 @@ def break_connection(module, blade, target_blade):
         source_blade = blade.arrays.list_arrays().items[0].name
         try:
             if target_blade.management_address is None:
-                module.fail_json(msg="disconnect can only happen from the array that formed the connection")
-            blade.array_connections.delete_array_connections(name=target_blade.remote.name, ids=[target_blade.id])
+                module.fail_json(msg="Disconnect can only happen from the array that formed the connection")
+            blade.array_connections.delete_array_connections(remote_names=[target_blade.remote.name])
         except Exception:
             module.fail_json(msg="Failed to disconnect {0} from {1}.".format(target_blade.remote.name, source_blade))
     module.exit_json(changed=changed)
@@ -137,10 +137,14 @@ def update_connection(module, blade, target_blade):
     """Update array connection - only encryption currently"""
     changed = True
     if not module.check_mode:
+        if target_blade.management_address is None:
+            module.fail_json(msg="Update can only happen from the array that formed the connection")
         if module.params['encrypted'] != target_blade.encrypted:
+            if module.params['encrypted'] and blade.file_system_replica_links.list_file_system_replica_links().pagination_info.total_item_count != 0:
+                module.fail_json(msg='Cannot turn array connection encryption on if file system replica links exist')
             new_attr = ArrayConnection(encrypted=module.params['encrypted'])
             try:
-                blade.array_connections.update_array_connections(name=target_blade.remote.name, ids=[target_blade.id], array_connection=new_attr)
+                blade.array_connections.update_array_connections(remote_names=[target_blade.remote.name], array_connection=new_attr)
             except Exception:
                 module.fail_json(msg='Failed to change encryption setting for array connection.')
         else:
