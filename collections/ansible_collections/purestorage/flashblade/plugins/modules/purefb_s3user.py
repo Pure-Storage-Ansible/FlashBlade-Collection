@@ -41,14 +41,25 @@ options:
     description:
     - Create secret access key.
     - Key can be exposed using the I(debug) module
+    - If enabled this will override I(imported_key)
     type: bool
     default: false
+  imported_key:
+    description:
+    - Access key of imported credentials
+    type: str
+    version_added: "1.4.0"
+  imported_secret:
+    description:
+    - Access key secret for access key to import
+    type: str
+    version_added: "1.4.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
 
 EXAMPLES = r'''
-- name: Crrate object store user (with access ID and key) foo in account bar
+- name: Create object store user (with access ID and key) foo in account bar
   purefb_s3user:
     name: foo
     account: bar
@@ -59,6 +70,15 @@ EXAMPLES = r'''
 
 - debug:
     msg: "S3 User: {{ result['s3user_info'] }}"
+
+- name: Create object store user foo using imported key/secret in account bar
+  purefb_s3user:
+    name: foo
+    account: bar
+    imported_key: "PSABSSZRHPMEDKHMAAJPJBONPJGGDDAOFABDGLBJLHO"
+    imported_secret: "BAG61F63105e0d3669/e066+5C5DFBE2c127d395LBGG"
+    fb_url: 10.10.10.2
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Delete object store user foo in account bar
   purefb_s3user:
@@ -75,7 +95,7 @@ RETURN = r'''
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import ObjectStoreAccessKey
+    from purity_fb import ObjectStoreAccessKey, ObjectStoreAccessKeyPost
 except ImportError:
     HAS_PURITY_FB = False
 
@@ -85,6 +105,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 
 MIN_REQUIRED_API_VERSION = '1.3'
+IMPORT_KEY_API_VERSION = '1.10'
 
 
 def get_s3acc(module, blade):
@@ -113,26 +134,47 @@ def update_s3user(module, blade):
     changed = True
     if not module.check_mode:
         changed = False
+        exists = False
         s3user_facts = {}
         user = module.params['account'] + "/" + module.params['name']
-        if module.params['access_key']:
+        if module.params['access_key'] or module.params['imported_key']:
             key_count = 0
             keys = blade.object_store_access_keys.list_object_store_access_keys()
             for key in range(0, len(keys.items)):
-                if keys.items[key].user.name == user:
-                    key_count += 1
-            if key_count < 2:
-                try:
-                    result = blade.object_store_access_keys.create_object_store_access_keys(
-                        object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
-                    changed = True
-                    s3user_facts['fb_s3user'] = {'user': user,
-                                                 'access_key': result.items[0].secret_access_key,
-                                                 'access_id': result.items[0].name}
-                except Exception:
-                    module.fail_json(msg='Object Store User {0}: Access Key creation failed'.format(user))
-            else:
-                module.warn('Object Store User {0}: Maximum Access Key count reached'.format(user))
+                if module.params['imported_key']:
+                    versions = blade.api_version.list_versions().versions
+                    if IMPORT_KEY_API_VERSION in versions:
+                        if keys.items[key].name == module.params['imported_key']:
+                            module.warn('Imported key provided already belongs to a user')
+                            exists = True
+                    if keys.items[key].user.name == user:
+                        key_count += 1
+            if not exists:
+                if key_count < 2:
+                    try:
+                        if module.params['access_key'] and module.params['imported_key']:
+                            module.warn('\'access_key: true\' overrides imported keys')
+                        if module.params['access_key']:
+                            result = blade.object_store_access_keys.create_object_store_access_keys(
+                                object_store_access_key=ObjectStoreAccessKey(user={'name': user}))
+                            changed = True
+                            s3user_facts['fb_s3user'] = {'user': user,
+                                                         'access_key': result.items[0].secret_access_key,
+                                                         'access_id': result.items[0].name}
+                        else:
+                            if IMPORT_KEY_API_VERSION in versions:
+                                blade.object_store_access_keys.create_object_store_access_keys(
+                                    names=[module.params['imported_key']],
+                                    object_store_access_key=ObjectStoreAccessKeyPost(
+                                        user={'name': user}, secret_access_key=module.params['imported_secret']))
+                                changed = True
+                    except Exception:
+                        if module.params['imported_key']:
+                            module.fail_json(msg='Object Store User {0}: Access Key import failed'.format(user))
+                        else:
+                            module.fail_json(msg='Object Store User {0}: Access Key creation failed'.format(user))
+                else:
+                    module.warn('Object Store User {0}: Maximum Access Key count reached'.format(user))
     module.exit_json(changed=changed, s3user_info=s3user_facts)
 
 
@@ -144,6 +186,8 @@ def create_s3user(module, blade):
         user = module.params['account'] + "/" + module.params['name']
         try:
             blade.object_store_users.create_object_store_users(names=[user])
+            if module.params['access_key'] and module.params['imported_key']:
+                module.warn('\'access_key: true\' overrides imported keys')
             if module.params['access_key']:
                 try:
                     result = blade.object_store_access_keys.create_object_store_access_keys(
@@ -154,6 +198,18 @@ def create_s3user(module, blade):
                 except Exception:
                     delete_s3user(module, blade)
                     module.fail_json(msg='Object Store User {0}: Creation failed'.format(user))
+            else:
+                if module.params['imported_key']:
+                    versions = blade.api_version.list_versions().versions
+                    if IMPORT_KEY_API_VERSION in versions:
+                        try:
+                            blade.object_store_access_keys.create_object_store_access_keys(
+                                names=[module.params['imported_key']],
+                                object_store_access_key=ObjectStoreAccessKeyPost(
+                                    user={'name': user}, secret_access_key=module.params['imported_secret']))
+                        except Exception:
+                            delete_s3user(module, blade)
+                            module.fail_json(msg='Object Store User {0}: Creation failed with imported access key'.format(user))
         except Exception:
             module.fail_json(msg='Object Store User {0}: Creation failed'.format(user))
     module.exit_json(changed=changed, s3user_info=s3user_facts)
@@ -177,10 +233,15 @@ def main():
         name=dict(required=True, type='str'),
         account=dict(required=True, type='str'),
         access_key=dict(default='false', type='bool'),
+        imported_key=dict(type='str'),
+        imported_secret=dict(type='str', no_log=True),
         state=dict(default='present', choices=['present', 'absent']),
     ))
 
+    required_together = [['imported_key', 'imported_secret']]
+
     module = AnsibleModule(argument_spec,
+                           required_together=required_together,
                            supports_check_mode=True)
 
     if not HAS_PURITY_FB:
