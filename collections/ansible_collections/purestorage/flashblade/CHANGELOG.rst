@@ -5,6 +5,44 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.4.0
+======
+
+Minor Changes
+-------------
+
+- purefb_banner - Module to manage the GUI and SSH login message
+- purefb_certgrp - Module to manage FlashBlade Certificate Groups
+- purefb_certs - Module to create and delete SSL certificates
+- purefb_connect - Support idempotency when exisitng connection is incoming
+- purefb_fs - Add new options for filesystem control (https://github.com/Pure-Storage-Ansible/FlashBlade-Collection/pull/81)
+- purefb_fs - Default filesystem size on creation changes from 32G to ``unlimited``
+- purefb_fs - Fix error in deletion and eradication of filesystem
+- purefb_fs_replica - Remove condition to attach/detach policies on unhealthy replica-link
+- purefb_info - Add support to list filesystem policies
+- purefb_lifecycle - Module to manage FlashBlade Bucket Lifecycle Rules
+- purefb_s3user - Add support for imported user access keys
+- purefb_syslog - Module to manage syslog server configuration
+
+Bugfixes
+--------
+
+- purefa_policy - Resolve multiple issues related to incorrect use of timezones
+- purefb_connect - Ensure changing encryption status on array connection is performed correctly
+- purefb_connect - Fix breaking change created in purity_fb SDK 1.9.2 for deletion of array connections
+- purefb_connect - Hide target array API token
+- purefb_ds - Ensure updating directory service configurations completes correctly
+- purefb_info - Fix issue getting array info when encrypted connection exists
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_banner - Configure Pure Storage FlashBlade GUI and SSH MOTD message
+- purestorage.flashblade.purefb_certgrp - Manage FlashBlade Certifcate Groups
+- purestorage.flashblade.purefb_certs - Manage FlashBlade SSL Certifcates
+- purestorage.flashblade.purefb_lifecycle - Manage FlashBlade object lifecycles
+- purestorage.flashblade.purefb_syslog - Configure Pure Storage FlashBlade syslog settings
+
 v1.3.0
 ======
 

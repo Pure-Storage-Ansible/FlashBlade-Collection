@@ -3,7 +3,7 @@ name: flashblade
 version: 1.4.0
 readme: README.md
 authors:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Pure Storage Ansible Team <pure-ansible-team@purestorage.com>
 description: Collection of modules to manage Pure Storage FlashBlades
 license:
  - GPL-3.0-or-later
