@@ -170,6 +170,8 @@ def _get_local_tz(module, timezone='UTC'):
                 full_tz = line.split(":", 1)[1].rstrip()
                 timezone = full_tz.split()[0]
                 return timezone
+            else:
+                module.warn('Incorrect timedatectl output. Timezone will be set to UTC')
         else:
             if os.path.exists('/etc/timezone'):
                 timezone = get_file_content('/etc/timezone')
@@ -275,7 +277,7 @@ def create_policy(module, blade):
                 blade.policies.create_policy_filesystems(policy_names=[module.params['name']],
                                                          member_names=module.params['filesystem'])
             except Exception:
-                delete_policy(module, blade)
+                blade.policies.delete_policies(names=[module.params['name']])
                 module.fail_json(msg="Failed to connect filesystems to policy {0}, "
                                  "or one of {1} doesn't exist.".format(module.params['name'],
                                                                        module.params['filesystem']))
@@ -287,7 +289,7 @@ def create_policy(module, blade):
                                                                            member_names=[link],
                                                                            remote_names=[remote_array.items[0].remote.name])
                 except Exception:
-                    delete_policy(module, blade)
+                    blade.policies.delete_policies(names=[module.params['name']])
                     module.fail_json(msg="Failed to connect filesystem replicsa link {0} to policy {1}. "
                                      "Replica Link {0} does not exist.".format(link, module.params['name']))
     module.exit_json(changed=changed)
@@ -326,12 +328,23 @@ def update_policy(module, blade, policy):
         if module.params['at']:
             at_time = _convert_to_millisecs(module.params['at'])
         else:
-            at_time = 0
-        new_policy = {'time_zone': module.params['timezone'],
-                      'every': every,
-                      'keep_for': keep_for,
-                      'at': at_time,
-                      'enabled': module.params['enabled']}
+            at_time = None
+        if not module.params['timezone']:
+            timezone = _get_local_tz(module)
+        else:
+            timezone = module.params['timezone']
+        if at_time:
+            new_policy = {'time_zone': timezone,
+                          'every': every,
+                          'keep_for': keep_for,
+                          'at': at_time,
+                          'enabled': module.params['enabled']}
+        else:
+            new_policy = {'time_zone': None,
+                          'every': every,
+                          'keep_for': keep_for,
+                          'at': None,
+                          'enabled': module.params['enabled']}
         if new_policy['time_zone'] and new_policy['time_zone'] not in pytz.all_timezones_set:
             module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
 
@@ -342,15 +355,9 @@ def update_policy(module, blade, policy):
                 module.params['keep_for'] = current_policy['keep_for']
             if not module.params['every']:
                 module.params['every'] = current_policy['every']
-            if not module.params['timezone']:
-                module.params['timezone'] = current_policy['time_zone']
             if module.params['at'] and module.params['every']:
                 if not module.params['every'] % 86400 == 0:
                     module.fail_json(msg='At time can only be set if every value is a multiple of 86400')
-            if not module.params['timezone']:
-                module.params['timezone'] = _get_local_tz(module)
-                if module.params['timezone'] not in pytz.all_timezones_set:
-                    module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
             if module.params['keep_for'] < module.params['every']:
                 module.fail_json(msg='Retention period cannot be less than snapshot interval.')
             if module.params['at'] and not module.params['timezone']:
@@ -361,10 +368,14 @@ def update_policy(module, blade, policy):
             try:
                 attr = PolicyPatch()
                 attr.enabled = module.params['enabled']
-                attr.add_rules = [PolicyRule(keep_for=module.params['keep_for'] * 1000,
-                                             every=module.params['every'] * 1000,
-                                             at=at_time,
-                                             time_zone=module.params['timezone'])]
+                if at_time:
+                    attr.add_rules = [PolicyRule(keep_for=module.params['keep_for'] * 1000,
+                                                 every=module.params['every'] * 1000,
+                                                 at=at_time,
+                                                 time_zone=timezone)]
+                else:
+                    attr.add_rules = [PolicyRule(keep_for=module.params['keep_for'] * 1000,
+                                                 every=module.params['every'] * 1000)]
                 attr.remove_rules = [PolicyRule(keep_for=current_policy['keep_for'] * 1000,
                                                 every=current_policy['every'] * 1000,
                                                 at=current_policy['at'],
