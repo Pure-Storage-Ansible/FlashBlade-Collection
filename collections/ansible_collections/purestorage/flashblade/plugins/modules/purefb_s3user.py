@@ -147,8 +147,8 @@ def update_s3user(module, blade):
                         if keys.items[key].name == module.params['imported_key']:
                             module.warn('Imported key provided already belongs to a user')
                             exists = True
-                    if keys.items[key].user.name == user:
-                        key_count += 1
+                if keys.items[key].user.name == user:
+                    key_count += 1
             if not exists:
                 if key_count < 2:
                     try:
