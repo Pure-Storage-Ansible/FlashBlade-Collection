@@ -24,8 +24,9 @@ options:
   state:
     description:
     - Create or delete object store account user
+    - Remove a specified access key for a user
     default: present
-    choices: [ absent, present ]
+    choices: [ absent, present, remove_key ]
     type: str
   name:
     description:
@@ -44,6 +45,11 @@ options:
     - If enabled this will override I(imported_key)
     type: bool
     default: false
+  remove_key:
+    description:
+    - Access key to be removed from user
+    type: str
+    version_added: "1.5.0"
   imported_key:
     description:
     - Access key of imported credentials
@@ -215,6 +221,21 @@ def create_s3user(module, blade):
     module.exit_json(changed=changed, s3user_info=s3user_facts)
 
 
+def remove_key(module, blade):
+    """Remove Access Key from User"""
+    changed = False
+    if not module.check_mode:
+        try:
+            keys = blade.object_store_access_keys.list_object_store_access_keys()
+            for key in range(0, len(keys.items)):
+                if keys.items[key].name == module.params['remove_key']:
+                    blade.object_store_access_keys.delete_object_store_access_keys(names=[module.params['remove_key']])
+                    changed = True
+        except Exception:
+            module.fail_json(msg='Failed to correctly read or delete access keys')
+    module.exit_json(changed=changed)
+
+
 def delete_s3user(module, blade):
     """Delete Object Store Account"""
     changed = True
@@ -234,14 +255,17 @@ def main():
         account=dict(required=True, type='str'),
         access_key=dict(default='false', type='bool'),
         imported_key=dict(type='str'),
+        remove_key=dict(type='str'),
         imported_secret=dict(type='str', no_log=True),
-        state=dict(default='present', choices=['present', 'absent']),
+        state=dict(default='present', choices=['present', 'absent', 'remove_key']),
     ))
 
     required_together = [['imported_key', 'imported_secret']]
+    required_if = [['state', 'remove_key', ['remove_key']]]
 
     module = AnsibleModule(argument_spec,
                            required_together=required_together,
+                           required_if=required_if,
                            supports_check_mode=True)
 
     if not HAS_PURITY_FB:
@@ -266,6 +290,8 @@ def main():
         update_s3user(module, blade)
     elif not s3user and state == 'present':
         create_s3user(module, blade)
+    elif state == 'remove_key' and s3user:
+        remove_key(module, blade)
     else:
         module.exit_json(changed=False)
 
