@@ -40,6 +40,7 @@ options:
   search:
     description:
     - Ordered list of domain names to search
+    - Deprecated option. Will be removed in Collection v1.6.0, There is no replacement for this.
     type: list
     elements: str
 extends_documentation_fragment:
@@ -94,9 +95,9 @@ def delete_dns(module, blade):
     if not module.check_mode:
         changed = False
         current_dns = blade.dns.list_dns()
-        if current_dns.items[0].domain or current_dns.items[0].search != [] or current_dns.items[0].nameservers != []:
+        if current_dns.items[0].domain or current_dns.items[0].nameservers != []:
             try:
-                blade.dns.update_dns(dns_settings=Dns(domain='', search=[], nameservers=[]))
+                blade.dns.update_dns(dns_settings=Dns(domain='', nameservers=[]))
                 changed = True
             except Exception:
                 module.fail_json(msg='Deletion of DNS settings failed')
@@ -123,13 +124,6 @@ def update_dns(module, blade):
                     changed = True
                 except Exception:
                     module.fail_json(msg='Update of DNS nameservers failed')
-        if module.params['search']:
-            if sorted(module.params['search']) != sorted(current_dns.items[0].search):
-                try:
-                    blade.dns.update_dns(dns_settings=Dns(search=module.params['search']))
-                    changed = True
-                except Exception:
-                    module.fail_json(msg='Update of DNS search failed')
     module.exit_json(changed=changed)
 
 
@@ -157,7 +151,7 @@ def main():
         if module.params['nameservers']:
             module.params['nameservers'] = remove(module.params['nameservers'])
         if module.params['search']:
-            module.params['search'] = remove(module.params['search'])
+            module.warn("\'search\' parameter is deprecated and will be removed in Collection v1.6.0")
         update_dns(module, blade)
     else:
         module.exit_json(changed=False)
