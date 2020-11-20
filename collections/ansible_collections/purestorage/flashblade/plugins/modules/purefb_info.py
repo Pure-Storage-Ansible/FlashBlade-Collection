@@ -31,7 +31,7 @@ options:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
         capacity, network, subnets, lags, filesystems, snapshots, buckets,
-        replication, policies and arrays.
+        replication, policies, arrays and admins.
     required: false
     type: list
     elements: str
@@ -386,6 +386,7 @@ HARD_LIMIT_API_VERSION = '1.4'
 POLICIES_API_VERSION = '1.5'
 CERT_GROUPS_API_VERSION = '1.8'
 REPLICATION_API_VERSION = '1.9'
+MULTIPROTOCOL_API_VERSION = '1.11'
 
 
 def generate_default_dict(blade):
@@ -600,6 +601,20 @@ def generate_lag_dict(blade):
         for port in range(0, len(groups.items[groupcnt].ports)):
             lag_info[lag_name]['ports'].append({'name': groups.items[groupcnt].ports[port].name})
     return lag_info
+
+
+def generate_admin_dict(blade):
+    admin_info = {}
+    api_version = blade.api_version.list_versions().versions
+    if MULTIPROTOCOL_API_VERSION in api_version:
+        admins = blade.admins.list_admins()
+        for admin in range(0, len(admins)):
+            admin_name = admins[admin]['name']
+            admin_info[admin_name] = {
+                'api_token': admins[admin]['type'],
+                'role': admins[admin]['role'],
+            }
+    return admin_info
 
 
 def generate_targets_dict(blade):
@@ -820,6 +835,11 @@ def generate_fs_dict(blade):
         if fsys.items[fsystem].nfs.enabled:
             fs_info[share]['nfs_rules'] = fsys.items[fsystem].nfs.rules
         api_version = blade.api_version.list_versions().versions
+        if MULTIPROTOCOL_API_VERSION in api_version:
+            fs_info[share]['multi_protocol'] = {
+                'safegaurd_acls': fsys.items[fsystem].multi_protocol.safeguard_acls,
+                'access_control_style': fsys.items[fsystem].multi_protocol.access_control_style
+            }
         if HARD_LIMIT_API_VERSION in api_version:
             fs_info[share]['hard_limit'] = fsys.items[fsystem].hard_limit_enabled
         if REPLICATION_API_VERSION in api_version:
@@ -850,7 +870,7 @@ def main():
     subset = [test.lower() for test in module.params['gather_subset']]
     valid_subsets = ('all', 'minimum', 'config', 'performance', 'capacity',
                      'network', 'subnets', 'lags', 'filesystems', 'snapshots',
-                     'buckets', 'arrays', 'replication', 'policies')
+                     'buckets', 'arrays', 'replication', 'policies', 'admins')
     subset_test = (test in valid_subsets for test in subset)
     if not all(subset_test):
         module.fail_json(msg="value must gather_subset must be one or more of: %s, got: %s"
@@ -874,6 +894,8 @@ def main():
         info['subnet'] = generate_subnet_dict(blade)
     if 'filesystems' in subset or 'all' in subset:
         info['filesystems'] = generate_fs_dict(blade)
+    if 'admins' in subset or 'all' in subset:
+        info['admins'] = generate_admin_dict(blade)
     if 'snapshots' in subset or 'all' in subset:
         info['snapshots'] = generate_snap_dict(blade)
     if 'buckets' in subset or 'all' in subset:
