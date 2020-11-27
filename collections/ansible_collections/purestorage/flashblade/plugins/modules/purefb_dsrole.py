@@ -98,6 +98,7 @@ def update_role(module, blade):
     """Update Directory Service Role"""
     changed = True
     if not module.check_mode:
+        changed = False
         role = blade.directory_services.list_directory_services_roles(names=[module.params['role']])
         if role.items[0].group_base != module.params['group_base'] or role.items[0].group != module.params['group']:
             try:
@@ -105,6 +106,7 @@ def update_role(module, blade):
                                             group=module.params['group'])
                 blade.directory_services.update_directory_services_roles(names=[module.params['role']],
                                                                          directory_service_role=role)
+                changed = True
             except Exception:
                 module.fail_json(msg='Update Directory Service Role {0} failed'.format(module.params['role']))
     module.exit_json(changed=changed)
