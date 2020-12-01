@@ -158,7 +158,7 @@ def modify_subnet(module, blade):
                                                  subnet=Subnet(prefix=module.params['prefix']))
                 except Exception:
                     module.fail_json(msg='Failed to change subnet {0} prefix to {1}'.format(module.params['name'],
-                                                                                        module.params['prefix']))
+                                                                                            module.params['prefix']))
     if module.params['vlan']:
         if module.params['vlan'] != subnet.vlan:
             changed = True
@@ -168,7 +168,7 @@ def modify_subnet(module, blade):
                                                  subnet=Subnet(vlan=module.params['vlan']))
                 except Exception:
                     module.fail_json(msg='Failed to change subnet {0} VLAN to {1}'.format(module.params['name'],
-                                                                                      module.params['vlan']))
+                                                                                          module.params['vlan']))
     if module.params['gateway']:
         if module.params['gateway'] != subnet.gateway:
             changed = True
@@ -178,7 +178,7 @@ def modify_subnet(module, blade):
                                                  subnet=Subnet(gateway=module.params['gateway']))
                 except Exception:
                     module.fail_json(msg='Failed to change subnet {0} gateway to {1}'.format(module.params['name'],
-                                                                                         module.params['gateway']))
+                                                                                             module.params['gateway']))
     if module.params['mtu']:
         if module.params['mtu'] != subnet.mtu:
             changed = True

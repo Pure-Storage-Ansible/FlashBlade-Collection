@@ -181,7 +181,7 @@ def update_rule(module, blade, rule):
                 changed = True
             except Exception:
                 module.fail_json(msg='Failed to update lifecycle rule {0} for bucket {1}.'.format(module.params['name'],
-                                                                                              module.params['bucket']))
+                                                                                                  module.params['bucket']))
     module.exit_json(changed=changed)
 
 
