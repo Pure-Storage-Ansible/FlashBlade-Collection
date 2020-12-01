@@ -121,21 +121,20 @@ def create_connection(module, blade):
 
 def update_connection(module, blade, connection):
     """Update target connection address"""
-    changed = True
-    if not module.check_mode:
-        connected_targets = blade.targets.list_targets()
-        for target in range(0, len(connected_targets.items)):
-            if connected_targets.items[target].address == module.params['address'] and \
-               connected_targets.items[target].name != module.params['name']:
-                module.fail_json(msg='Target already exists with same connection address')
-        if module.params['address'] != connection.address:
+    changed = False
+    connected_targets = blade.targets.list_targets()
+    for target in range(0, len(connected_targets.items)):
+        if connected_targets.items[target].address == module.params['address'] and \
+           connected_targets.items[target].name != module.params['name']:
+            module.fail_json(msg='Target already exists with same connection address')
+    if module.params['address'] != connection.address:
+        changed = True
+        if not module.check_mode:
             new_address = Target(name=module.params['name'], address=module.params['address'])
             try:
                 blade.targets.update_targets(names=[connection.name], target=new_address)
             except Exception:
                 module.fail_json(msg='Failed to change address for target {0}.'.format(module.params['name']))
-        else:
-            changed = False
     module.exit_json(changed=changed)
 
 

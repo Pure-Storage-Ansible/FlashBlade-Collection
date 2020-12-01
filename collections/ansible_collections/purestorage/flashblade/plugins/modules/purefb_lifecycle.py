@@ -153,25 +153,25 @@ def create_rule(module, blade):
 
 def update_rule(module, blade, rule):
     """Update snapshot policy"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        current_rule = {'prefix': rule.prefix,
-                        'keep_previous_version_for': rule.keep_previous_version_for,
-                        'enabled': rule.enabled}
-        if not module.params['prefix']:
-            prefix = current_rule['prefix']
-        else:
-            prefix = module.params['prefix']
-        if not module.params['keep_for']:
-            keep_for = current_rule['keep_previous_version_for']
-        else:
-            keep_for = _convert_to_millisecs(module.params['keep_for'])
-        new_rule = {'prefix': prefix,
-                    'keep_previous_version_for': keep_for,
-                    'enabled': module.params['enabled']}
+    changed = False
+    current_rule = {'prefix': rule.prefix,
+                    'keep_previous_version_for': rule.keep_previous_version_for,
+                    'enabled': rule.enabled}
+    if not module.params['prefix']:
+        prefix = current_rule['prefix']
+    else:
+        prefix = module.params['prefix']
+    if not module.params['keep_for']:
+        keep_for = current_rule['keep_previous_version_for']
+    else:
+        keep_for = _convert_to_millisecs(module.params['keep_for'])
+    new_rule = {'prefix': prefix,
+                'keep_previous_version_for': keep_for,
+                'enabled': module.params['enabled']}
 
-        if current_rule != new_rule:
+    if current_rule != new_rule:
+        changed = True
+        if not module.check_mode:
             try:
                 attr = LifecycleRulePatch(keep_previous_version_for=new_rule['keep_previous_version_for'],
                                           prefix=new_rule['prefix'])
@@ -181,9 +181,7 @@ def update_rule(module, blade, rule):
                 changed = True
             except Exception:
                 module.fail_json(msg='Failed to update lifecycle rule {0} for bucket {1}.'.format(module.params['name'],
-                                                                                                  module.params['bucket']))
-        else:
-            changed = False
+                                                                                              module.params['bucket']))
     module.exit_json(changed=changed)
 
 

@@ -133,13 +133,13 @@ def create_iface(module, blade):
 
 def modify_iface(module, blade):
     """Modify Network Interface IP address"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        iface = get_iface(module, blade)
-        iface_new = []
-        iface_new.append(module.params['name'])
-        if module.params['address'] != iface.address:
+    changed = False
+    iface = get_iface(module, blade)
+    iface_new = []
+    iface_new.append(module.params['name'])
+    if module.params['address'] != iface.address:
+        changed = True
+        if not module.check_mode:
             try:
                 blade.network_interfaces.update_network_interfaces(names=iface_new,
                                                                    network_interface=NetworkInterface(address=module.params['address']))

@@ -106,22 +106,22 @@ def delete_dns(module, blade):
 
 def update_dns(module, blade):
     """Set DNS Settings"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        current_dns = blade.dns.list_dns()
-        if module.params['domain']:
-            if current_dns.items[0].domain != module.params['domain']:
+    changed = False
+    current_dns = blade.dns.list_dns()
+    if module.params['domain']:
+        if current_dns.items[0].domain != module.params['domain']:
+            changed = True
+            if not module.check_mode:
                 try:
                     blade.dns.update_dns(dns_settings=Dns(domain=module.params['domain']))
-                    changed = True
                 except Exception:
                     module.fail_json(msg='Update of DNS domain failed')
-        if module.params['nameservers']:
-            if sorted(module.params['nameservers']) != sorted(current_dns.items[0].nameservers):
+    if module.params['nameservers']:
+        if sorted(module.params['nameservers']) != sorted(current_dns.items[0].nameservers):
+            changed = True
+            if not module.check_mode:
                 try:
                     blade.dns.update_dns(dns_settings=Dns(nameservers=module.params['nameservers']))
-                    changed = True
                 except Exception:
                     module.fail_json(msg='Update of DNS nameservers failed')
     module.exit_json(changed=changed)

@@ -96,30 +96,30 @@ MIN_REQUIRED_API_VERSION = "1.9"
 
 def update_agent(module, blade):
     """Update SNMP Agent"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        try:
-            agent = blade.snmp_agents.list_snmp_agents()
-        except Exception:
-            module.fail_json(msg="Failed to get configuration for SNMP agent.")
-        current_attr = {'community': agent.items[0].v2c.community,
-                        'version': agent.items[0].version,
-                        'auth_passphrase': agent.items[0].v3.auth_passphrase,
-                        'auth_protocol': agent.items[0].v3.auth_protocol,
-                        'privacy_passphrase': agent.items[0].v3.privacy_passphrase,
-                        'privacy_protocol': agent.items[0].v3.privacy_protocol,
-                        'user': agent.items[0].v3.user,
-                        }
-        new_attr = {'community': module.params['community'],
-                    'version': module.params['version'],
-                    'auth_passphrase': module.params['auth_passphrase'],
-                    'auth_protocol': module.params['auth_protocol'],
-                    'privacy_passphrase': module.params['privacy_passphrase'],
-                    'privacy_protocol': module.params['privacy_protocol'],
-                    'user': module.params['user']
+    changed = False
+    try:
+        agent = blade.snmp_agents.list_snmp_agents()
+    except Exception:
+        module.fail_json(msg="Failed to get configuration for SNMP agent.")
+    current_attr = {'community': agent.items[0].v2c.community,
+                    'version': agent.items[0].version,
+                    'auth_passphrase': agent.items[0].v3.auth_passphrase,
+                    'auth_protocol': agent.items[0].v3.auth_protocol,
+                    'privacy_passphrase': agent.items[0].v3.privacy_passphrase,
+                    'privacy_protocol': agent.items[0].v3.privacy_protocol,
+                    'user': agent.items[0].v3.user,
                     }
-        if current_attr != new_attr:
+    new_attr = {'community': module.params['community'],
+                'version': module.params['version'],
+                'auth_passphrase': module.params['auth_passphrase'],
+                'auth_protocol': module.params['auth_protocol'],
+                'privacy_passphrase': module.params['privacy_passphrase'],
+                'privacy_protocol': module.params['privacy_protocol'],
+                'user': module.params['user']
+                }
+    if current_attr != new_attr:
+        changed = True
+        if not module.check_mode:
             if new_attr['version'] == 'v2c':
                 updated_v2c_attrs = SnmpV2c(community=new_attr['community'])
                 updated_v2c_agent = SnmpAgent(version='v2c', v2c=updated_v2c_attrs)
