@@ -124,7 +124,6 @@ def update_certgrp(module, blade):
                 try:
                     blade.certificate_groups.add_certificate_group_certificates(certificate_names=module.params['certificates'],
                                                                                 certificate_group_names=[module.params['name']])
-                    changed = True
                 except Exception:
                     module.fail_json(msg="Failed to add certifcates {0}. "
                                      "Please check they all exist".format(module.params['certificates']))
@@ -141,7 +140,6 @@ def update_certgrp(module, blade):
                         try:
                             blade.certificate_groups.remove_certificate_group_certificates(certificate_names=[certificate],
                                                                                            certificate_group_names=[module.params['name']])
-                            changed = True
                         except Exception:
                             module.fail_json(msg="Failed to delete certifcate {0} from group {1}.".format(certificate, module.params['name']))
             else:
@@ -151,7 +149,6 @@ def update_certgrp(module, blade):
                         try:
                             blade.certificate_groups.add_certificate_group_certificates(certificate_names=[certificate],
                                                                                         certificate_group_names=[module.params['name']])
-                            changed = True
                         except Exception:
                             module.fail_json(msg="Failed to add certifcate {0} to group {1}".format(certificate, module.params['name']))
     module.exit_json(changed=changed)
