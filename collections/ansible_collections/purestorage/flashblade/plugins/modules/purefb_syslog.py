@@ -93,15 +93,15 @@ MIN_REQUIRED_API_VERSION = '1.10'
 
 def delete_syslog(module, blade):
     """Delete Syslog Server"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        try:
-            server = blade.syslog.list_syslog_servers(names=[module.params['name']])
-        except Exception:
-            server = None
+    changed = False
+    try:
+        server = blade.syslog.list_syslog_servers(names=[module.params['name']])
+    except Exception:
+        server = None
 
-        if server:
+    if server:
+        changed = True
+        if not module.check_mode:
             try:
                 blade.syslog.delete_syslog_servers(names=[module.params['name']])
                 changed = True
@@ -113,27 +113,27 @@ def delete_syslog(module, blade):
 
 def add_syslog(module, blade):
     """Add Syslog Server"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        noport_address = module.params['protocol'] + "://" + module.params['address']
+    changed = False
+    noport_address = module.params['protocol'] + "://" + module.params['address']
 
-        if module.params['port']:
-            full_address = noport_address + ":" + module.params['port']
-        else:
-            full_address = noport_address
+    if module.params['port']:
+        full_address = noport_address + ":" + module.params['port']
+    else:
+        full_address = noport_address
 
-        address_list = blade.syslog.list_syslog_servers()
-        if len(address_list.items) == 3:
-            module.fail_json(msg='Maximum number of syslog servers (3) already configured.')
-        exists = False
+    address_list = blade.syslog.list_syslog_servers()
+    if len(address_list.items) == 3:
+        module.fail_json(msg='Maximum number of syslog servers (3) already configured.')
+    exists = False
 
-        if address_list:
-            for address in range(0, len(address_list.items)):
-                if address_list.items[address].name == module.params['name']:
-                    exists = True
-                    break
-        if not exists:
+    if address_list:
+        for address in range(0, len(address_list.items)):
+            if address_list.items[address].name == module.params['name']:
+                exists = True
+                break
+    if not exists:
+        changed = True
+        if not module.check_mode:
             try:
                 attr = SyslogServerPostOrPatch(uri=full_address)
                 blade.syslog.create_syslog_servers(syslog=attr, names=[module.params['name']])

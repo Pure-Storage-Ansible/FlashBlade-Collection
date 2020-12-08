@@ -162,11 +162,11 @@ def create_rl(module, blade, remote_cred):
 
 def update_rl_policy(module, blade, local_replica_link):
     """Update Bucket Replica Link"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        new_cred = local_replica_link.remote.name + '/' + module.params['credential']
-        if local_replica_link.paused != module.params['paused'] or local_replica_link.remote_credentials.name != new_cred:
+    changed = False
+    new_cred = local_replica_link.remote.name + '/' + module.params['credential']
+    if local_replica_link.paused != module.params['paused'] or local_replica_link.remote_credentials.name != new_cred:
+        changed = True
+        if not module.check_mode:
             try:
                 module.warn('{0}'.format(local_replica_link))
                 blade.bucket_replica_links.update_bucket_replica_links(
@@ -175,7 +175,6 @@ def update_rl_policy(module, blade, local_replica_link):
                     remote_names=[local_replica_link.remote.name],
                     bucket_replica_link=BucketReplicaLink(paused=module.params['paused'],
                                                           remote_credentials=ObjectStoreRemoteCredentials(name=new_cred)))
-                changed = True
             except Exception:
                 module.fail_json(msg="Failed to update bucket replica link {0}.".format(module.params['name']))
     module.exit_json(changed=changed)

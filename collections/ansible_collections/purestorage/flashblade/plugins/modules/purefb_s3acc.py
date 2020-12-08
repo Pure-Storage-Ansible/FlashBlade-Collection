@@ -74,9 +74,7 @@ def get_s3acc(module, blade):
 
 def update_s3acc(module, blade):
     """Update Object Store Account"""
-    changed = True
-    if not module.check_mode:
-        changed = False
+    changed = False
     module.exit_json(changed=changed)
 
 

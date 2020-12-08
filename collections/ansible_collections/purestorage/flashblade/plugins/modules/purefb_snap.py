@@ -141,13 +141,13 @@ def get_fssnapshot(module, blade):
 
 def create_snapshot(module, blade):
     """Create Snapshot"""
+    changed = True
     if not module.check_mode:
         source = []
         source.append(module.params['name'])
         try:
             blade.file_system_snapshots.create_file_system_snapshots(sources=source,
                                                                      suffix=SnapshotSuffix(module.params['suffix']))
-            changed = True
         except Exception:
             changed = False
     module.exit_json(changed=changed)
@@ -155,31 +155,31 @@ def create_snapshot(module, blade):
 
 def restore_snapshot(module, blade):
     """Restore a filesystem back from the latest snapshot"""
-    if not module.check_mode:
-        snapname = get_latest_fssnapshot(module, blade)
-        if snapname is not None:
+    changed = True
+    snapname = get_latest_fssnapshot(module, blade)
+    if snapname is not None:
+        if not module.check_mode:
             fs_attr = FileSystem(name=module.params['name'],
                                  source=Reference(name=snapname))
             try:
                 blade.file_systems.create_file_systems(overwrite=True,
                                                        discard_non_snapshotted_data=True,
                                                        file_system=fs_attr)
-                changed = True
             except Exception:
                 changed = False
-        else:
-            module.fail_json(msg='Filesystem {0} has no snapshots to restore from.'.format(module.params['name']))
+    else:
+        module.fail_json(msg='Filesystem {0} has no snapshots to restore from.'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 
 def recover_snapshot(module, blade):
     """Recover deleted Snapshot"""
+    changed = True
     if not module.check_mode:
         snapname = module.params['name'] + "." + module.params['suffix']
         new_attr = FileSystemSnapshot(destroyed=False)
         try:
             blade.file_system_snapshots.update_file_system_snapshots(name=snapname, attributes=new_attr)
-            changed = True
         except Exception:
             changed = False
     module.exit_json(changed=changed)

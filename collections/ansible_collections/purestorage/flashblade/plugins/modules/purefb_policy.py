@@ -297,74 +297,74 @@ def create_policy(module, blade):
 
 def update_policy(module, blade, policy):
     """Update snapshot policy"""
-    changed = True
-    if not module.check_mode:
-        changed = False
-        if not policy.rules:
-            current_policy = {'time_zone': None,
-                              'every': 0,
-                              'keep_for': 0,
-                              'at': 0,
-                              'enabled': policy.enabled}
-        else:
-            if policy.rules[0].keep_for != 0:
-                policy.rules[0].keep_for = int(policy.rules[0].keep_for / 1000)
-            if policy.rules[0].every != 0:
-                policy.rules[0].every = int(policy.rules[0].every / 1000)
+    changed = False
+    if not policy.rules:
+        current_policy = {'time_zone': None,
+                          'every': 0,
+                          'keep_for': 0,
+                          'at': 0,
+                          'enabled': policy.enabled}
+    else:
+        if policy.rules[0].keep_for != 0:
+            policy.rules[0].keep_for = int(policy.rules[0].keep_for / 1000)
+        if policy.rules[0].every != 0:
+            policy.rules[0].every = int(policy.rules[0].every / 1000)
 
-            current_policy = {'time_zone': policy.rules[0].time_zone,
-                              'every': policy.rules[0].every,
-                              'keep_for': policy.rules[0].keep_for,
-                              'at': policy.rules[0].at,
-                              'enabled': policy.enabled}
-        if not module.params['every']:
-            every = 0
-        else:
-            every = module.params['every']
+        current_policy = {'time_zone': policy.rules[0].time_zone,
+                          'every': policy.rules[0].every,
+                          'keep_for': policy.rules[0].keep_for,
+                          'at': policy.rules[0].at,
+                          'enabled': policy.enabled}
+    if not module.params['every']:
+        every = 0
+    else:
+        every = module.params['every']
+    if not module.params['keep_for']:
+        keep_for = 0
+    else:
+        keep_for = module.params['keep_for']
+    if module.params['at']:
+        at_time = _convert_to_millisecs(module.params['at'])
+    else:
+        at_time = None
+    if not module.params['timezone']:
+        timezone = _get_local_tz(module)
+    else:
+        timezone = module.params['timezone']
+    if at_time:
+        new_policy = {'time_zone': timezone,
+                      'every': every,
+                      'keep_for': keep_for,
+                      'at': at_time,
+                      'enabled': module.params['enabled']}
+    else:
+        new_policy = {'time_zone': None,
+                      'every': every,
+                      'keep_for': keep_for,
+                      'at': None,
+                      'enabled': module.params['enabled']}
+    if new_policy['time_zone'] and new_policy['time_zone'] not in pytz.all_timezones_set:
+        module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
+
+    if current_policy != new_policy:
+        if not module.params['at']:
+            module.params['at'] = current_policy['at']
         if not module.params['keep_for']:
-            keep_for = 0
-        else:
-            keep_for = module.params['keep_for']
-        if module.params['at']:
-            at_time = _convert_to_millisecs(module.params['at'])
-        else:
-            at_time = None
-        if not module.params['timezone']:
-            timezone = _get_local_tz(module)
-        else:
-            timezone = module.params['timezone']
-        if at_time:
-            new_policy = {'time_zone': timezone,
-                          'every': every,
-                          'keep_for': keep_for,
-                          'at': at_time,
-                          'enabled': module.params['enabled']}
-        else:
-            new_policy = {'time_zone': None,
-                          'every': every,
-                          'keep_for': keep_for,
-                          'at': None,
-                          'enabled': module.params['enabled']}
-        if new_policy['time_zone'] and new_policy['time_zone'] not in pytz.all_timezones_set:
-            module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
+            module.params['keep_for'] = current_policy['keep_for']
+        if not module.params['every']:
+            module.params['every'] = current_policy['every']
+        if module.params['at'] and module.params['every']:
+            if not module.params['every'] % 86400 == 0:
+                module.fail_json(msg='At time can only be set if every value is a multiple of 86400')
+        if module.params['keep_for'] < module.params['every']:
+            module.fail_json(msg='Retention period cannot be less than snapshot interval.')
+        if module.params['at'] and not module.params['timezone']:
+            module.params['timezone'] = _get_local_tz(module)
+            if module.params['timezone'] not in set(pytz.all_timezones_set):
+                module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
 
-        if current_policy != new_policy:
-            if not module.params['at']:
-                module.params['at'] = current_policy['at']
-            if not module.params['keep_for']:
-                module.params['keep_for'] = current_policy['keep_for']
-            if not module.params['every']:
-                module.params['every'] = current_policy['every']
-            if module.params['at'] and module.params['every']:
-                if not module.params['every'] % 86400 == 0:
-                    module.fail_json(msg='At time can only be set if every value is a multiple of 86400')
-            if module.params['keep_for'] < module.params['every']:
-                module.fail_json(msg='Retention period cannot be less than snapshot interval.')
-            if module.params['at'] and not module.params['timezone']:
-                module.params['timezone'] = _get_local_tz(module)
-                if module.params['timezone'] not in set(pytz.all_timezones_set):
-                    module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
-
+        changed = True
+        if not module.check_mode:
             try:
                 attr = PolicyPatch()
                 attr.enabled = module.params['enabled']
@@ -382,11 +382,8 @@ def update_policy(module, blade, policy):
                                                 time_zone=current_policy['time_zone'])]
                 blade.policies.update_policies(names=[module.params['name']],
                                                policy_patch=attr)
-                changed = True
             except Exception:
                 module.fail_json(msg='Failed to update policy {0}.'.format(module.params['name']))
-        else:
-            changed = False
     module.exit_json(changed=changed)
 
 

@@ -67,10 +67,11 @@ MIN_REQUIRED_API_VERSION = '1.3'
 
 def update_user(module, blade):
     """Create or Update Local User Account"""
-    changed = True
-    if not module.check_mode:
-        if module.params['password']:
-            if module.params['password'] != module.params['old_password']:
+    changed = False
+    if module.params['password']:
+        if module.params['password'] != module.params['old_password']:
+            changed = True
+            if not module.check_mode:
                 try:
                     newAdmin = Admin()
                     newAdmin.password = module.params['password']
@@ -79,9 +80,9 @@ def update_user(module, blade):
                 except Exception:
                     module.fail_json(msg='Local User {0}: Password reset failed. '
                                      'Check passwords. One of these is incorrect.'.format(module.params['name']))
-            else:
-                module.fail_json(msg='Local User Account {0}: Password change failed - '
-                                 'Old and new passwords are the same'.format(module.params['name']))
+        else:
+            module.fail_json(msg='Local User Account {0}: Password change failed - '
+                             'Old and new passwords are the same'.format(module.params['name']))
     module.exit_json(changed=changed)
 
 

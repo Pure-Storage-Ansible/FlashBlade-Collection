@@ -70,26 +70,26 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 def delete_proxy(module, blade):
     """Delete proxy settings"""
-    changed = True
-    if not module.check_mode:
-        current_proxy = blade.support.list_support().items[0].proxy
-        if current_proxy != '':
+    changed = False
+    current_proxy = blade.support.list_support().items[0].proxy
+    if current_proxy != '':
+        changed = True
+        if not module.check_mode:
             try:
                 proxy_settings = Support(proxy='')
                 blade.support.update_support(support=proxy_settings)
             except Exception:
                 module.fail_json(msg='Delete proxy settigs failed')
-        else:
-            changed = False
     module.exit_json(changed=changed)
 
 
 def create_proxy(module, blade):
     """Set proxy settings"""
-    changed = True
-    if not module.check_mode:
-        current_proxy = blade.support.list_support().items[0].proxy
-        if current_proxy is not None:
+    changed = False
+    current_proxy = blade.support.list_support().items[0].proxy
+    if current_proxy is not None:
+        changed = True
+        if not module.check_mode:
             new_proxy = "https://" + module.params['host'] + ":" + str(module.params['port'])
             if new_proxy != current_proxy:
                 try:
@@ -97,8 +97,6 @@ def create_proxy(module, blade):
                     blade.support.update_support(support=proxy_settings)
                 except Exception:
                     module.fail_json(msg='Set phone home proxy failed.')
-            else:
-                changed = False
 
     module.exit_json(changed=changed)
 

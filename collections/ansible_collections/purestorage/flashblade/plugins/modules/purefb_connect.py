@@ -143,10 +143,12 @@ def update_connection(module, blade, target_blade):
             if module.params['encrypted'] and blade.file_system_replica_links.list_file_system_replica_links().pagination_info.total_item_count != 0:
                 module.fail_json(msg='Cannot turn array connection encryption on if file system replica links exist')
             new_attr = ArrayConnection(encrypted=module.params['encrypted'])
-            try:
-                blade.array_connections.update_array_connections(remote_names=[target_blade.remote.name], array_connection=new_attr)
-            except Exception:
-                module.fail_json(msg='Failed to change encryption setting for array connection.')
+            changed = True
+            if not module.check_mode:
+                try:
+                    blade.array_connections.update_array_connections(remote_names=[target_blade.remote.name], array_connection=new_attr)
+                except Exception:
+                    module.fail_json(msg='Failed to change encryption setting for array connection.')
         else:
             changed = False
     module.exit_json(changed=changed)
