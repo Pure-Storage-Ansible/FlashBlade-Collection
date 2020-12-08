@@ -246,6 +246,10 @@ def create_policy(module, blade):
                     module.params['timezone'] = _get_local_tz(module)
                     if module.params['timezone'] not in pytz.all_timezones_set:
                         module.fail_json(msg='Timezone {0} is not valid'.format(module.params['timezone']))
+            if not module.params['keep_for']:
+                module.params['keep_for'] = 0
+            if not module.params['every']:
+                module.params['every'] = 0
             if module.params['keep_for'] < module.params['every']:
                 module.fail_json(msg='Retention period cannot be less than snapshot interval.')
             if module.params['at'] and not module.params['timezone']:
