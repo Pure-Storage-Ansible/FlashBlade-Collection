@@ -175,7 +175,6 @@ def update_rl_policy(module, blade, local_replica_link):
                     remote_names=[local_replica_link.remote.name],
                     bucket_replica_link=BucketReplicaLink(paused=module.params['paused'],
                                                           remote_credentials=ObjectStoreRemoteCredentials(name=new_cred)))
-                changed = True
             except Exception:
                 module.fail_json(msg="Failed to update bucket replica link {0}.".format(module.params['name']))
     module.exit_json(changed=changed)
