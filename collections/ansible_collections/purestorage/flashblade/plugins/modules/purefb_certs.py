@@ -35,6 +35,14 @@ options:
     description:
     - SSL certifcate text
     type: str
+  private_key:
+    description:
+    - SSL certificate private key test
+    type: str
+  passphrase:
+    description:
+    - Passphrase for the private_key
+    type: str
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 '''
