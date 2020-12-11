@@ -60,6 +60,14 @@ EXAMPLES = r'''
     state: absent
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Update SSL certificate
+  purefb_certs:
+    name: global
+    contents: "{{ lookup('file', 'certificate_file_name') }}"
+    private_key: "{{ lookup('file', 'certificate_key_file_name') }}"
+    passphrase: 'mypassword'
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 '''
 
 RETURN = r'''
