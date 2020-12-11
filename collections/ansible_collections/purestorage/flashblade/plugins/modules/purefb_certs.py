@@ -59,7 +59,7 @@ RETURN = r'''
 
 HAS_PURITYFB = True
 try:
-    from purity_fb import CertificatePost
+    from purity_fb import Certificate, CertificatePost
 except ImportError:
     HAS_PURITYFB = False
 
@@ -71,7 +71,7 @@ MIN_REQUIRED_API_VERSION = '1.9'
 
 
 def delete_cert(module, blade):
-    """Delete certifcate"""
+    """Delete certificate"""
     changed = True
     if not module.check_mode:
         try:
@@ -82,7 +82,7 @@ def delete_cert(module, blade):
 
 
 def create_cert(module, blade):
-    """Create certifcate"""
+    """Create certificate"""
     changed = True
     if not module.check_mode:
         try:
@@ -93,12 +93,36 @@ def create_cert(module, blade):
     module.exit_json(changed=changed)
 
 
+def update_cert(module, blade, cert):
+    """Update certificate"""
+    changed = False
+    if cert.certificate_type == 'external':
+        module.fail_json(msg="External certificates cannot be modified")
+
+    if not module.params['private_key']:
+        module.fail_json(msg="private_key must be specified for the global certificate")
+
+    if cert.certificate.strip() != module.params['contents'].strip():
+        changed = True
+        if not module.check_mode:
+            try:
+                body = Certificate(certificate=module.params['contents'], private_key=module.params['private_key'])
+                if module.params['passphrase']:
+                    Certificate.passphrase = module.params['passphrase']
+                blade.certificates.update_certificates(names=[module.params['name']], certificate=body)
+            except Exception:
+                module.fail_json(msg="Failed to create certificate {0}.".format(module.params['name']))
+    module.exit_json(changed=changed)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(dict(
         state=dict(type='str', default='present', choices=['absent', 'present']),
         name=dict(type='str'),
         contents=dict(type='str', no_log=True),
+        private_key=dict(type='str', no_log=True),
+        passphrase=dict(type='str', no_log=True),
     ))
 
     module = AnsibleModule(argument_spec,
@@ -118,6 +142,8 @@ def main():
 
     if not cert and state == 'present':
         create_cert(module, blade)
+    elif state == 'present':
+        update_cert(module, blade, cert.items[0])
     elif state == 'absent' and cert:
         delete_cert(module, blade)
 
