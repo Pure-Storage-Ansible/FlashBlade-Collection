@@ -90,6 +90,7 @@ purefb_info:
                 "local": false,
                 "public_key": null
             },
+        },
         "capacity": {
             "aggregate": {
                 "data_reduction": 1.1179228,
