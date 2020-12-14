@@ -79,6 +79,17 @@ purefb_info:
   returned: always
   type: complex
   sample: {
+        "admins": {
+            "pureuser": {
+                "api_token_timeout": null,
+                "local": true,
+                "public_key": null
+            },
+            "another_user": {
+                "api_token_timeout": null,
+                "local": false,
+                "public_key": null
+            },
         "capacity": {
             "aggregate": {
                 "data_reduction": 1.1179228,
@@ -608,11 +619,12 @@ def generate_admin_dict(blade):
     api_version = blade.api_version.list_versions().versions
     if MULTIPROTOCOL_API_VERSION in api_version:
         admins = blade.admins.list_admins()
-        for admin in range(0, len(admins)):
-            admin_name = admins[admin]['name']
+        for admin in range(0, len(admins.items)):
+            admin_name = admins.items[admin].name
             admin_info[admin_name] = {
-                'api_token': admins[admin]['type'],
-                'role': admins[admin]['role'],
+                'api_token_timeout': admins.items[admin].api_token_timeout,
+                'public_key': admins.items[admin].public_key,
+                'local': admins.items[admin].is_local,
             }
     return admin_info
 
