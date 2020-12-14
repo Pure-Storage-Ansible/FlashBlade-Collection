@@ -201,25 +201,27 @@ def recover_bucket(module, blade):
 
 def update_bucket(module, blade, bucket):
     """ Update Bucket """
-    changed = True
-    if not module.check_mode:
-        changed = False
-        api_version = blade.api_version.list_versions().versions
-        if VERSIONING_VERSION in api_version:
-            module.warn('{0}'.format(bucket.versioning))
-            if bucket.versioning != 'none':
-                if module.params['versioning'] == 'absent':
-                    versioning = 'suspended'
-                else:
-                    versioning = module.params['versioning']
-                if bucket.versioning != versioning:
+    changed = False
+    api_version = blade.api_version.list_versions().versions
+    if VERSIONING_VERSION in api_version:
+        module.warn('{0}'.format(bucket.versioning))
+        if bucket.versioning != 'none':
+            if module.params['versioning'] == 'absent':
+                versioning = 'suspended'
+            else:
+                versioning = module.params['versioning']
+            if bucket.versioning != versioning:
+                changed = True
+                if not module.check_mode:
                     try:
                         blade.buckets.update_buckets(names=[module.params['name']],
                                                      bucket=BucketPatch(versioning=versioning))
                         changed = True
                     except Exception:
                         module.fail_json(msg='Object Store Bucket {0}: Versioning change failed'.format(module.params['name']))
-            elif module.params['versioning'] != 'absent':
+        elif module.params['versioning'] != 'absent':
+            changed = True
+            if not module.check_mode:
                 try:
                     blade.buckets.update_buckets(names=[module.params['name']],
                                                  bucket=BucketPatch(versioning=module.params['versioning']))
