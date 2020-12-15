@@ -156,6 +156,7 @@ options:
     description:
       - The access control style that is utilized for client actions such
         as setting file and directory ACLs.
+      - Only available from Purity//FB 3.1.1
     type: str
     default: shared
     choices: [ 'nfs', 'smb', 'shared', 'independent', 'mode-bits' ]
@@ -164,6 +165,7 @@ options:
       - Safeguards ACLs on a filesystem.
       - Performs different roles depending on the filesystem protocol enabled.
       - See Purity//FB documentation for detailed description.
+      - Only available from Purity//FB 3.1.1
     type: bool
     default: True
 extends_documentation_fragment:
