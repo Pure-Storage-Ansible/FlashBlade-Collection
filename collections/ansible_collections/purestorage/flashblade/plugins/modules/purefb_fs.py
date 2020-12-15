@@ -76,6 +76,7 @@ options:
   smb_aclmode:
     description:
       - Specify the ACL mode for the SMB protocol.
+      - Deprecated from Purity//FB 3.1.1. Use I(access_control) instead.
     required: false
     type: str
     default: shared
@@ -151,6 +152,20 @@ options:
     required: false
     default: false
     type: bool
+  access_control:
+    description:
+      - The access control style that is utilized for client actions such
+        as setting file and directory ACLs.
+    type: str
+    default: shared
+    choices: [ 'nfs', 'smb', 'shared', 'independent', 'mode-bits' ]
+  safeguard_acls:
+    description:
+      - Safeguards ACLs on a filesystem.
+      - Performs different roles depending on the filesystem protocol enabled.
+      - See Purity//FB documentation for detailed description.
+    type: bool
+    default: True
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 '''
@@ -222,9 +237,15 @@ RETURN = '''
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import FileSystem, ProtocolRule, NfsRule, SmbRule
+    from purity_fb import FileSystem, ProtocolRule, NfsRule, SmbRule, MultiProtocolRule, rest
 except ImportError:
     HAS_PURITY_FB = False
+
+HAS_JSON = True
+try:
+    import json
+except ImportError:
+    HAS_JSON = False
 
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
@@ -233,6 +254,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 HARD_LIMIT_API_VERSION = '1.4'
 NFSV4_API_VERSION = '1.6'
 REPLICATION_API_VERSION = '1.9'
+MULTIPROTOCOL_API_VERSION = '1.11'
 
 
 def get_fs(module, blade):
@@ -271,20 +293,43 @@ def create_fs(module, blade):
             if HARD_LIMIT_API_VERSION in api_version:
                 if NFSV4_API_VERSION in api_version:
                     if REPLICATION_API_VERSION in api_version:
-                        fs_obj = FileSystem(name=module.params['name'],
-                                            provisioned=size,
-                                            fast_remove_directory_enabled=module.params['fastremove'],
-                                            hard_limit_enabled=module.params['hard_limit'],
-                                            snapshot_directory_enabled=module.params['snapshot'],
-                                            nfs=NfsRule(v3_enabled=module.params['nfsv3'],
-                                                        v4_1_enabled=module.params['nfsv4'],
-                                                        rules=module.params['nfs_rules']),
-                                            smb=SmbRule(enabled=module.params['smb'],
-                                                        acl_mode=module.params['smb_aclmode']),
-                                            http=ProtocolRule(enabled=module.params['http']),
-                                            default_user_quota=user_quota,
-                                            default_group_quota=group_quota
-                                            )
+                        if MULTIPROTOCOL_API_VERSION in api_version:
+                            if module.params['access_control'] == 'nfs' and not (module.params['nfsv3'] or module.params['nfsv4']):
+                                module.fail_json(msg='Cannot set access_control to nfs when NFS is not enabled.')
+                            if module.params['access_control'] in ['smb', 'independent'] and not module.params['smb']:
+                                module.fail_json(msg='Cannot set access_control to smb or independent when SMB is not enabled.')
+                            if module.params['safeguard_acls'] and (module.params['access_control'] in ['mode-bits', 'independent'] or module.params['smb']):
+                                module.fail_json(msg='ACL Safeguarding cannot be enabled with SMB or if access_control is mode-bits or independent.')
+                            fs_obj = FileSystem(name=module.params['name'],
+                                                provisioned=size,
+                                                fast_remove_directory_enabled=module.params['fastremove'],
+                                                hard_limit_enabled=module.params['hard_limit'],
+                                                snapshot_directory_enabled=module.params['snapshot'],
+                                                nfs=NfsRule(v3_enabled=module.params['nfsv3'],
+                                                            v4_1_enabled=module.params['nfsv4'],
+                                                            rules=module.params['nfs_rules']),
+                                                smb=SmbRule(enabled=module.params['smb']),
+                                                http=ProtocolRule(enabled=module.params['http']),
+                                                multi_protocol=MultiProtocolRule(safeguard_acls=module.params['safeguard_acls'],
+                                                                                 access_control_style=module.params['access_control']),
+                                                default_user_quota=user_quota,
+                                                default_group_quota=group_quota
+                                                )
+                        else:
+                            fs_obj = FileSystem(name=module.params['name'],
+                                                provisioned=size,
+                                                fast_remove_directory_enabled=module.params['fastremove'],
+                                                hard_limit_enabled=module.params['hard_limit'],
+                                                snapshot_directory_enabled=module.params['snapshot'],
+                                                nfs=NfsRule(v3_enabled=module.params['nfsv3'],
+                                                            v4_1_enabled=module.params['nfsv4'],
+                                                            rules=module.params['nfs_rules']),
+                                                smb=SmbRule(enabled=module.params['smb'],
+                                                            acl_mode=module.params['smb_aclmode']),
+                                                http=ProtocolRule(enabled=module.params['http']),
+                                                default_user_quota=user_quota,
+                                                default_group_quota=group_quota
+                                                )
                     else:
                         fs_obj = FileSystem(name=module.params['name'],
                                             provisioned=size,
@@ -319,8 +364,9 @@ def create_fs(module, blade):
                                     http=ProtocolRule(enabled=module.params['http'])
                                     )
             blade.file_systems.create_file_systems(fs_obj)
-        except Exception:
-            module.fail_json(msg="Failed to create filesystem {0}.".format(module.params['name']))
+        except rest.ApiException as err:
+            message = json.loads(err.body)['errors'][0]['message']
+            module.fail_json(msg="Failed to create filesystem {0}. Error: {1}".format(module.params['name'], message))
         if REPLICATION_API_VERSION in api_version:
             if module.params['policy']:
                 try:
@@ -421,13 +467,16 @@ def modify_fs(module, blade):
                 mod_fs = True
     if REPLICATION_API_VERSION in api_version:
         if module.params['smb'] and not fsys.smb.enabled:
-            attr['smb'] = SmbRule(enabled=module.params['smb'],
-                                  acl_mode=module.params['smb_aclmode'])
+            if MULTIPROTOCOL_API_VERSION in api_version:
+                attr['smb'] = SmbRule(enabled=module.params['smb'])
+            else:
+                attr['smb'] = SmbRule(enabled=module.params['smb'],
+                                      acl_mode=module.params['smb_aclmode'])
             mod_fs = True
         if not module.params['smb'] and fsys.smb.enabled:
             attr['smb'] = ProtocolRule(enabled=module.params['smb'])
             mod_fs = True
-        if module.params['smb'] and fsys.smb.enabled:
+        if module.params['smb'] and fsys.smb.enabled and MULTIPROTOCOL_API_VERSION not in api_version:
             if fsys.smb.acl_mode != module.params['smb_aclmode']:
                 attr['smb'] = SmbRule(enabled=module.params['smb'],
                                       acl_mode=module.params['smb_aclmode'])
@@ -464,6 +513,16 @@ def modify_fs(module, blade):
         if module.params['hard_limit'] and not fsys.hard_limit_enabled:
             attr['hard_limit_enabled'] = module.params['hard_limit']
             mod_fs = True
+    if MULTIPROTOCOL_API_VERSION in api_version:
+        if module.params['safeguard_acls'] and not fsys.multi_protocol.safeguard_acls:
+            attr['multi_protocol'] = MultiProtocolRule(safeguard_acls=True)
+            mod_fs = True
+        if not module.params['safeguard_acls'] and fsys.multi_protocol.safeguard_acls:
+            attr['multi_protocol'] = MultiProtocolRule(safeguard_acls=False)
+            mod_fs = True
+        if module.params['access_control'] != fsys.multi_protocol.access_control_style:
+            attr['multi_protocol'] = MultiProtocolRule(access_control_style=module.params['access_control'])
+            mod_fs = True
     if REPLICATION_API_VERSION in api_version:
         if module.params['writable'] is not None:
             if not module.params['writable'] and fsys.writable:
@@ -492,13 +551,15 @@ def modify_fs(module, blade):
                 try:
                     blade.file_systems.update_file_systems(name=module.params['name'], attributes=n_attr,
                                                            discard_non_snapshotted_data=module.params['discard_snaps'])
-                except Exception:
-                    module.fail_json(msg="Failed to update filesystem {0}.".format(module.params['name']))
+                except rest.ApiException as err:
+                    message = json.loads(err.body)['errors'][0]['message']
+                    module.fail_json(msg="Failed to update filesystem {0}. Error {1}".format(module.params['name'], message))
             else:
                 try:
                     blade.file_systems.update_file_systems(name=module.params['name'], attributes=n_attr)
-                except Exception:
-                    module.fail_json(msg="Failed to update filesystem {0}.".format(module.params['name']))
+                except rest.ApiException as err:
+                    message = json.loads(err.body)['errors'][0]['message']
+                    module.fail_json(msg="Failed to update filesystem {0}. Error {1}".format(module.params['name'], message))
     module.exit_json(changed=changed)
 
 
@@ -506,13 +567,23 @@ def _delete_fs(module, blade):
     """ In module Delete Filesystem"""
     api_version = blade.api_version.list_versions().versions
     if NFSV4_API_VERSION in api_version:
-        blade.file_systems.update_file_systems(name=module.params['name'],
-                                               attributes=FileSystem(nfs=NfsRule(v3_enabled=False,
-                                                                                 v4_1_enabled=False),
-                                                                     smb=ProtocolRule(enabled=False),
-                                                                     http=ProtocolRule(enabled=False),
-                                                                     destroyed=True)
-                                               )
+        if MULTIPROTOCOL_API_VERSION in api_version:
+            blade.file_systems.update_file_systems(name=module.params['name'],
+                                                   attributes=FileSystem(nfs=NfsRule(v3_enabled=False,
+                                                                                     v4_1_enabled=False),
+                                                                         smb=ProtocolRule(enabled=False),
+                                                                         http=ProtocolRule(enabled=False),
+                                                                         multi_protocol=MultiProtocolRule(access_control_style='shared'),
+                                                                         destroyed=True)
+                                                   )
+        else:
+            blade.file_systems.update_file_systems(name=module.params['name'],
+                                                   attributes=FileSystem(nfs=NfsRule(v3_enabled=False,
+                                                                                     v4_1_enabled=False),
+                                                                         smb=ProtocolRule(enabled=False),
+                                                                         http=ProtocolRule(enabled=False),
+                                                                         destroyed=True)
+                                                   )
     else:
         blade.file_systems.update_file_systems(name=module.params['name'],
                                                attributes=FileSystem(nfs=NfsRule(enabled=False),
@@ -609,6 +680,9 @@ def main():
             state=dict(default='present', choices=['present', 'absent']),
             delete_link=dict(default=False, type='bool'),
             discard_snaps=dict(default=False, type='bool'),
+            safeguard_acls=dict(default=True, type='bool'),
+            access_control=dict(type='str', default='shared',
+                                choices=['nfs', 'smb', 'shared', 'independent', 'mode-bits']),
             size=dict(type='str')
         )
     )
@@ -616,6 +690,8 @@ def main():
     module = AnsibleModule(argument_spec,
                            supports_check_mode=True)
 
+    if not HAS_JSON:
+        module.fail_json(msg='json sdk is required for this module')
     if not HAS_PURITY_FB:
         module.fail_json(msg='purity_fb sdk is required for this module')
 
