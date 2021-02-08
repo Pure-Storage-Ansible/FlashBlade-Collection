@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_snap
 version_added: '1.0.0'
@@ -45,9 +48,9 @@ options:
     default: 'no'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Create snapshot foo.ansible
   purefb_snap:
     name: foo
@@ -87,13 +90,16 @@ EXAMPLES = r'''
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: absent
-'''
+"""
 
-RETURN = r'''
-'''
+RETURN = r"""
+"""
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 from datetime import datetime
 
@@ -107,7 +113,7 @@ except ImportError:
 def get_fs(module, blade):
     """Return Filesystem or None"""
     filesystem = []
-    filesystem.append(module.params['name'])
+    filesystem.append(module.params["name"])
     try:
         res = blade.file_systems.list_file_systems(names=filesystem)
         return res.items[0]
@@ -118,13 +124,15 @@ def get_fs(module, blade):
 def get_latest_fssnapshot(module, blade):
     """ Get the name of the latest snpshot or None"""
     try:
-        filt = 'source=\'' + module.params['name'] + '\''
+        filt = "source='" + module.params["name"] + "'"
         all_snaps = blade.file_system_snapshots.list_file_system_snapshots(filter=filt)
         if not all_snaps.items[0].destroyed:
             return all_snaps.items[0].name
         else:
-            module.fail_json(msg='Latest snapshot {0} is destroyed.'
-                                 ' Eradicate or recover this first.'.format(all_snaps.items[0].name))
+            module.fail_json(
+                msg="Latest snapshot {0} is destroyed."
+                " Eradicate or recover this first.".format(all_snaps.items[0].name)
+            )
     except Exception:
         return None
 
@@ -132,7 +140,13 @@ def get_latest_fssnapshot(module, blade):
 def get_fssnapshot(module, blade):
     """Return Snapshot or None"""
     try:
-        filt = 'source=\'' + module.params['name'] + '\' and suffix=\'' + module.params['suffix'] + '\''
+        filt = (
+            "source='"
+            + module.params["name"]
+            + "' and suffix='"
+            + module.params["suffix"]
+            + "'"
+        )
         res = blade.file_system_snapshots.list_file_system_snapshots(filter=filt)
         return res.items[0]
     except Exception:
@@ -144,10 +158,11 @@ def create_snapshot(module, blade):
     changed = True
     if not module.check_mode:
         source = []
-        source.append(module.params['name'])
+        source.append(module.params["name"])
         try:
-            blade.file_system_snapshots.create_file_system_snapshots(sources=source,
-                                                                     suffix=SnapshotSuffix(module.params['suffix']))
+            blade.file_system_snapshots.create_file_system_snapshots(
+                sources=source, suffix=SnapshotSuffix(module.params["suffix"])
+            )
         except Exception:
             changed = False
     module.exit_json(changed=changed)
@@ -159,16 +174,23 @@ def restore_snapshot(module, blade):
     snapname = get_latest_fssnapshot(module, blade)
     if snapname is not None:
         if not module.check_mode:
-            fs_attr = FileSystem(name=module.params['name'],
-                                 source=Reference(name=snapname))
+            fs_attr = FileSystem(
+                name=module.params["name"], source=Reference(name=snapname)
+            )
             try:
-                blade.file_systems.create_file_systems(overwrite=True,
-                                                       discard_non_snapshotted_data=True,
-                                                       file_system=fs_attr)
+                blade.file_systems.create_file_systems(
+                    overwrite=True,
+                    discard_non_snapshotted_data=True,
+                    file_system=fs_attr,
+                )
             except Exception:
                 changed = False
     else:
-        module.fail_json(msg='Filesystem {0} has no snapshots to restore from.'.format(module.params['name']))
+        module.fail_json(
+            msg="Filesystem {0} has no snapshots to restore from.".format(
+                module.params["name"]
+            )
+        )
     module.exit_json(changed=changed)
 
 
@@ -176,10 +198,12 @@ def recover_snapshot(module, blade):
     """Recover deleted Snapshot"""
     changed = True
     if not module.check_mode:
-        snapname = module.params['name'] + "." + module.params['suffix']
+        snapname = module.params["name"] + "." + module.params["suffix"]
         new_attr = FileSystemSnapshot(destroyed=False)
         try:
-            blade.file_system_snapshots.update_file_system_snapshots(name=snapname, attributes=new_attr)
+            blade.file_system_snapshots.update_file_system_snapshots(
+                name=snapname, attributes=new_attr
+            )
         except Exception:
             changed = False
     module.exit_json(changed=changed)
@@ -194,14 +218,18 @@ def update_snapshot(module, blade):
 def delete_snapshot(module, blade):
     """ Delete Snapshot"""
     if not module.check_mode:
-        snapname = module.params['name'] + "." + module.params['suffix']
+        snapname = module.params["name"] + "." + module.params["suffix"]
         new_attr = FileSystemSnapshot(destroyed=True)
         try:
-            blade.file_system_snapshots.update_file_system_snapshots(name=snapname, attributes=new_attr)
+            blade.file_system_snapshots.update_file_system_snapshots(
+                name=snapname, attributes=new_attr
+            )
             changed = True
-            if module.params['eradicate']:
+            if module.params["eradicate"]:
                 try:
-                    blade.file_system_snapshots.delete_file_system_snapshots(name=snapname)
+                    blade.file_system_snapshots.delete_file_system_snapshots(
+                        name=snapname
+                    )
                     changed = True
                 except Exception:
                     changed = False
@@ -213,7 +241,7 @@ def delete_snapshot(module, blade):
 def eradicate_snapshot(module, blade):
     """ Eradicate Snapshot"""
     if not module.check_mode:
-        snapname = module.params['name'] + "." + module.params['suffix']
+        snapname = module.params["name"] + "." + module.params["suffix"]
         try:
             blade.file_system_snapshots.delete_file_system_snapshots(name=snapname)
             changed = True
@@ -227,48 +255,61 @@ def main():
     argument_spec.update(
         dict(
             name=dict(required=True),
-            suffix=dict(type='str'),
-            eradicate=dict(default='false', type='bool'),
-            state=dict(default='present', choices=['present', 'absent', 'restore'])
+            suffix=dict(type="str"),
+            eradicate=dict(default="false", type="bool"),
+            state=dict(default="present", choices=["present", "absent", "restore"]),
         )
     )
 
-    module = AnsibleModule(argument_spec,
-                           supports_check_mode=True)
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg='purity_fb sdk is required for this module')
+        module.fail_json(msg="purity_fb sdk is required for this module")
 
-    if module.params['suffix'] is None:
-        suffix = "snap-" + str((datetime.utcnow() - datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds())
-        module.params['suffix'] = suffix.replace(".", "")
+    if module.params["suffix"] is None:
+        suffix = "snap-" + str(
+            (datetime.utcnow() - datetime(1970, 1, 1, 0, 0, 0, 0)).total_seconds()
+        )
+        module.params["suffix"] = suffix.replace(".", "")
 
-    state = module.params['state']
+    state = module.params["state"]
     blade = get_blade(module)
     filesystem = get_fs(module, blade)
     snap = get_fssnapshot(module, blade)
 
-    if state == 'present' and filesystem and not filesystem.destroyed and not snap:
+    if state == "present" and filesystem and not filesystem.destroyed and not snap:
         create_snapshot(module, blade)
-    elif state == 'present' and filesystem and not filesystem.destroyed and snap and not snap.destroyed:
+    elif (
+        state == "present"
+        and filesystem
+        and not filesystem.destroyed
+        and snap
+        and not snap.destroyed
+    ):
         update_snapshot(module, blade)
-    elif state == 'present' and filesystem and not filesystem.destroyed and snap and snap.destroyed:
+    elif (
+        state == "present"
+        and filesystem
+        and not filesystem.destroyed
+        and snap
+        and snap.destroyed
+    ):
         recover_snapshot(module, blade)
-    elif state == 'present' and filesystem and filesystem.destroyed:
+    elif state == "present" and filesystem and filesystem.destroyed:
         update_snapshot(module, blade)
-    elif state == 'present' and not filesystem:
+    elif state == "present" and not filesystem:
         update_snapshot(module, blade)
-    elif state == 'restore' and filesystem:
+    elif state == "restore" and filesystem:
         restore_snapshot(module, blade)
-    elif state == 'absent' and snap and not snap.destroyed:
+    elif state == "absent" and snap and not snap.destroyed:
         delete_snapshot(module, blade)
-    elif state == 'absent' and snap and snap.destroyed:
+    elif state == "absent" and snap and snap.destroyed:
         eradicate_snapshot(module, blade)
-    elif state == 'absent' and not snap:
+    elif state == "absent" and not snap:
         module.exit_json(changed=False)
     else:
         module.exit_json(changed=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

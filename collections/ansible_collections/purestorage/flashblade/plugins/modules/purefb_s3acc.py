@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_s3acc
 version_added: '1.0.0'
@@ -34,9 +37,9 @@ options:
     required: true
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Crrate object store account foo
   purefb_s3acc:
     name: foo
@@ -49,17 +52,20 @@ EXAMPLES = r'''
     state: absent
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
-'''
+"""
 
-RETURN = r'''
-'''
+RETURN = r"""
+"""
 
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 
-MIN_REQUIRED_API_VERSION = '1.3'
+MIN_REQUIRED_API_VERSION = "1.3"
 
 
 def get_s3acc(module, blade):
@@ -67,7 +73,7 @@ def get_s3acc(module, blade):
     s3acc = None
     accts = blade.object_store_accounts.list_object_store_accounts()
     for acct in range(0, len(accts.items)):
-        if accts.items[acct].name == module.params['name']:
+        if accts.items[acct].name == module.params["name"]:
             s3acc = accts.items[acct]
     return s3acc
 
@@ -83,9 +89,15 @@ def create_s3acc(module, blade):
     changed = True
     if not module.check_mode:
         try:
-            blade.object_store_accounts.create_object_store_accounts(names=[module.params['name']])
+            blade.object_store_accounts.create_object_store_accounts(
+                names=[module.params["name"]]
+            )
         except Exception:
-            module.fail_json(msg='Object Store Account {0}: Creation failed'.format(module.params['name']))
+            module.fail_json(
+                msg="Object Store Account {0}: Creation failed".format(
+                    module.params["name"]
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -93,46 +105,65 @@ def delete_s3acc(module, blade):
     """Delete Object Store Account"""
     changed = True
     if not module.check_mode:
-        count = len(blade.object_store_users.list_object_store_users(filter='name=\'' + module.params['name'] + '/*\'').items)
+        count = len(
+            blade.object_store_users.list_object_store_users(
+                filter="name='" + module.params["name"] + "/*'"
+            ).items
+        )
         if count != 0:
-            module.fail_json(msg='Remove all Users from Object Store Account {0} \
-                                 before deletion'.format(module.params['name']))
+            module.fail_json(
+                msg="Remove all Users from Object Store Account {0} \
+                                 before deletion".format(
+                    module.params["name"]
+                )
+            )
         else:
             try:
-                blade.object_store_accounts.delete_object_store_accounts(names=[module.params['name']])
+                blade.object_store_accounts.delete_object_store_accounts(
+                    names=[module.params["name"]]
+                )
             except Exception:
-                module.fail_json(msg='Object Store Account {0}: Deletion failed'.format(module.params['name']))
+                module.fail_json(
+                    msg="Object Store Account {0}: Deletion failed".format(
+                        module.params["name"]
+                    )
+                )
     module.exit_json(changed=changed)
 
 
 def main():
     argument_spec = purefb_argument_spec()
-    argument_spec.update(dict(
-        name=dict(required=True, type='str'),
-        state=dict(default='present', choices=['present', 'absent']),
-    ))
+    argument_spec.update(
+        dict(
+            name=dict(required=True, type="str"),
+            state=dict(default="present", choices=["present", "absent"]),
+        )
+    )
 
-    module = AnsibleModule(argument_spec,
-                           supports_check_mode=True)
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    state = module.params['state']
+    state = module.params["state"]
     blade = get_blade(module)
     versions = blade.api_version.list_versions().versions
 
     if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(msg='Minimum FlashBlade REST version required: {0}'.format(MIN_REQUIRED_API_VERSION))
+        module.fail_json(
+            msg="Minimum FlashBlade REST version required: {0}".format(
+                MIN_REQUIRED_API_VERSION
+            )
+        )
 
     s3acc = get_s3acc(module, blade)
 
-    if state == 'absent' and s3acc:
+    if state == "absent" and s3acc:
         delete_s3acc(module, blade)
-    elif state == 'present' and s3acc:
+    elif state == "present" and s3acc:
         update_s3acc(module, blade)
-    elif not s3acc and state == 'present':
+    elif not s3acc and state == "present":
         create_s3acc(module, blade)
     else:
         module.exit_json(changed=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

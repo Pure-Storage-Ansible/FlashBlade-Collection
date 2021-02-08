@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_ra
 version_added: '1.0.0'
@@ -31,9 +34,9 @@ options:
     choices: [ present, absent ]
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Enable Remote Assist port
   purefb_ra:
     fb_url: 10.10.10.2
@@ -43,10 +46,10 @@ EXAMPLES = r'''
     state: absent
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-'''
+"""
 
-RETURN = r'''
-'''
+RETURN = r"""
+"""
 
 HAS_PURITY_FB = True
 try:
@@ -55,7 +58,10 @@ except ImportError:
     HAS_PURITY_FB = False
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 
 MIN_REQUIRED_API_VERSION = "1.6"
@@ -69,7 +75,7 @@ def enable_ra(module, blade):
         try:
             blade.support.update_support(support=ra_settings)
         except Exception:
-            module.fail_json(msg='Enabling Remote Assist failed')
+            module.fail_json(msg="Enabling Remote Assist failed")
     module.exit_json(changed=changed)
 
 
@@ -81,18 +87,19 @@ def disable_ra(module, blade):
         try:
             blade.support.update_support(support=ra_settings)
         except Exception:
-            module.fail_json(msg='Disabling Remote Assist failed')
+            module.fail_json(msg="Disabling Remote Assist failed")
     module.exit_json(changed=changed)
 
 
 def main():
     argument_spec = purefb_argument_spec()
-    argument_spec.update(dict(
-        state=dict(type='str', default='present', choices=['present', 'absent']),
-    ))
+    argument_spec.update(
+        dict(
+            state=dict(type="str", default="present", choices=["present", "absent"]),
+        )
+    )
 
-    module = AnsibleModule(argument_spec,
-                           supports_check_mode=True)
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_blade(module)
     api_version = blade.api_version.list_versions().versions
@@ -100,14 +107,20 @@ def main():
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg='purity_fb SDK is required for this module')
+        module.fail_json(msg="purity_fb SDK is required for this module")
 
-    if module.params['state'] == 'present' and not blade.support.list_support().items[0].remote_assist_active:
+    if (
+        module.params["state"] == "present"
+        and not blade.support.list_support().items[0].remote_assist_active
+    ):
         enable_ra(module, blade)
-    elif module.params['state'] == 'absent' and blade.support.list_support().items[0].remote_assist_active:
+    elif (
+        module.params["state"] == "absent"
+        and blade.support.list_support().items[0].remote_assist_active
+    ):
         disable_ra(module, blade)
     module.exit_json(changed=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
