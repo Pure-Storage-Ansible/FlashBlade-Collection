@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_smtp
 version_added: '1.0.0'
@@ -33,19 +36,19 @@ options:
     type: str
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Configure SMTP settings
   purefb_smtp:
     host: hostname
     domain: xyz.com
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-'''
+"""
 
-RETURN = r'''
-'''
+RETURN = r"""
+"""
 
 HAS_PURITY_FB = True
 try:
@@ -54,7 +57,10 @@ except ImportError:
     HAS_PURITY_FB = False
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 
 MIN_REQUIRED_API_VERSION = "1.6"
@@ -64,42 +70,43 @@ def set_smtp(module, blade):
     """Configure SMTP settings"""
     changed = False
     current_smtp = blade.smtp.list_smtp().items[0]
-    if module.params['host'] and module.params['host'] != current_smtp.relay_host:
-        smtp_settings = Smtp(relay_host=module.params['host'])
+    if module.params["host"] and module.params["host"] != current_smtp.relay_host:
+        smtp_settings = Smtp(relay_host=module.params["host"])
         changed = True
         if not module.check_mode:
             try:
                 blade.smtp.update_smtp(smtp_settings=smtp_settings)
             except Exception:
-                module.fail_json(msg='Configuring SMTP relay host failed')
-    elif current_smtp.relay_host and not module.params['host']:
-        smtp_settings = Smtp(relay_host='')
+                module.fail_json(msg="Configuring SMTP relay host failed")
+    elif current_smtp.relay_host and not module.params["host"]:
+        smtp_settings = Smtp(relay_host="")
         changed = True
         if not module.check_mode:
             try:
                 blade.smtp.update_smtp(smtp_settings=smtp_settings)
             except Exception:
-                module.fail_json(msg='Configuring SMTP relay host failed')
-    if module.params['domain'] != current_smtp.sender_domain:
-        smtp_settings = Smtp(sender_domain=module.params['domain'])
+                module.fail_json(msg="Configuring SMTP relay host failed")
+    if module.params["domain"] != current_smtp.sender_domain:
+        smtp_settings = Smtp(sender_domain=module.params["domain"])
         changed = True
         if not module.check_mode:
             try:
                 blade.smtp.update_smtp(smtp_settings=smtp_settings)
             except Exception:
-                module.fail_json(msg='Configuring SMTP sender domain failed')
+                module.fail_json(msg="Configuring SMTP sender domain failed")
     module.exit_json(changed=changed)
 
 
 def main():
     argument_spec = purefb_argument_spec()
-    argument_spec.update(dict(
-        host=dict(type='str'),
-        domain=dict(type='str', required=True),
-    ))
+    argument_spec.update(
+        dict(
+            host=dict(type="str"),
+            domain=dict(type="str", required=True),
+        )
+    )
 
-    module = AnsibleModule(argument_spec,
-                           supports_check_mode=True)
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_blade(module)
     api_version = blade.api_version.list_versions().versions
@@ -107,11 +114,11 @@ def main():
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg='purity_fb SDK is required for this module')
+        module.fail_json(msg="purity_fb SDK is required for this module")
 
     set_smtp(module, blade)
     module.exit_json(changed=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

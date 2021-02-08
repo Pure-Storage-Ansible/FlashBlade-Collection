@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_proxy
 version_added: '1.0.0'
@@ -37,9 +40,9 @@ options:
     type: int
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Delete exisitng proxy settings
   purefb_proxy:
     state: absent
@@ -52,10 +55,10 @@ EXAMPLES = r'''
     port: 8080
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
-'''
+"""
 
-RETURN = r'''
-'''
+RETURN = r"""
+"""
 
 HAS_PURITY_FB = True
 try:
@@ -65,21 +68,24 @@ except ImportError:
 
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 
 def delete_proxy(module, blade):
     """Delete proxy settings"""
     changed = False
     current_proxy = blade.support.list_support().items[0].proxy
-    if current_proxy != '':
+    if current_proxy != "":
         changed = True
         if not module.check_mode:
             try:
-                proxy_settings = Support(proxy='')
+                proxy_settings = Support(proxy="")
                 blade.support.update_support(support=proxy_settings)
             except Exception:
-                module.fail_json(msg='Delete proxy settigs failed')
+                module.fail_json(msg="Delete proxy settigs failed")
     module.exit_json(changed=changed)
 
 
@@ -90,44 +96,48 @@ def create_proxy(module, blade):
     if current_proxy is not None:
         changed = True
         if not module.check_mode:
-            new_proxy = "https://" + module.params['host'] + ":" + str(module.params['port'])
+            new_proxy = (
+                "https://" + module.params["host"] + ":" + str(module.params["port"])
+            )
             if new_proxy != current_proxy:
                 try:
                     proxy_settings = Support(proxy=new_proxy)
                     blade.support.update_support(support=proxy_settings)
                 except Exception:
-                    module.fail_json(msg='Set phone home proxy failed.')
+                    module.fail_json(msg="Set phone home proxy failed.")
 
     module.exit_json(changed=changed)
 
 
 def main():
     argument_spec = purefb_argument_spec()
-    argument_spec.update(dict(
-        state=dict(type='str', default='present', choices=['absent', 'present']),
-        host=dict(type='str'),
-        port=dict(type='int'),
-    ))
+    argument_spec.update(
+        dict(
+            state=dict(type="str", default="present", choices=["absent", "present"]),
+            host=dict(type="str"),
+            port=dict(type="int"),
+        )
+    )
 
-    required_together = [['host', 'port']]
+    required_together = [["host", "port"]]
 
-    module = AnsibleModule(argument_spec,
-                           required_together=required_together,
-                           supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec, required_together=required_together, supports_check_mode=True
+    )
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg='purity_fb SDK is required for this module')
+        module.fail_json(msg="purity_fb SDK is required for this module")
 
-    state = module.params['state']
+    state = module.params["state"]
     blade = get_blade(module)
 
-    if state == 'absent':
+    if state == "absent":
         delete_proxy(module, blade)
-    elif state == 'present':
+    elif state == "present":
         create_proxy(module, blade)
     else:
         module.exit_json(changed=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

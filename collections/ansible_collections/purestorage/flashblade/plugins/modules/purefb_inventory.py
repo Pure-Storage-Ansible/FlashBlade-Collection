@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_inventory
 version_added: '1.0.0'
@@ -26,9 +29,9 @@ author:
   - Pure Storage ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 extends_documentation_fragment:
   - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: collect FlashBlade invenroty
   purefa_inventory:
     fa_url: 10.10.10.2
@@ -37,9 +40,9 @@ EXAMPLES = r'''
   debug:
     msg: "{{ array_info['purefb_info'] }}"
 
-'''
+"""
 
-RETURN = r'''
+RETURN = r"""
 purefb_inventory:
   description: Returns the inventory information for the FlashArray
   returned: always
@@ -59,79 +62,90 @@ purefb_inventory:
             }
         }
     }
-'''
+"""
 
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 
 def generate_hardware_dict(blade):
-    hw_info = {'fans': {},
-               'controllers': {},
-               'blades': {},
-               'chassis': {},
-               'ethernet': {},
-               'modules': {},
-               'power': {},
-               'switch': {},
-               }
-    components = blade.hardware.list_hardware(filter='type=\'fm\'')
+    hw_info = {
+        "fans": {},
+        "controllers": {},
+        "blades": {},
+        "chassis": {},
+        "ethernet": {},
+        "modules": {},
+        "power": {},
+        "switch": {},
+    }
+    components = blade.hardware.list_hardware(filter="type='fm'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['modules'][component_name] = {'slot': components.items[component].slot,
-                                              'status': components.items[component].status,
-                                              'serial': components.items[component].serial,
-                                              'model': components.items[component].model
-                                              }
-    components = blade.hardware.list_hardware(filter='type=\'eth\'')
+        hw_info["modules"][component_name] = {
+            "slot": components.items[component].slot,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+        }
+    components = blade.hardware.list_hardware(filter="type='eth'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['ethernet'][component_name] = {'slot': components.items[component].slot,
-                                               'status': components.items[component].status,
-                                               'serial': components.items[component].serial,
-                                               'model': components.items[component].model,
-                                               'speed': components.items[component].speed
-                                               }
-    components = blade.hardware.list_hardware(filter='type=\'fan\'')
+        hw_info["ethernet"][component_name] = {
+            "slot": components.items[component].slot,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+            "speed": components.items[component].speed,
+        }
+    components = blade.hardware.list_hardware(filter="type='fan'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['fans'][component_name] = {'slot': components.items[component].slot,
-                                           'status': components.items[component].status
-                                           }
-    components = blade.hardware.list_hardware(filter='type=\'fb\'')
+        hw_info["fans"][component_name] = {
+            "slot": components.items[component].slot,
+            "status": components.items[component].status,
+        }
+    components = blade.hardware.list_hardware(filter="type='fb'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['blades'][component_name] = {'slot': components.items[component].slot,
-                                             'status': components.items[component].status,
-                                             'serial': components.items[component].serial,
-                                             'model': components.items[component].model
-                                             }
-    components = blade.hardware.list_hardware(filter='type=\'pwr\'')
+        hw_info["blades"][component_name] = {
+            "slot": components.items[component].slot,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+        }
+    components = blade.hardware.list_hardware(filter="type='pwr'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['power'][component_name] = {'slot': components.items[component].slot,
-                                            'status': components.items[component].status,
-                                            'serial': components.items[component].serial,
-                                            'model': components.items[component].model
-                                            }
-    components = blade.hardware.list_hardware(filter='type=\'xfm\'')
+        hw_info["power"][component_name] = {
+            "slot": components.items[component].slot,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+        }
+    components = blade.hardware.list_hardware(filter="type='xfm'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['switch'][component_name] = {'slot': components.items[component].slot,
-                                             'status': components.items[component].status,
-                                             'serial': components.items[component].serial,
-                                             'model': components.items[component].model
-                                             }
-    components = blade.hardware.list_hardware(filter='type=\'ch\'')
+        hw_info["switch"][component_name] = {
+            "slot": components.items[component].slot,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+        }
+    components = blade.hardware.list_hardware(filter="type='ch'")
     for component in range(0, len(components.items)):
         component_name = components.items[component].name
-        hw_info['chassis'][component_name] = {'slot': components.items[component].slot,
-                                              'index': components.items[component].index,
-                                              'status': components.items[component].status,
-                                              'serial': components.items[component].serial,
-                                              'model': components.items[component].model
-                                              }
+        hw_info["chassis"][component_name] = {
+            "slot": components.items[component].slot,
+            "index": components.items[component].index,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+        }
 
     return hw_info
 
@@ -145,5 +159,5 @@ def main():
     module.exit_json(changed=False, purefb_info=generate_hardware_dict(blade))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

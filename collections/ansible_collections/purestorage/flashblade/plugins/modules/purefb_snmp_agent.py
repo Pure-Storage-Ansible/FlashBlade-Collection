@@ -5,13 +5,16 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
-ANSIBLE_METADATA = {'metadata_version': '1.1',
-                    'status': ['preview'],
-                    'supported_by': 'community'}
+ANSIBLE_METADATA = {
+    "metadata_version": "1.1",
+    "status": ["preview"],
+    "supported_by": "community",
+}
 
-DOCUMENTATION = r'''
+DOCUMENTATION = r"""
 ---
 module: purefb_snmp_agent
 version_added: '1.0.0'
@@ -59,9 +62,9 @@ options:
     choices: [ AES, DES ]
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
-'''
+"""
 
-EXAMPLES = r'''
+EXAMPLES = r"""
 - name: Update v2c SNMP agent
   purefb_snmp_agent:
     community: public
@@ -74,10 +77,10 @@ EXAMPLES = r'''
     auth_passphrase: password
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-'''
+"""
 
-RETURN = r'''
-'''
+RETURN = r"""
+"""
 
 
 HAS_PURITY_FB = True
@@ -88,7 +91,10 @@ except ImportError:
 
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import get_blade, purefb_argument_spec
+from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
+    get_blade,
+    purefb_argument_spec,
+)
 
 
 MIN_REQUIRED_API_VERSION = "1.9"
@@ -101,41 +107,44 @@ def update_agent(module, blade):
         agent = blade.snmp_agents.list_snmp_agents()
     except Exception:
         module.fail_json(msg="Failed to get configuration for SNMP agent.")
-    current_attr = {'community': agent.items[0].v2c.community,
-                    'version': agent.items[0].version,
-                    'auth_passphrase': agent.items[0].v3.auth_passphrase,
-                    'auth_protocol': agent.items[0].v3.auth_protocol,
-                    'privacy_passphrase': agent.items[0].v3.privacy_passphrase,
-                    'privacy_protocol': agent.items[0].v3.privacy_protocol,
-                    'user': agent.items[0].v3.user,
-                    }
-    new_attr = {'community': module.params['community'],
-                'version': module.params['version'],
-                'auth_passphrase': module.params['auth_passphrase'],
-                'auth_protocol': module.params['auth_protocol'],
-                'privacy_passphrase': module.params['privacy_passphrase'],
-                'privacy_protocol': module.params['privacy_protocol'],
-                'user': module.params['user']
-                }
+    current_attr = {
+        "community": agent.items[0].v2c.community,
+        "version": agent.items[0].version,
+        "auth_passphrase": agent.items[0].v3.auth_passphrase,
+        "auth_protocol": agent.items[0].v3.auth_protocol,
+        "privacy_passphrase": agent.items[0].v3.privacy_passphrase,
+        "privacy_protocol": agent.items[0].v3.privacy_protocol,
+        "user": agent.items[0].v3.user,
+    }
+    new_attr = {
+        "community": module.params["community"],
+        "version": module.params["version"],
+        "auth_passphrase": module.params["auth_passphrase"],
+        "auth_protocol": module.params["auth_protocol"],
+        "privacy_passphrase": module.params["privacy_passphrase"],
+        "privacy_protocol": module.params["privacy_protocol"],
+        "user": module.params["user"],
+    }
     if current_attr != new_attr:
         changed = True
         if not module.check_mode:
-            if new_attr['version'] == 'v2c':
-                updated_v2c_attrs = SnmpV2c(community=new_attr['community'])
-                updated_v2c_agent = SnmpAgent(version='v2c', v2c=updated_v2c_attrs)
+            if new_attr["version"] == "v2c":
+                updated_v2c_attrs = SnmpV2c(community=new_attr["community"])
+                updated_v2c_agent = SnmpAgent(version="v2c", v2c=updated_v2c_attrs)
                 try:
                     blade.snmp_agents.update_snmp_agents(snmp_agent=updated_v2c_agent)
                     changed = True
                 except Exception:
                     module.fail_json(msg="Failed to update v2c SNMP agent.")
             else:
-                updated_v3_attrs = SnmpV3(auth_protocol=new_attr['auth_protocol'],
-                                          auth_passphrase=new_attr['auth_passphrase'],
-                                          privacy_protocol=new_attr['privacy_protocol'],
-                                          privacy_passphrase=new_attr['privacy_passphrase'],
-                                          user=new_attr['user']
-                                          )
-                updated_v3_agent = SnmpAgent(version='v3', v3=updated_v3_attrs)
+                updated_v3_attrs = SnmpV3(
+                    auth_protocol=new_attr["auth_protocol"],
+                    auth_passphrase=new_attr["auth_passphrase"],
+                    privacy_protocol=new_attr["privacy_protocol"],
+                    privacy_passphrase=new_attr["privacy_passphrase"],
+                    user=new_attr["user"],
+                )
+                updated_v3_agent = SnmpAgent(version="v3", v3=updated_v3_attrs)
                 try:
                     blade.snmp_agents.update_snmp_agents(snmp_agent=updated_v3_agent)
                     changed = True
@@ -147,25 +156,30 @@ def update_agent(module, blade):
 
 def main():
     argument_spec = purefb_argument_spec()
-    argument_spec.update(dict(
-        user=dict(type='str'),
-        auth_passphrase=dict(type='str', no_log=True),
-        auth_protocol=dict(type='str', choices=['MD5', 'SHA']),
-        privacy_passphrase=dict(type='str', no_log=True),
-        privacy_protocol=dict(type='str', choices=['AES', 'DES']),
-        version=dict(type='str', choices=['v2c', 'v3']),
-        community=dict(type='str'),
-    ))
+    argument_spec.update(
+        dict(
+            user=dict(type="str"),
+            auth_passphrase=dict(type="str", no_log=True),
+            auth_protocol=dict(type="str", choices=["MD5", "SHA"]),
+            privacy_passphrase=dict(type="str", no_log=True),
+            privacy_protocol=dict(type="str", choices=["AES", "DES"]),
+            version=dict(type="str", choices=["v2c", "v3"]),
+            community=dict(type="str"),
+        )
+    )
 
-    required_together = [['auth_passphrase', 'auth_protocol'],
-                         ['privacy_passphrase', 'privacy_protocol']]
-    required_if = [['version', 'v2c', ['community']],
-                   ['version', 'v3', ['user']]]
+    required_together = [
+        ["auth_passphrase", "auth_protocol"],
+        ["privacy_passphrase", "privacy_protocol"],
+    ]
+    required_if = [["version", "v2c", ["community"]], ["version", "v3", ["user"]]]
 
-    module = AnsibleModule(argument_spec,
-                           required_together=required_together,
-                           required_if=required_if,
-                           supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec,
+        required_together=required_together,
+        required_if=required_if,
+        supports_check_mode=True,
+    )
 
     blade = get_blade(module)
     api_version = blade.api_version.list_versions().versions
@@ -174,12 +188,17 @@ def main():
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg='purity_fb SDK is required for this module')
+        module.fail_json(msg="purity_fb SDK is required for this module")
 
-    if module.params['version'] == "v3":
-        if module.params['auth_passphrase'] and (8 > len(module.params['auth_passphrase']) > 32):
+    if module.params["version"] == "v3":
+        if module.params["auth_passphrase"] and (
+            8 > len(module.params["auth_passphrase"]) > 32
+        ):
             module.fail_json(msg="auth_password must be between 8 and 32 characters")
-        if module.params['privacy_passphrase'] and 8 > len(module.params['privacy_passphrase']) > 63:
+        if (
+            module.params["privacy_passphrase"]
+            and 8 > len(module.params["privacy_passphrase"]) > 63
+        ):
             module.fail_json(msg="privacy_password must be between 8 and 63 characters")
 
     update_agent(module, blade)
@@ -187,5 +206,5 @@ def main():
     module.exit_json(changed=False)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
