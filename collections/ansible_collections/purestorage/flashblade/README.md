@@ -13,7 +13,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - Pure Storage FlashBlade system running Purity//FB 2.1.2 or later
     - some modules require higher versions of Purity//FB
 - purity_fb >=v1.10
-- python >=v2.7, <3.7
+- python >=v2.7, >=3.2
 - netaddr
 
 ## Idempotency
