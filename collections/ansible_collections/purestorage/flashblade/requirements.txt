@@ -1,0 +1,3 @@
+netaddr
+python == '3.6'
+purity-fb >= '1.11'
