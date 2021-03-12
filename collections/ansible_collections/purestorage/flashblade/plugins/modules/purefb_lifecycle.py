@@ -149,13 +149,13 @@ def create_rule(module, blade):
             module.fail_json(msg="'keep_for' format incorrect - specify as 'd' or 'w'")
         try:
             attr = LifecycleRulePost(
+                bucket=Reference(name=module.params["bucket"]),
                 rule_id=module.params["name"],
                 keep_previous_version_for=_convert_to_millisecs(
                     module.params["keep_for"]
                 ),
                 prefix=module.params["prefix"],
             )
-            attr.bucket = Reference(name=module.params["bucket"])
             blade.lifecycle_rules.create_lifecycle_rules(rule=attr)
             if not module.params["enabled"]:
                 attr = LifecycleRulePatch()
