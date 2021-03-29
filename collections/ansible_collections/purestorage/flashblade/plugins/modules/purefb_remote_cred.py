@@ -196,7 +196,7 @@ def main():
         dict(
             state=dict(type="str", default="present", choices=["present", "absent"]),
             name=dict(type="str", required=True),
-            access_key=dict(type="str"),
+            access_key=dict(type="str", no_log=False),
             secret=dict(type="str", no_log=True),
             target=dict(type="str", required=True),
         )
