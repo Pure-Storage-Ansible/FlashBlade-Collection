@@ -306,8 +306,8 @@ def main():
             name=dict(required=True, type="str"),
             account=dict(required=True, type="str"),
             access_key=dict(default="false", type="bool"),
-            imported_key=dict(type="str"),
-            remove_key=dict(type="str"),
+            imported_key=dict(type="str", no_log=False),
+            remove_key=dict(type="str", no_log=False),
             imported_secret=dict(type="str", no_log=True),
             state=dict(default="present", choices=["present", "absent", "remove_key"]),
         )
