@@ -38,10 +38,16 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+HAS_PYPURECLIENT = True
+try:
+    from pypureclient import flashblade
+except ImportError:
+    PYPURECLIENT = False
+
 from os import environ
 import platform
 
-VERSION = "1.3"
+VERSION = "1.4"
 USER_AGENT_BASE = "Ansible"
 API_AGENT_VERSION = "1.5"
 
@@ -90,6 +96,51 @@ def get_blade(module):
     else:
         module.fail_json(msg="purity_fb SDK not installed.")
     return blade
+
+
+def get_system(module):
+    """Return System Object or Fail"""
+    user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
+        "base": USER_AGENT_BASE,
+        "class": __name__,
+        "version": VERSION,
+        "platform": platform.platform(),
+    }
+    blade_name = module.params["fb_url"]
+    api = module.params["api_token"]
+
+    if HAS_PYPURECLIENT:
+        versions = requests.get(
+            "https://" + blade_name + "/api/api_version", verify=False
+        )
+        api_version = versions.json()["version"][-1]
+            if blade_name and api:
+            system = flashblade.Client(
+                target=blade_name,
+                api_token=api,
+                user_agent=user_agent,
+                version=api_version,
+            )
+        elif environ.get("PUREFB_URL") and environ.get("PUREFB_API"):
+            system = flashblade.Client(
+                target=(environ.get("PUREFB_URL")),
+                api_token=(environ.get("PUREFB_API")),
+                user_agent=user_agent,
+            )
+        else:
+            module.fail_json(
+                msg="You must set PUREFB_URL and PUREFB_API environment variables "
+                "or the fb_url and api_token module arguments"
+            )
+        try:
+            system.get_hardware()
+        except Exception:
+            module.fail_json(
+                msg="Pure Storage FlashBlade authentication failed. Check your credentials"
+            )
+    else:
+        module.fail_json(msg="pypureclient SDK not installed.")
+    return system
 
 
 def purefb_argument_spec():
