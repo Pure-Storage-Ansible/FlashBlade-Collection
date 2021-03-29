@@ -110,22 +110,29 @@ def get_system(module):
     api = module.params["api_token"]
 
     if HAS_PYPURECLIENT:
-        versions = requests.get(
-            "https://" + blade_name + "/api/api_version", verify=False
-        )
-        api_version = versions.json()["version"][-1]
-            if blade_name and api:
+        if blade_name and api:
+            # TODO:(SD) when the page has been added to Purity//FB
+            #            versions = requests.get(
+            #                "https://" + blade_name + "/api/api_version", verify=False
+            #            )
+            #            api_version = versions.json()["version"][-1]
             system = flashblade.Client(
                 target=blade_name,
                 api_token=api,
                 user_agent=user_agent,
-                version=api_version,
+                #                version=api_version,
             )
         elif environ.get("PUREFB_URL") and environ.get("PUREFB_API"):
+            # TODO:(SD) when the page has been added to Purity//FB
+            #            versions = requests.get(
+            #                "https://" + environ.get("PUREFB_URL") + "/api/api_version", verify=False
+            #            )
+            #            api_version = versions.json()["version"][-1]
             system = flashblade.Client(
                 target=(environ.get("PUREFB_URL")),
                 api_token=(environ.get("PUREFB_API")),
                 user_agent=user_agent,
+                #                version=api_version,
             )
         else:
             module.fail_json(
