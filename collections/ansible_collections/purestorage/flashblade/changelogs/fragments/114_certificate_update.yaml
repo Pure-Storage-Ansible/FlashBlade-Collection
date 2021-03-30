@@ -1,2 +1,2 @@
 minor_changes:
-  - add update functionality for array cert in purefb_certs
+  - purefb_certs - add update functionality for array cert

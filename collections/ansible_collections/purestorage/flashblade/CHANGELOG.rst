@@ -5,6 +5,29 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.5.0
+======
+
+Minor Changes
+-------------
+
+- purefb_certs - Add update functionality for array cert
+- purefb_fs - Add multiprotocol ACL support
+- purefb_info - Add information regarding filesystem multiprotocol (where available)
+- purefb_info - Add new parameter to provide details on admin users
+- purefb_info - Add replication performace statistics
+- purefb_s3user - Add ability to remove an S3 users existing access key
+
+Bugfixes
+--------
+
+- purefb_* - Return a correct value for `changed` in all modules when in check mode
+- purefb_dns - Deprecate search paramerter
+- purefb_dsrole - Resolve idempotency issue
+- purefb_lifecycle - Fix error when creating new bucket lifecycle rule.
+- purefb_policy - Ensure undeclared variables are set correctly
+- purefb_s3user - Fix maximum access_key count logic
+
 v1.4.0
 ======
 

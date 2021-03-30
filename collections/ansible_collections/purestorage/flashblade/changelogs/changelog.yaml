@@ -99,3 +99,33 @@ releases:
       name: purefb_syslog
       namespace: ''
     release_date: '2020-10-14'
+  1.5.0:
+    changes:
+      bugfixes:
+      - purefb_* - Return a correct value for `changed` in all modules when in check
+        mode
+      - purefb_dns - Deprecate search paramerter
+      - purefb_dsrole - Resolve idempotency issue
+      - purefb_lifecycle - Fix error when creating new bucket lifecycle rule.
+      - purefb_policy - Ensure undeclared variables are set correctly
+      - purefb_s3user - Fix maximum access_key count logic
+      minor_changes:
+      - purefb_certs - Add update functionality for array cert
+      - purefb_fs - Add multiprotocol ACL support
+      - purefb_info - Add information regarding filesystem multiprotocol (where available)
+      - purefb_info - Add new parameter to provide details on admin users
+      - purefb_info - Add replication performace statistics
+      - purefb_s3user - Add ability to remove an S3 users existing access key
+    fragments:
+    - 105_max_access_key.yaml
+    - 107_add_remove_s3user_key.yaml
+    - 108_dns_search_fix.yaml
+    - 109_update_info.yaml
+    - 111_dsrole_update_idempotency.yaml
+    - 112_fix_check_mode.yaml
+    - 113_policy_cleanup.yaml
+    - 114_certificate_update.yaml
+    - 115_multiprotocol.yaml
+    - 121_replication_perf.yaml
+    - 123_lifecycle_rule_fix.yaml
+    release_date: '2021-03-30'
