@@ -63,6 +63,14 @@ options:
     - Access key secret for access key to import
     type: str
     version_added: "1.4.0"
+  policy:
+    description:
+    - User Access Policies to be assigned to user on creation
+    - To amend policies use the I(purefb_userpolicy) module
+    - If not specified, I(pure\:policy/full-access) will be added
+    type: list
+    elements: str
+    version_added: "1.6.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -79,6 +87,16 @@ EXAMPLES = r"""
 
 - debug:
     msg: "S3 User: {{ result['s3user_info'] }}"
+
+- name: Create object store user (with access ID and key) foo in account bar with access policy (Purity 3.2 and higher)
+  purefb_s3user:
+    name: foo
+    account: bar
+    access_key: true
+    policy:
+      - pure:policy/safemode-configure
+    fb_url: 10.10.10.2
+    api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Create object store user foo using imported key/secret in account bar
   purefb_s3user:
@@ -112,12 +130,14 @@ except ImportError:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
 MIN_REQUIRED_API_VERSION = "1.3"
 IMPORT_KEY_API_VERSION = "1.10"
+POLICY_API_VERSION = "2.0"
 
 
 def get_s3acc(module, blade):
@@ -219,50 +239,92 @@ def create_s3user(module, blade):
     changed = True
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
-        try:
-            blade.object_store_users.create_object_store_users(names=[user])
-            if module.params["access_key"] and module.params["imported_key"]:
-                module.warn("'access_key: true' overrides imported keys")
-            if module.params["access_key"]:
-                try:
-                    result = (
+        blade.object_store_users.create_object_store_users(names=[user])
+        if module.params["access_key"] and module.params["imported_key"]:
+            module.warn("'access_key: true' overrides imported keys")
+        if module.params["access_key"]:
+            try:
+                result = blade.object_store_access_keys.create_object_store_access_keys(
+                    object_store_access_key=ObjectStoreAccessKey(user={"name": user})
+                )
+                s3user_facts["fb_s3user"] = {
+                    "user": user,
+                    "access_key": result.items[0].secret_access_key,
+                    "access_id": result.items[0].name,
+                }
+            except Exception:
+                delete_s3user(module, blade)
+                module.fail_json(
+                    msg="Object Store User {0}: Creation failed".format(user)
+                )
+        else:
+            if module.params["imported_key"]:
+                versions = blade.api_version.list_versions().versions
+                if IMPORT_KEY_API_VERSION in versions:
+                    try:
                         blade.object_store_access_keys.create_object_store_access_keys(
-                            object_store_access_key=ObjectStoreAccessKey(
-                                user={"name": user}
+                            names=[module.params["imported_key"]],
+                            object_store_access_key=ObjectStoreAccessKeyPost(
+                                user={"name": user},
+                                secret_access_key=module.params["imported_secret"],
+                            ),
+                        )
+                    except Exception:
+                        delete_s3user(module, blade)
+                        module.fail_json(
+                            msg="Object Store User {0}: Creation failed with imported access key".format(
+                                user
                             )
                         )
-                    )
-                    s3user_facts["fb_s3user"] = {
-                        "user": user,
-                        "access_key": result.items[0].secret_access_key,
-                        "access_id": result.items[0].name,
-                    }
-                except Exception:
-                    delete_s3user(module, blade)
-                    module.fail_json(
-                        msg="Object Store User {0}: Creation failed".format(user)
-                    )
-            else:
-                if module.params["imported_key"]:
-                    versions = blade.api_version.list_versions().versions
-                    if IMPORT_KEY_API_VERSION in versions:
-                        try:
-                            blade.object_store_access_keys.create_object_store_access_keys(
-                                names=[module.params["imported_key"]],
-                                object_store_access_key=ObjectStoreAccessKeyPost(
-                                    user={"name": user},
-                                    secret_access_key=module.params["imported_secret"],
-                                ),
+        if module.params["policy"]:
+            blade = get_system(module)
+            api_version = list(blade.get_versions().items)
+
+            if POLICY_API_VERSION in api_version:
+                policy_list = module.params["policy"]
+                for policy in range(0, len(policy_list)):
+                    if (
+                        blade.get_object_store_access_policies(
+                            names=[policy_list[policy]]
+                        ).status_code
+                        != 200
+                    ):
+                        module.warn(
+                            "Policy {0} is not valid. Ignoring...".format(
+                                policy_list[policy]
                             )
-                        except Exception:
-                            delete_s3user(module, blade)
-                            module.fail_json(
-                                msg="Object Store User {0}: Creation failed with imported access key".format(
-                                    user
+                        )
+                        policy_list.remove(policy_list[policy])
+                username = module.params["account"] + "/" + module.params["name"]
+                for policy in range(0, len(policy_list)):
+                    if not (
+                        blade.get_object_store_users_object_store_access_policies(
+                            member_names=[username], policy_names=[policy_list[policy]]
+                        ).items
+                    ):
+                        res = (
+                            blade.post_object_store_access_policies_object_store_users(
+                                member_names=[username],
+                                policy_names=[policy_list[policy]],
+                            )
+                        )
+                        if res.status_code != 200:
+                            module.warn(
+                                "Failed to add policy {0} to account user {1}. Skipping...".format(
+                                    policy_list[policy], username
                                 )
                             )
-        except Exception:
-            module.fail_json(msg="Object Store User {0}: Creation failed".format(user))
+                if "pure:policy/full-access" not in policy_list:
+                    # User Create adds the pure:policy/full-access policy by default
+                    # If we are specifying a list then remove this default value
+                    blade.delete_object_store_access_policies_object_store_users(
+                        member_names=[username],
+                        policy_names=["pure:policy/full-access"],
+                    )
+            else:
+                module.warn(
+                    "FlashBlade REST version not supported for user access policies. Skipping..."
+                )
     module.exit_json(changed=changed, s3user_info=s3user_facts)
 
 
@@ -309,6 +371,7 @@ def main():
             imported_key=dict(type="str", no_log=False),
             remove_key=dict(type="str", no_log=False),
             imported_secret=dict(type="str", no_log=True),
+            policy=dict(type="list", elements="str"),
             state=dict(default="present", choices=["present", "absent", "remove_key"]),
         )
     )
