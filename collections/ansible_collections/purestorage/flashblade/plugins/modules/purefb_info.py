@@ -395,6 +395,7 @@ purefb_info:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
@@ -405,9 +406,10 @@ POLICIES_API_VERSION = "1.5"
 CERT_GROUPS_API_VERSION = "1.8"
 REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
+MIN_32_API = "2.0"
 
 
-def generate_default_dict(blade):
+def generate_default_dict(module, blade):
     default_info = {}
     defaults = blade.arrays.list_arrays().items[0]
     default_info["flashblade_name"] = defaults.name
@@ -448,6 +450,20 @@ def generate_default_dict(blade):
         )
         default_info["targets"] = len(blade.targets.list_targets().items)
         default_info["kerberos_keytabs"] = len(blade.keytabs.list_keytabs().items)
+    # This section is just for REST 2.x features
+    if MIN_32_API in api_version:
+        blade = get_system(module)
+        default_info["object_store_virtual_hosts"] = len(
+            blade.get_object_store_virtual_hosts().items
+        )
+        default_info["api_clients"] = len(blade.get_api_clients().items)
+        default_info["idle_timeout"] = int(
+            list(blade.get_arrays().items)[0].idle_timeout / 60000
+        )
+        if list(blade.get_arrays_eula().items)[0].signature.accepted:
+            default_info["EULA"] = "Signed"
+        else:
+            default_info["EULA"] = "Not Signed"
     return default_info
 
 
@@ -979,7 +995,7 @@ def main():
     info = {}
 
     if "minimum" in subset or "all" in subset:
-        info["default"] = generate_default_dict(blade)
+        info["default"] = generate_default_dict(module, blade)
     if "performance" in subset or "all" in subset:
         info["performance"] = generate_perf_dict(blade)
     if "config" in subset or "all" in subset:
