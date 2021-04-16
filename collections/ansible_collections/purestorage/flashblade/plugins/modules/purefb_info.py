@@ -34,7 +34,7 @@ options:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
         capacity, network, subnets, lags, filesystems, snapshots, buckets,
-        replication, policies, arrays and admins.
+        replication, policies, arrays, accounts, admins, ad and kerberos.
     required: false
     type: list
     elements: str
@@ -909,6 +909,95 @@ def generate_bucket_dict(blade):
     return bucket_info
 
 
+def generate_kerb_dict(blade):
+    kerb_info = {}
+    keytabs = list(blade.get_keytabs().items)
+    for ktab in range(0, len(keytabs)):
+        keytab_name = keytabs[ktab].prefix
+        kerb_info[keytab_name] = {}
+        for key in range(0, len(keytabs)):
+            if keytabs[key].prefix == keytab_name:
+                kerb_info[keytab_name][keytabs[key].suffix] = {
+                    "fqdn": keytabs[key].fqdn,
+                    "kvno": keytabs[key].kvno,
+                    "principal": keytabs[key].principal,
+                    "realm": keytabs[key].realm,
+                    "encryption_type": keytabs[key].encryption_type,
+                }
+    return kerb_info
+
+
+def generate_ad_dict(blade):
+    ad_info = {}
+    ad_account = list(blade.get_active_directory().items)[0]
+    ad_info[ad_account.name] = {
+        "computer": ad_account.computer_name,
+        "domain": ad_account.domain,
+        "directory_servers": ad_account.directory_servers,
+        "kerberos_servers": ad_account.kerberos_servers,
+        "service_principals": ad_account.service_principal_names,
+        "join_ou": ad_account.join_ou,
+        "encryption_types": ad_account.encryption_types,
+    }
+    return ad_info
+
+
+def generate_object_store_accounts_dict(blade):
+    account_info = {}
+    accounts = list(blade.get_object_store_accounts().items)
+    for account in range(0, len(accounts)):
+        acc_name = accounts[account].name
+        account_info[acc_name] = {
+            "object_count": accounts[account].object_count,
+            "data_reduction": accounts[account].space.data_reduction,
+            "snapshots_space": accounts[account].space.snapshots,
+            "total_physical_space": accounts[account].space.total_physical,
+            "unique_space": accounts[account].space.unique,
+            "virtual_space": accounts[account].space.virtual,
+            "users": {},
+        }
+        acc_users = list(
+            blade.get_object_store_users(filter='name="' + acc_name + '/*"').items
+        )
+        for acc_user in range(0, len(acc_users)):
+            user_name = acc_users[acc_user].name.split("/")[1]
+            account_info[acc_name]["users"][user_name] = {"keys": [], "policies": []}
+            if (
+                blade.get_object_store_access_keys(
+                    filter='user.name="' + acc_users[acc_user].name + '"'
+                ).total_item_count
+                != 0
+            ):
+                access_keys = list(
+                    blade.get_object_store_access_keys(
+                        filter='user.name="' + acc_users[acc_user].name + '"'
+                    ).items
+                )
+                for key in range(0, len(access_keys)):
+                    account_info[acc_name]["users"][user_name]["keys"].append(
+                        {
+                            "name": access_keys[key].name,
+                            "enabled": bool(access_keys[key].enabled),
+                        }
+                    )
+            if (
+                blade.get_object_store_access_policies_object_store_users(
+                    member_names=[acc_users[acc_user].name]
+                ).total_item_count
+                != 0
+            ):
+                policies = list(
+                    blade.get_object_store_access_policies_object_store_users(
+                        member_names=[acc_users[acc_user].name]
+                    ).items
+                )
+                for policy in range(0, len(policies)):
+                    account_info[acc_name]["users"][user_name]["policies"].append(
+                        policies[policy].policy.name
+                    )
+    return account_info
+
+
 def generate_fs_dict(blade):
     fs_info = {}
     fsys = blade.file_systems.list_file_systems()
@@ -983,7 +1072,10 @@ def main():
         "arrays",
         "replication",
         "policies",
+        "accounts",
         "admins",
+        "ad",
+        "kerberos",
     )
     subset_test = (test in valid_subsets for test in subset)
     if not all(subset_test):
@@ -1029,6 +1121,15 @@ def main():
             info["snap_transfers"] = generate_snap_transfer_dict(blade)
             info["remote_credentials"] = generate_remote_creds_dict(blade)
             info["targets"] = generate_targets_dict(blade)
+    if MIN_32_API in api_version:
+        # Calls for data only available from Purity//FB 3.2 and higher
+        blade = get_system(module)
+        if "accounts" in subset or "all" in subset:
+            info["accounts"] = generate_object_store_accounts_dict(blade)
+        if "ad" in subset or "all" in subset:
+            info["active_directory"] = generate_ad_dict(blade)
+        if "kerberos" in subset or "all" in subset:
+            info["kerberos"] = generate_kerb_dict(blade)
 
     module.exit_json(changed=False, purefb_info=info)
 
