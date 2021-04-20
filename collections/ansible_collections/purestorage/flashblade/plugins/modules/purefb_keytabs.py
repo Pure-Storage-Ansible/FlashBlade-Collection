@@ -75,7 +75,7 @@ EXAMPLES = r"""
     name: example.3
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-  register: keytab_file
+  register: download_file
 
 - name: Delete a keytab
   purefb_keytabs:
@@ -98,7 +98,7 @@ EXAMPLES = r"""
 """
 
 RETURN = r"""
-keytab_file:
+download_file:
   description:
   - Name of file containing exported keytab
   returned: When using I(export) option
@@ -184,6 +184,7 @@ def import_keytab(module, blade):
 def export_keytab(module, blade):
     """Export keytab"""
     changed = False
+    download_file = ""
     if blade.get_keytabs(names=[module.params["name"]]).status_code == 200:
         changed = True
         if not module.check_mode:
@@ -195,8 +196,8 @@ def export_keytab(module, blade):
                     )
                 )
             else:
-                keytab_file = list(res.items)[0]
-    module.exit_json(changed=changed, keytab_file=keytab_file)
+                download_file = list(res.items)[0]
+    module.exit_json(changed=changed, download_file=download_file)
 
 
 def main():
