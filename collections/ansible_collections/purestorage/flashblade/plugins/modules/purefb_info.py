@@ -929,7 +929,7 @@ def generate_kerb_dict(blade):
 
 def generate_ad_dict(blade):
     ad_info = {}
-    actve_directory = blade.get_active_directory()
+    active_directory = blade.get_active_directory()
     if active_directory.total_item_count != 0:
         ad_account = list(active_directory.items)[0]
         ad_info[ad_account.name] = {
