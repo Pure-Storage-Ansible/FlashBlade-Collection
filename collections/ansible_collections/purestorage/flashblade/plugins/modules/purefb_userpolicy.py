@@ -17,7 +17,7 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = r"""
 ---
 module: purefb_userpolicy
-version_added: '1.8.0'
+version_added: '1.6.0'
 short_description: Manage FlashBlade Object Store User Access Policies
 description:
 - Add or Remove FlashBlade Object Store Access Policies for Account User

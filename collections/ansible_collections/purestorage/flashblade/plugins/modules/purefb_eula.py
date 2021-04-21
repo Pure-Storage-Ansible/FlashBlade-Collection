@@ -17,7 +17,7 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = r"""
 ---
 module: purefb_eula
-version_added: '1.0.0'
+version_added: '1.6.0'
 short_description: Sign Pure Storage FlashBlade EULA
 description:
 - Sign the FlashBlade EULA for Day 0 config, or change signatory.
