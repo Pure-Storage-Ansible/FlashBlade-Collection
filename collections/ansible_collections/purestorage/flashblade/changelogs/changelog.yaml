@@ -129,3 +129,50 @@ releases:
     - 121_replication_perf.yaml
     - 123_lifecycle_rule_fix.yaml
     release_date: '2021-03-30'
+  1.6.0:
+    changes:
+      minor_changes:
+      - purefa_virtualhost - New module to manage API Clients
+      - purefb_ad - New module to manage Active Directory Account
+      - purefb_eula - New module to sign EULA
+      - purefb_info - Add Active Directory, Kerberos and Object Store Account information
+      - purefb_info - Add extra info for Purity//FB 3.2+ systems
+      - purefb_keytabs - New module to manage Kerberos Keytabs
+      - purefb_s3user - Add access policy option to user creation
+      - purefb_timeout - Add module to set GUI idle timeout
+      - purefb_userpolicy - New module to manage object store user access policies
+      - purefb_virtualhost - New module to manage Object Store Virtual Hosts
+    fragments:
+    - 127_add_eula.yaml
+    - 128_add_32_to_info.yaml
+    - 129-virtualhost.yaml
+    - 131-apiclient.yaml
+    - 132_add_timeout.yaml
+    - 135_add_user_policies.yaml
+    - 136_add_s3user_policy.yaml
+    - 138_add_ad_module.yaml
+    - 139_add_keytabs.yaml
+    - 140_more_32_info.yaml
+    modules:
+    - description: Manage FlashBlade Active Directory Account
+      name: purefb_ad
+      namespace: ''
+    - description: Manage FlashBlade API Clients
+      name: purefb_apiclient
+      namespace: ''
+    - description: Sign Pure Storage FlashBlade EULA
+      name: purefb_eula
+      namespace: ''
+    - description: Manage FlashBlade Kerberos Keytabs
+      name: purefb_keytabs
+      namespace: ''
+    - description: Configure Pure Storage FlashBlade GUI idle timeout
+      name: purefb_timeout
+      namespace: ''
+    - description: Manage FlashBlade Object Store User Access Policies
+      name: purefb_userpolicy
+      namespace: ''
+    - description: Manage FlashBlade Object Store Virtual Hosts
+      name: purefb_virtualhost
+      namespace: ''
+    release_date: '2021-04-21'
