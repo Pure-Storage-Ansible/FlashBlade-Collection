@@ -5,6 +5,34 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.6.0
+======
+
+Minor Changes
+-------------
+
+- purefa_virtualhost - New module to manage API Clients
+- purefb_ad - New module to manage Active Directory Account
+- purefb_eula - New module to sign EULA
+- purefb_info - Add Active Directory, Kerberos and Object Store Account information
+- purefb_info - Add extra info for Purity//FB 3.2+ systems
+- purefb_keytabs - New module to manage Kerberos Keytabs
+- purefb_s3user - Add access policy option to user creation
+- purefb_timeout - Add module to set GUI idle timeout
+- purefb_userpolicy - New module to manage object store user access policies
+- purefb_virtualhost - New module to manage Object Store Virtual Hosts
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_ad - Manage FlashBlade Active Directory Account
+- purestorage.flashblade.purefb_apiclient - Manage FlashBlade API Clients
+- purestorage.flashblade.purefb_eula - Sign Pure Storage FlashBlade EULA
+- purestorage.flashblade.purefb_keytabs - Manage FlashBlade Kerberos Keytabs
+- purestorage.flashblade.purefb_timeout - Configure Pure Storage FlashBlade GUI idle timeout
+- purestorage.flashblade.purefb_userpolicy - Manage FlashBlade Object Store User Access Policies
+- purestorage.flashblade.purefb_virtualhost - Manage FlashBlade Object Store Virtual Hosts
+
 v1.5.0
 ======
 

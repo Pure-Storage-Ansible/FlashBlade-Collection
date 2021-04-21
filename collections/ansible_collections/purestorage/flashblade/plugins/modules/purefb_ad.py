@@ -17,7 +17,7 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = r"""
 ---
 module: purefb_ad
-version_added: '1.8.0'
+version_added: '1.6.0'
 short_description: Manage FlashBlade Active Directory Account
 description:
 - Add or delete FlashBlade Active Directory Account

@@ -8,11 +8,21 @@ plugins:
   inventory: {}
   lookup: {}
   module:
+    purefb_ad:
+      description: Manage FlashBlade Active Directory Account
+      name: purefb_ad
+      namespace: ''
+      version_added: 1.6.0
     purefb_alert:
       description: Configure Pure Storage FlashBlade alert email settings
       name: purefb_alert
       namespace: ''
       version_added: 1.0.0
+    purefb_apiclient:
+      description: Manage FlashBlade API Clients
+      name: purefb_apiclient
+      namespace: ''
+      version_added: 1.6.0
     purefb_banner:
       description: Configure Pure Storage FlashBlade GUI and SSH MOTD message
       name: purefb_banner
@@ -63,6 +73,11 @@ plugins:
       name: purefb_dsrole
       namespace: ''
       version_added: 1.0.0
+    purefb_eula:
+      description: Sign Pure Storage FlashBlade EULA
+      name: purefb_eula
+      namespace: ''
+      version_added: 1.6.0
     purefb_fs:
       description: Manage filesystemon Pure Storage FlashBlade`
       name: purefb_fs
@@ -83,6 +98,11 @@ plugins:
       name: purefb_inventory
       namespace: ''
       version_added: 1.0.0
+    purefb_keytabs:
+      description: Manage FlashBlade Kerberos Keytabs
+      name: purefb_keytabs
+      namespace: ''
+      version_added: 1.6.0
     purefb_lifecycle:
       description: Manage FlashBlade object lifecycles
       name: purefb_lifecycle
@@ -168,13 +188,28 @@ plugins:
       name: purefb_target
       namespace: ''
       version_added: 1.0.0
+    purefb_timeout:
+      description: Configure Pure Storage FlashBlade GUI idle timeout
+      name: purefb_timeout
+      namespace: ''
+      version_added: 1.6.0
     purefb_user:
       description: Modify FlashBlade local user account password
       name: purefb_user
       namespace: ''
       version_added: 1.0.0
+    purefb_userpolicy:
+      description: Manage FlashBlade Object Store User Access Policies
+      name: purefb_userpolicy
+      namespace: ''
+      version_added: 1.6.0
+    purefb_virtualhost:
+      description: Manage FlashBlade Object Store Virtual Hosts
+      name: purefb_virtualhost
+      namespace: ''
+      version_added: 1.6.0
   netconf: {}
   shell: {}
   strategy: {}
   vars: {}
-version: 1.5.0
+version: 1.6.0
