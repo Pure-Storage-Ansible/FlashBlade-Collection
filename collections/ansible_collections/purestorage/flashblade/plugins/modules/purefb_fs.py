@@ -686,7 +686,7 @@ def modify_fs(module, blade):
 
 
 def _delete_fs(module, blade):
-    """ In module Delete Filesystem"""
+    """In module Delete Filesystem"""
     api_version = blade.api_version.list_versions().versions
     if NFSV4_API_VERSION in api_version:
         if MULTIPROTOCOL_API_VERSION in api_version:
@@ -725,7 +725,7 @@ def _delete_fs(module, blade):
 
 
 def delete_fs(module, blade):
-    """ Delete Filesystem"""
+    """Delete Filesystem"""
     changed = True
     if not module.check_mode:
         try:
@@ -793,7 +793,7 @@ def delete_fs(module, blade):
 
 
 def eradicate_fs(module, blade):
-    """ Eradicate Filesystem"""
+    """Eradicate Filesystem"""
     changed = True
     if not module.check_mode:
         try:

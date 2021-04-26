@@ -122,7 +122,7 @@ def get_fs(module, blade):
 
 
 def get_latest_fssnapshot(module, blade):
-    """ Get the name of the latest snpshot or None"""
+    """Get the name of the latest snpshot or None"""
     try:
         filt = "source='" + module.params["name"] + "'"
         all_snaps = blade.file_system_snapshots.list_file_system_snapshots(filter=filt)
@@ -216,7 +216,7 @@ def update_snapshot(module, blade):
 
 
 def delete_snapshot(module, blade):
-    """ Delete Snapshot"""
+    """Delete Snapshot"""
     if not module.check_mode:
         snapname = module.params["name"] + "." + module.params["suffix"]
         new_attr = FileSystemSnapshot(destroyed=True)
@@ -239,7 +239,7 @@ def delete_snapshot(module, blade):
 
 
 def eradicate_snapshot(module, blade):
-    """ Eradicate Snapshot"""
+    """Eradicate Snapshot"""
     if not module.check_mode:
         snapname = module.params["name"] + "." + module.params["suffix"]
         try:

@@ -182,7 +182,7 @@ def create_bucket(module, blade):
 
 
 def delete_bucket(module, blade):
-    """ Delete Bucket"""
+    """Delete Bucket"""
     changed = True
     if not module.check_mode:
         try:
@@ -214,7 +214,7 @@ def delete_bucket(module, blade):
 
 
 def recover_bucket(module, blade):
-    """ Recover Bucket"""
+    """Recover Bucket"""
     changed = True
     if not module.check_mode:
         try:
@@ -237,7 +237,7 @@ def recover_bucket(module, blade):
 
 
 def update_bucket(module, blade, bucket):
-    """ Update Bucket """
+    """Update Bucket"""
     changed = False
     api_version = blade.api_version.list_versions().versions
     if VERSIONING_VERSION in api_version:
@@ -281,7 +281,7 @@ def update_bucket(module, blade, bucket):
 
 
 def eradicate_bucket(module, blade):
-    """ Eradicate Bucket"""
+    """Eradicate Bucket"""
     changed = True
     if not module.check_mode:
         try:

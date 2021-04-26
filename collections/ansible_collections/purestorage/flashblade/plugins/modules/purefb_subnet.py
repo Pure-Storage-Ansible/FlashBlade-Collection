@@ -224,7 +224,7 @@ def modify_subnet(module, blade):
 
 
 def delete_subnet(module, blade):
-    """ Delete Subnet"""
+    """Delete Subnet"""
     changed = True
     if not module.check_mode:
         subnet = []
