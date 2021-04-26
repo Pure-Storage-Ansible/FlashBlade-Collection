@@ -168,7 +168,7 @@ def modify_iface(module, blade):
 
 
 def delete_iface(module, blade):
-    """ Delete Network Interface"""
+    """Delete Network Interface"""
     changed = True
     if not module.check_mode:
         iface = []

@@ -219,7 +219,7 @@ def update_rl_policy(module, blade, local_replica_link):
 
 
 def delete_rl_policy(module, blade, local_replica_link):
-    """ Delete Bucket Replica Link"""
+    """Delete Bucket Replica Link"""
     changed = True
     if not module.check_mode:
         try:
