@@ -214,7 +214,7 @@ def add_rl_policy(module, blade):
 
 
 def delete_rl_policy(module, blade):
-    """ Delete Policy from Filesystem Replica Link"""
+    """Delete Policy from Filesystem Replica Link"""
     changed = True
     if not module.check_mode:
         current_policy = (

@@ -59,12 +59,6 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURESTORAGE = True
-try:
-    from pypureclient import flashblade
-except ImportError:
-    HAS_PURESTORAGE = False
-
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_system,
@@ -117,9 +111,6 @@ def main():
     )
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
-
-    if not HAS_PURESTORAGE:
-        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)
     api_version = list(blade.get_versions().items)
