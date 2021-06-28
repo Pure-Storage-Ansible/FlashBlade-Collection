@@ -138,15 +138,25 @@ def create_subnet(module, blade):
         subnet = []
         subnet.append(module.params["name"])
         try:
-            blade.subnets.create_subnets(
-                names=subnet,
-                subnet=Subnet(
-                    prefix=module.params["prefix"],
-                    vlan=module.params["vlan"],
-                    mtu=module.params["mtu"],
-                    gateway=module.params["gateway"],
-                ),
-            )
+            if module.params["gateway"]:
+                blade.subnets.create_subnets(
+                    names=subnet,
+                    subnet=Subnet(
+                        prefix=module.params["prefix"],
+                        vlan=module.params["vlan"],
+                        mtu=module.params["mtu"],
+                        gateway=module.params["gateway"],
+                    ),
+                )
+            else:
+                blade.subnets.create_subnets(
+                    names=subnet,
+                    subnet=Subnet(
+                        prefix=module.params["prefix"],
+                        vlan=module.params["vlan"],
+                        mtu=module.params["mtu"],
+                    ),
+                )
         except Exception:
             module.fail_json(
                 msg="Failed to create subnet {0}. Confirm supplied parameters".format(
@@ -251,7 +261,7 @@ def main():
         )
     )
 
-    required_if = [["state", "present", ["gateway", "prefix"]]]
+    required_if = [["state", "present", ["prefix"]]]
 
     module = AnsibleModule(
         argument_spec, required_if=required_if, supports_check_mode=True
@@ -282,10 +292,11 @@ def main():
                     module.params["vlan"]
                 )
             )
-        if netaddr.IPAddress(module.params["gateway"]) not in netaddr.IPNetwork(
-            module.params["prefix"]
-        ):
-            module.fail_json(msg="Gateway and subnet are not compatible.")
+        if module.params["gateway"]:
+            if netaddr.IPAddress(module.params["gateway"]) not in netaddr.IPNetwork(
+                module.params["prefix"]
+            ):
+                module.fail_json(msg="Gateway and subnet are not compatible.")
         subnets = blade.subnets.list_subnets()
         nrange = netaddr.IPSet([module.params["prefix"]])
         for sub in range(0, len(subnets.items)):
