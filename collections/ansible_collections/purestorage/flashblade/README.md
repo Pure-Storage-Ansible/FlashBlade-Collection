@@ -14,7 +14,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
     - some modules require higher versions of Purity//FB
 - purity_fb >=v1.12.2
 - py-pure-client >=v1.13.0
-- python >=v2.7, >=3.2
+- python >=3.6
 - netaddr
 
 ## Idempotency
