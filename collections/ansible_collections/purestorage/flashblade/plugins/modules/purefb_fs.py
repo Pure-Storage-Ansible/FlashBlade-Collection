@@ -517,17 +517,17 @@ def modify_fs(module, blade):
             mod_fs = True
     api_version = blade.api_version.list_versions().versions
     if NFSV4_API_VERSION in api_version:
+        v3_state = v4_state = None
         if module.params["nfsv3"] and not fsys.nfs.v3_enabled:
-            attr["nfs"] = NfsRule(v3_enabled=module.params["nfsv3"])
-            mod_fs = True
+            v3_state = module.params["nfsv3"]
         if not module.params["nfsv3"] and fsys.nfs.v3_enabled:
-            attr["nfs"] = NfsRule(v3_enabled=module.params["nfsv3"])
-            mod_fs = True
+            v3_state = module.params["nfsv3"]
         if module.params["nfsv4"] and not fsys.nfs.v4_1_enabled:
-            attr["nfs"] = NfsRule(v4_1_enabled=module.params["nfsv4"])
-            mod_fs = True
+            v4_state = module.params["nfsv4"]
         if not module.params["nfsv4"] and fsys.nfs.v4_1_enabled:
-            attr["nfs"] = NfsRule(v4_1_enabled=module.params["nfsv4"])
+            v4_state = module.params["nfsv4"]
+        if v3_state is not None or v4_state is not None:
+            attr["nfs"] = NfsRule(v4_1_enabled=v4_state, v3_enabled=v3_state)
             mod_fs = True
         if (
             module.params["nfsv3"]
