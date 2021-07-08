@@ -272,6 +272,27 @@ REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
 
 
+def remove_none(obj):
+    if isinstance(obj, (list, tuple, set)):
+        return type(obj)(remove_none(x) for x in obj if x is not None)
+    elif isinstance(obj, dict):
+        return type(obj)(
+            (remove_none(k), remove_none(v))
+            for k, v in obj.items()
+            if k is not None and v is not None
+        )
+    else:
+        return obj
+
+
+def generate_diff(in_attr):
+    diff = {
+        k: (v.to_dict() if callable(getattr(v, "to_dict", None)) else v)
+        for k, v in in_attr.items()
+    }
+    return json.dumps(remove_none(diff), indent=4) + "\n"
+
+
 def get_fs(module, blade):
     """Return Filesystem or None"""
     fsys = []
@@ -682,7 +703,7 @@ def modify_fs(module, blade):
                             module.params["name"], message
                         )
                     )
-    module.exit_json(changed=changed)
+    module.exit_json(changed=changed, diff={"before": "", "after": generate_diff(attr)})
 
 
 def _delete_fs(module, blade):
