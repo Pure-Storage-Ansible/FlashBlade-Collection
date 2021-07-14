@@ -45,8 +45,9 @@ except ImportError:
     PYPURECLIENT = False
 
 from os import environ
-import platform
+import copy
 import json
+import platform
 
 VERSION = "1.4"
 USER_AGENT_BASE = "Ansible"
@@ -173,9 +174,39 @@ def remove_none(obj):
         return obj
 
 
-def generate_diff(in_attr):
-    diff = {
+def convert_to_dict(_in):
+    # If an object with to_dict function, call it
+    if callable(getattr(_in, "to_dict", None)):
+        _in = _in.to_dict()
+
+    # For each attribute, convert them to dicts
+    dictionary = {
         k: (v.to_dict() if callable(getattr(v, "to_dict", None)) else v)
-        for k, v in in_attr.items()
+        for k, v in _in.items()
     }
-    return json.dumps(remove_none(diff), indent=4) + "\n"
+    return remove_none(dictionary)
+
+
+def merge(a, b, path=None):
+    """ merges b into a"""
+    if path is None:
+        path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass
+            else:
+                a[key] = b[key]
+        else:
+            a[key] = b[key]
+    return a
+
+
+def merge_new_settings(previous, updates):
+    previous = convert_to_dict(previous)
+    updates = convert_to_dict(updates)
+
+    new = merge(copy.deepcopy(previous), updates)
+    return previous, new

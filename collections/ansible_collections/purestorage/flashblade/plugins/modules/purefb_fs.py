@@ -259,11 +259,15 @@ try:
 except ImportError:
     HAS_JSON = False
 
+import pprint
+
+
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
     purefb_argument_spec,
-    generate_diff
+    convert_to_dict,
+    merge_new_settings
 )
 
 
@@ -452,7 +456,7 @@ def create_fs(module, blade):
                             module.params["policy"], module.params["name"]
                         )
                     )
-    module.exit_json(changed=changed, diff={"before": None, "after": generate_diff(fs_obj.to_dict())})
+    module.exit_json(changed=changed, diff={"before": None, "after": convert_to_dict(fs_obj)})
 
 
 def modify_fs(module, blade):
@@ -685,7 +689,9 @@ def modify_fs(module, blade):
                             module.params["name"], message
                         )
                     )
-    module.exit_json(changed=changed, diff={"before": "", "after": generate_diff(attr)})
+
+    current, updated = merge_new_settings(fsys, attr)
+    module.exit_json(changed=changed, diff={"before": pprint.pformat(current), "after": pprint.pformat(updated)})
 
 
 def _delete_fs(module, blade):
