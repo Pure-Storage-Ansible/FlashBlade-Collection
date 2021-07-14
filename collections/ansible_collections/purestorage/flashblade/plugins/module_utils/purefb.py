@@ -46,6 +46,7 @@ except ImportError:
 
 from os import environ
 import platform
+import json
 
 VERSION = "1.4"
 USER_AGENT_BASE = "Ansible"
@@ -157,3 +158,24 @@ def purefb_argument_spec():
         fb_url=dict(),
         api_token=dict(no_log=True),
     )
+
+
+def remove_none(obj):
+    if isinstance(obj, (list, tuple, set)):
+        return type(obj)(remove_none(x) for x in obj if x is not None)
+    elif isinstance(obj, dict):
+        return type(obj)(
+            (remove_none(k), remove_none(v))
+            for k, v in obj.items()
+            if k is not None and v is not None
+        )
+    else:
+        return obj
+
+
+def generate_diff(in_attr):
+    diff = {
+        k: (v.to_dict() if callable(getattr(v, "to_dict", None)) else v)
+        for k, v in in_attr.items()
+    }
+    return json.dumps(remove_none(diff), indent=4) + "\n"

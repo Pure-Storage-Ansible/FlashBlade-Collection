@@ -263,6 +263,7 @@ from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
     purefb_argument_spec,
+    generate_diff
 )
 
 
@@ -271,26 +272,6 @@ NFSV4_API_VERSION = "1.6"
 REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
 
-
-def remove_none(obj):
-    if isinstance(obj, (list, tuple, set)):
-        return type(obj)(remove_none(x) for x in obj if x is not None)
-    elif isinstance(obj, dict):
-        return type(obj)(
-            (remove_none(k), remove_none(v))
-            for k, v in obj.items()
-            if k is not None and v is not None
-        )
-    else:
-        return obj
-
-
-def generate_diff(in_attr):
-    diff = {
-        k: (v.to_dict() if callable(getattr(v, "to_dict", None)) else v)
-        for k, v in in_attr.items()
-    }
-    return json.dumps(remove_none(diff), indent=4) + "\n"
 
 
 def get_fs(module, blade):
@@ -307,140 +288,141 @@ def get_fs(module, blade):
 def create_fs(module, blade):
     """Create Filesystem"""
     changed = True
-    if not module.check_mode:
-        try:
-            if not module.params["nfs_rules"]:
-                module.params["nfs_rules"] = "*(rw,no_root_squash)"
-            if module.params["size"]:
-                size = human_to_bytes(module.params["size"])
-            else:
-                size = 0
+    if not module.params["nfs_rules"]:
+        module.params["nfs_rules"] = "*(rw,no_root_squash)"
+    if module.params["size"]:
+        size = human_to_bytes(module.params["size"])
+    else:
+        size = 0
 
-            if module.params["user_quota"]:
-                user_quota = human_to_bytes(module.params["user_quota"])
-            else:
-                user_quota = None
-            if module.params["group_quota"]:
-                group_quota = human_to_bytes(module.params["group_quota"])
-            else:
-                group_quota = None
+    if module.params["user_quota"]:
+        user_quota = human_to_bytes(module.params["user_quota"])
+    else:
+        user_quota = None
+    if module.params["group_quota"]:
+        group_quota = human_to_bytes(module.params["group_quota"])
+    else:
+        group_quota = None
 
-            api_version = blade.api_version.list_versions().versions
-            if HARD_LIMIT_API_VERSION in api_version:
-                if NFSV4_API_VERSION in api_version:
-                    if REPLICATION_API_VERSION in api_version:
-                        if MULTIPROTOCOL_API_VERSION in api_version:
-                            if module.params["access_control"] == "nfs" and not (
-                                module.params["nfsv3"] or module.params["nfsv4"]
-                            ):
-                                module.fail_json(
-                                    msg="Cannot set access_control to nfs when NFS is not enabled."
-                                )
-                            if (
-                                module.params["access_control"]
-                                in ["smb", "independent"]
-                                and not module.params["smb"]
-                            ):
-                                module.fail_json(
-                                    msg="Cannot set access_control to smb or independent when SMB is not enabled."
-                                )
-                            if module.params["safeguard_acls"] and (
-                                module.params["access_control"]
-                                in ["mode-bits", "independent"]
-                                or module.params["smb"]
-                            ):
-                                module.fail_json(
-                                    msg="ACL Safeguarding cannot be enabled with SMB or if access_control is mode-bits or independent."
-                                )
-                            fs_obj = FileSystem(
-                                name=module.params["name"],
-                                provisioned=size,
-                                fast_remove_directory_enabled=module.params[
-                                    "fastremove"
-                                ],
-                                hard_limit_enabled=module.params["hard_limit"],
-                                snapshot_directory_enabled=module.params["snapshot"],
-                                nfs=NfsRule(
-                                    v3_enabled=module.params["nfsv3"],
-                                    v4_1_enabled=module.params["nfsv4"],
-                                    rules=module.params["nfs_rules"],
-                                ),
-                                smb=SmbRule(enabled=module.params["smb"]),
-                                http=ProtocolRule(enabled=module.params["http"]),
-                                multi_protocol=MultiProtocolRule(
-                                    safeguard_acls=module.params["safeguard_acls"],
-                                    access_control_style=module.params[
-                                        "access_control"
-                                    ],
-                                ),
-                                default_user_quota=user_quota,
-                                default_group_quota=group_quota,
-                            )
-                        else:
-                            fs_obj = FileSystem(
-                                name=module.params["name"],
-                                provisioned=size,
-                                fast_remove_directory_enabled=module.params[
-                                    "fastremove"
-                                ],
-                                hard_limit_enabled=module.params["hard_limit"],
-                                snapshot_directory_enabled=module.params["snapshot"],
-                                nfs=NfsRule(
-                                    v3_enabled=module.params["nfsv3"],
-                                    v4_1_enabled=module.params["nfsv4"],
-                                    rules=module.params["nfs_rules"],
-                                ),
-                                smb=SmbRule(
-                                    enabled=module.params["smb"],
-                                    acl_mode=module.params["smb_aclmode"],
-                                ),
-                                http=ProtocolRule(enabled=module.params["http"]),
-                                default_user_quota=user_quota,
-                                default_group_quota=group_quota,
-                            )
-                    else:
-                        fs_obj = FileSystem(
-                            name=module.params["name"],
-                            provisioned=size,
-                            fast_remove_directory_enabled=module.params["fastremove"],
-                            hard_limit_enabled=module.params["hard_limit"],
-                            snapshot_directory_enabled=module.params["snapshot"],
-                            nfs=NfsRule(
-                                v3_enabled=module.params["nfsv3"],
-                                v4_1_enabled=module.params["nfsv4"],
-                                rules=module.params["nfs_rules"],
-                            ),
-                            smb=ProtocolRule(enabled=module.params["smb"]),
-                            http=ProtocolRule(enabled=module.params["http"]),
-                            default_user_quota=user_quota,
-                            default_group_quota=group_quota,
+    api_version = blade.api_version.list_versions().versions
+    if HARD_LIMIT_API_VERSION in api_version:
+        if NFSV4_API_VERSION in api_version:
+            if REPLICATION_API_VERSION in api_version:
+                if MULTIPROTOCOL_API_VERSION in api_version:
+                    if module.params["access_control"] == "nfs" and not (
+                        module.params["nfsv3"] or module.params["nfsv4"]
+                    ):
+                        module.fail_json(
+                            msg="Cannot set access_control to nfs when NFS is not enabled."
                         )
+                    if (
+                        module.params["access_control"]
+                        in ["smb", "independent"]
+                        and not module.params["smb"]
+                    ):
+                        module.fail_json(
+                            msg="Cannot set access_control to smb or independent when SMB is not enabled."
+                        )
+                    if module.params["safeguard_acls"] and (
+                        module.params["access_control"]
+                        in ["mode-bits", "independent"]
+                        or module.params["smb"]
+                    ):
+                        module.fail_json(
+                            msg="ACL Safeguarding cannot be enabled with SMB or if access_control is mode-bits or independent."
+                        )
+                    fs_obj = FileSystem(
+                        name=module.params["name"],
+                        provisioned=size,
+                        fast_remove_directory_enabled=module.params[
+                            "fastremove"
+                        ],
+                        hard_limit_enabled=module.params["hard_limit"],
+                        snapshot_directory_enabled=module.params["snapshot"],
+                        nfs=NfsRule(
+                            v3_enabled=module.params["nfsv3"],
+                            v4_1_enabled=module.params["nfsv4"],
+                            rules=module.params["nfs_rules"],
+                        ),
+                        smb=SmbRule(enabled=module.params["smb"]),
+                        http=ProtocolRule(enabled=module.params["http"]),
+                        multi_protocol=MultiProtocolRule(
+                            safeguard_acls=module.params["safeguard_acls"],
+                            access_control_style=module.params[
+                                "access_control"
+                            ],
+                        ),
+                        default_user_quota=user_quota,
+                        default_group_quota=group_quota,
+                    )
                 else:
                     fs_obj = FileSystem(
                         name=module.params["name"],
                         provisioned=size,
-                        fast_remove_directory_enabled=module.params["fastremove"],
+                        fast_remove_directory_enabled=module.params[
+                            "fastremove"
+                        ],
                         hard_limit_enabled=module.params["hard_limit"],
                         snapshot_directory_enabled=module.params["snapshot"],
                         nfs=NfsRule(
-                            enabled=module.params["nfsv3"],
+                            v3_enabled=module.params["nfsv3"],
+                            v4_1_enabled=module.params["nfsv4"],
                             rules=module.params["nfs_rules"],
                         ),
-                        smb=ProtocolRule(enabled=module.params["smb"]),
+                        smb=SmbRule(
+                            enabled=module.params["smb"],
+                            acl_mode=module.params["smb_aclmode"],
+                        ),
                         http=ProtocolRule(enabled=module.params["http"]),
+                        default_user_quota=user_quota,
+                        default_group_quota=group_quota,
                     )
             else:
                 fs_obj = FileSystem(
                     name=module.params["name"],
                     provisioned=size,
                     fast_remove_directory_enabled=module.params["fastremove"],
+                    hard_limit_enabled=module.params["hard_limit"],
                     snapshot_directory_enabled=module.params["snapshot"],
                     nfs=NfsRule(
-                        enabled=module.params["nfs"], rules=module.params["nfs_rules"]
+                        v3_enabled=module.params["nfsv3"],
+                        v4_1_enabled=module.params["nfsv4"],
+                        rules=module.params["nfs_rules"],
                     ),
                     smb=ProtocolRule(enabled=module.params["smb"]),
                     http=ProtocolRule(enabled=module.params["http"]),
+                    default_user_quota=user_quota,
+                    default_group_quota=group_quota,
                 )
+        else:
+            fs_obj = FileSystem(
+                name=module.params["name"],
+                provisioned=size,
+                fast_remove_directory_enabled=module.params["fastremove"],
+                hard_limit_enabled=module.params["hard_limit"],
+                snapshot_directory_enabled=module.params["snapshot"],
+                nfs=NfsRule(
+                    enabled=module.params["nfsv3"],
+                    rules=module.params["nfs_rules"],
+                ),
+                smb=ProtocolRule(enabled=module.params["smb"]),
+                http=ProtocolRule(enabled=module.params["http"]),
+            )
+    else:
+        fs_obj = FileSystem(
+            name=module.params["name"],
+            provisioned=size,
+            fast_remove_directory_enabled=module.params["fastremove"],
+            snapshot_directory_enabled=module.params["snapshot"],
+            nfs=NfsRule(
+                enabled=module.params["nfs"], rules=module.params["nfs_rules"]
+            ),
+            smb=ProtocolRule(enabled=module.params["smb"]),
+            http=ProtocolRule(enabled=module.params["http"]),
+        )
+
+    if not module.check_mode:
+        try:
             blade.file_systems.create_file_systems(fs_obj)
         except rest.ApiException as err:
             message = json.loads(err.body)["errors"][0]["message"]
@@ -470,7 +452,7 @@ def create_fs(module, blade):
                             module.params["policy"], module.params["name"]
                         )
                     )
-    module.exit_json(changed=changed)
+    module.exit_json(changed=changed, diff={"before": None, "after": generate_diff(fs_obj.to_dict())})
 
 
 def modify_fs(module, blade):
