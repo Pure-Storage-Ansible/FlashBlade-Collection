@@ -267,7 +267,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_blade,
     purefb_argument_spec,
     convert_to_dict,
-    merge_new_settings
+    merge_new_settings,
 )
 
 
@@ -275,7 +275,6 @@ HARD_LIMIT_API_VERSION = "1.4"
 NFSV4_API_VERSION = "1.6"
 REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
-
 
 
 def get_fs(module, blade):
@@ -328,8 +327,7 @@ def create_fs(module, blade):
                             msg="Cannot set access_control to smb or independent when SMB is not enabled."
                         )
                     if module.params["safeguard_acls"] and (
-                        module.params["access_control"]
-                        in ["mode-bits", "independent"]
+                        module.params["access_control"] in ["mode-bits", "independent"]
                         or module.params["smb"]
                     ):
                         module.fail_json(
@@ -338,9 +336,7 @@ def create_fs(module, blade):
                     fs_obj = FileSystem(
                         name=module.params["name"],
                         provisioned=size,
-                        fast_remove_directory_enabled=module.params[
-                            "fastremove"
-                        ],
+                        fast_remove_directory_enabled=module.params["fastremove"],
                         hard_limit_enabled=module.params["hard_limit"],
                         snapshot_directory_enabled=module.params["snapshot"],
                         nfs=NfsRule(
@@ -352,9 +348,7 @@ def create_fs(module, blade):
                         http=ProtocolRule(enabled=module.params["http"]),
                         multi_protocol=MultiProtocolRule(
                             safeguard_acls=module.params["safeguard_acls"],
-                            access_control_style=module.params[
-                                "access_control"
-                            ],
+                            access_control_style=module.params["access_control"],
                         ),
                         default_user_quota=user_quota,
                         default_group_quota=group_quota,
@@ -363,9 +357,7 @@ def create_fs(module, blade):
                     fs_obj = FileSystem(
                         name=module.params["name"],
                         provisioned=size,
-                        fast_remove_directory_enabled=module.params[
-                            "fastremove"
-                        ],
+                        fast_remove_directory_enabled=module.params["fastremove"],
                         hard_limit_enabled=module.params["hard_limit"],
                         snapshot_directory_enabled=module.params["snapshot"],
                         nfs=NfsRule(
@@ -418,9 +410,7 @@ def create_fs(module, blade):
             provisioned=size,
             fast_remove_directory_enabled=module.params["fastremove"],
             snapshot_directory_enabled=module.params["snapshot"],
-            nfs=NfsRule(
-                enabled=module.params["nfs"], rules=module.params["nfs_rules"]
-            ),
+            nfs=NfsRule(enabled=module.params["nfs"], rules=module.params["nfs_rules"]),
             smb=ProtocolRule(enabled=module.params["smb"]),
             http=ProtocolRule(enabled=module.params["http"]),
         )
@@ -456,7 +446,9 @@ def create_fs(module, blade):
                             module.params["policy"], module.params["name"]
                         )
                     )
-    module.exit_json(changed=changed, diff={"before": None, "after": convert_to_dict(fs_obj)})
+    module.exit_json(
+        changed=changed, diff={"before": None, "after": convert_to_dict(fs_obj)}
+    )
 
 
 def modify_fs(module, blade):
@@ -691,7 +683,10 @@ def modify_fs(module, blade):
                     )
 
     current, updated = merge_new_settings(fsys, attr)
-    module.exit_json(changed=changed, diff={"before": pprint.pformat(current), "after": pprint.pformat(updated)})
+    module.exit_json(
+        changed=changed,
+        diff={"before": pprint.pformat(current), "after": pprint.pformat(updated)}
+    )
 
 
 def _delete_fs(module, blade):
