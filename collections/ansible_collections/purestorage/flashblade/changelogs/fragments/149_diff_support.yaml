@@ -1,0 +1,3 @@
+minor_changes:
+  - purefb_fs - add diff for creating a filesystem
+  - purefb_fs - add diff for modifying a filesystem
