@@ -319,8 +319,7 @@ def create_fs(module, blade):
                             msg="Cannot set access_control to nfs when NFS is not enabled."
                         )
                     if (
-                        module.params["access_control"]
-                        in ["smb", "independent"]
+                        module.params["access_control"] in ["smb", "independent"]
                         and not module.params["smb"]
                     ):
                         module.fail_json(
@@ -685,7 +684,7 @@ def modify_fs(module, blade):
     current, updated = merge_new_settings(fsys, attr)
     module.exit_json(
         changed=changed,
-        diff={"before": pprint.pformat(current), "after": pprint.pformat(updated)}
+        diff={"before": pprint.pformat(current), "after": pprint.pformat(updated)},
     )
 
 
