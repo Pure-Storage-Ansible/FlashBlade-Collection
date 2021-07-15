@@ -32,6 +32,8 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+import sys
+
 HAS_PURITY_FB = True
 try:
     from purity_fb import PurityFb
@@ -165,11 +167,14 @@ def remove_none(obj):
     if isinstance(obj, (list, tuple, set)):
         return type(obj)(remove_none(x) for x in obj if x is not None)
     elif isinstance(obj, dict):
-        return type(obj)(
-            (remove_none(k), remove_none(v))
-            for k, v in obj.items()
-            if k is not None and v is not None
-        )
+        if sys.version_info.major == 2 and sys.version_info.minor < 7:
+            pass
+        else:
+            return type(obj)(
+                (remove_none(k), remove_none(obj[k]))
+                for k in obj.keys()
+                if k is not None and obj[k] is not None
+            )
     else:
         return obj
 
@@ -180,10 +185,16 @@ def convert_to_dict(_in):
         _in = _in.to_dict()
 
     # For each attribute, convert them to dicts
-    dictionary = {
-        k: (v.to_dict() if callable(getattr(v, "to_dict", None)) else v)
-        for k, v in _in.items()
-    }
+    if sys.version_info.major == 2 and sys.version_info.minor < 7:
+        pass
+    else:
+        dictionary = {}
+        for k in _in.keys():
+            dictionary[k] = (
+                _in[k].to_dict()
+                if callable(getattr(_in[k], "to_dict", None))
+                else _in[k]
+            )
     return remove_none(dictionary)
 
 
