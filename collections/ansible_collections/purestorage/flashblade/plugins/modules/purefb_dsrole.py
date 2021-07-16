@@ -93,10 +93,14 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+import pprint
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
     purefb_argument_spec,
+    convert_to_dict,
+    merge_new_settings,
 )
 
 
@@ -106,6 +110,9 @@ def update_role(module, blade):
     role = blade.directory_services.list_directory_services_roles(
         names=[module.params["role"]]
     )
+    new_role = DirectoryServiceRole(
+        group_base=module.params["group_base"], group=module.params["group"]
+    )
     if (
         role.items[0].group_base != module.params["group_base"]
         or role.items[0].group != module.params["group"]
@@ -113,11 +120,8 @@ def update_role(module, blade):
         changed = True
         if not module.check_mode:
             try:
-                role = DirectoryServiceRole(
-                    group_base=module.params["group_base"], group=module.params["group"]
-                )
                 blade.directory_services.update_directory_services_roles(
-                    names=[module.params["role"]], directory_service_role=role
+                    names=[module.params["role"]], directory_service_role=new_role
                 )
             except Exception:
                 module.fail_json(
@@ -125,7 +129,11 @@ def update_role(module, blade):
                         module.params["role"]
                     )
                 )
-    module.exit_json(changed=changed)
+    current, updated = merge_new_settings(role.items[0], new_role)
+    module.exit_json(
+        changed=changed,
+        diff={"before": pprint.pformat(current), "after": pprint.pformat(updated)},
+    )
 
 
 def delete_role(module, blade):
@@ -149,11 +157,11 @@ def delete_role(module, blade):
 def create_role(module, blade):
     """Create Directory Service Role"""
     changed = True
+    role = DirectoryServiceRole(
+        group_base=module.params["group_base"], group=module.params["group"]
+    )
     if not module.check_mode:
         try:
-            role = DirectoryServiceRole(
-                group_base=module.params["group_base"], group=module.params["group"]
-            )
             blade.directory_services.update_directory_services_roles(
                 names=[module.params["role"]], directory_service_role=role
             )
@@ -163,7 +171,9 @@ def create_role(module, blade):
                     module.params["role"]
                 )
             )
-    module.exit_json(changed=changed)
+    module.exit_json(
+        changed=changed, diff={"before": None, "after": convert_to_dict(role)}
+    )
 
 
 def main():
