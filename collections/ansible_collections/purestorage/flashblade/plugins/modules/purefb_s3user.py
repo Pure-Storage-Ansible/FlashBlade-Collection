@@ -399,6 +399,14 @@ def main():
                 MIN_REQUIRED_API_VERSION
             )
         )
+    upper = False
+    for element in module.params["account"]:
+        if element.isupper():
+            upper = True
+            break
+    if upper:
+        module.warn("Changing account name to lowercase...")
+        module.params["account"] = module.params["account"].lower()
 
     s3acc = get_s3acc(module, blade)
     if not s3acc:
