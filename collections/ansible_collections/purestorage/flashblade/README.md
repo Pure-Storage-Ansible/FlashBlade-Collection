@@ -39,6 +39,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_eula - manage EULA on FlashBlade
 - purefb_fs - manage filesystems on a FlashBlade
 - purefb_fs_replica - manage filesystem replica links on a FlashBlade
+- purefb_groupquota - manage individual group quotas on FlashBlade filesystems
 - purefb_info - get information about the configuration of a FlashBlade
 - purefb_inventory - get information about the hardware inventory of a FlashBlade
 - purefb_keytabs - manage FlashBlade Kerberos keytabs
@@ -62,6 +63,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_timeout - manage FlashBlade GUI timeout
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 - purefb_userpolicy - manage FlashBlade Object Store User Access Policies
+- purefb_userquota - manage individual user quotas on FlashBlade filesystems
 - purefb_virtualhost - manage FlashBlade Object Store Virtual Hosts
 
 ## Instructions

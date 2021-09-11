@@ -153,6 +153,15 @@ def main():
             )
         )
 
+    upper = False
+    for element in module.params["name"]:
+        if element.isupper():
+            upper = True
+            break
+    if upper:
+        module.warn("Changing account name to lowercase...")
+        module.params["name"] = module.params["name"].lower()
+
     s3acc = get_s3acc(module, blade)
 
     if state == "absent" and s3acc:
