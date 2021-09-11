@@ -1046,7 +1046,7 @@ def main():
         dict(gather_subset=dict(default="minimum", type="list", elements="str"))
     )
 
-    module = AnsibleModule(argument_spec, supports_check_mode=False)
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_blade(module)
     versions = blade.api_version.list_versions().versions
