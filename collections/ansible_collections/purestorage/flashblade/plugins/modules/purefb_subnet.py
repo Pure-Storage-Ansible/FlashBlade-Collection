@@ -37,6 +37,12 @@ options:
     default: present
     choices: [ "present", "absent" ]
     type: str
+  lag:
+    description:
+      - Name of the Link Aggreation Group to use for the subnet.
+    default: uplink
+    type: str
+    version_added: "1.7.0"
   gateway:
     description:
       - IPv4 or IPv6 address of subnet gateway.
@@ -52,6 +58,7 @@ options:
     description:
       - IPv4 or IPv6 address associated with the subnet.
       - Supply the prefix length (CIDR) as well as the IP address.
+      - Required for subnet creation.
     required: false
     type: str
   vlan:
@@ -72,6 +79,7 @@ EXAMPLES = """
     gateway: 10.21.200.1
     mtu: 9000
     vlan: 2200
+    lag: bar
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
@@ -99,7 +107,7 @@ RETURN = """
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import Subnet
+    from purity_fb import Subnet, Reference
 except ImportError:
     HAS_PURITY_FB = False
 
@@ -134,6 +142,8 @@ def get_subnet(module, blade):
 def create_subnet(module, blade):
     """Create Subnet"""
     changed = True
+    if not module.params["prefix"]:
+        module.fail_json(msg="prefix is required for subnet creation")
     if not module.check_mode:
         subnet = []
         subnet.append(module.params["name"])
@@ -146,6 +156,7 @@ def create_subnet(module, blade):
                         vlan=module.params["vlan"],
                         mtu=module.params["mtu"],
                         gateway=module.params["gateway"],
+                        link_aggregation_group=Reference(name=module.params["lag"]),
                     ),
                 )
             else:
@@ -155,6 +166,7 @@ def create_subnet(module, blade):
                         prefix=module.params["prefix"],
                         vlan=module.params["vlan"],
                         mtu=module.params["mtu"],
+                        link_aggregation_group=Reference(name=module.params["lag"]),
                     ),
                 )
         except Exception:
@@ -255,6 +267,7 @@ def main():
             name=dict(required=True),
             state=dict(default="present", choices=["present", "absent"]),
             gateway=dict(),
+            lag=dict(type="str", default="uplink"),
             mtu=dict(type="int", default=1500),
             prefix=dict(),
             vlan=dict(type="int", default=0),
@@ -279,6 +292,13 @@ def main():
     if MINIMUM_API_VERSION not in api_version:
         module.fail_json(msg="Upgrade Purity//FB to enable this module")
     subnet = get_subnet(module, blade)
+    try:
+        blade.link_aggregation_groups.list_link_aggregation_groups(
+            names=[module.params["lag"]]
+        )
+    except Exception:
+        module.fail_json(msg="LAG {0} does not exist.".format(module.params["lag"]))
+
     if state == "present":
         if not (1280 <= module.params["mtu"] <= 9216):
             module.fail_json(
