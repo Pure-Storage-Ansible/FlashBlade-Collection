@@ -942,6 +942,7 @@ def generate_bucket_dict(module, blade):
             "created": buckets.items[bckt].created,
             "destroyed": buckets.items[bckt].destroyed,
             "time_remaining": buckets.items[bckt].time_remaining,
+            "lifecycle_rules": {},
         }
     api_version = blade.api_version.list_versions().versions
     if LIFECYCLE_API_VERSION in api_version:
