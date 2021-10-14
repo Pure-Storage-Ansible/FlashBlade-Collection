@@ -16,6 +16,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - py-pure-client >=v1.18.0
 - python >=3.6
 - netaddr
+- datetime
 
 ## Idempotency
 

@@ -94,6 +94,41 @@ purefb_info:
                 "public_key": null
             },
         },
+        "buckets": {
+            "central": {
+                "account_name": "jake",
+                "created": 1628900154000,
+                "data_reduction": null,
+                "destroyed": false,
+                "id": "43758f09-9e71-7bf7-5757-2028a95a2b65",
+                "lifecycle_rules": {},
+                "object_count": 0,
+                "snapshot_space": 0,
+                "time_remaining": null,
+                "total_physical_space": 0,
+                "unique_space": 0,
+                "versioning": "none",
+                "virtual_space": 0
+            },
+            "test": {
+                "account_name": "acme",
+                "created": 1630591952000,
+                "data_reduction": 3.6,
+                "destroyed": false,
+                "id": "d5f6149c-fbef-f3c5-58b6-8fd143110ba9",
+                "lifecycle_rules": {
+                    "test": {
+                        "abort_incomplete_multipart_uploads_after (days)": 1,
+                        "cleanup_expired_object_delete_marker": true,
+                        "enabled": true,
+                        "keep_current_version_for (days)": null,
+                        "keep_current_version_until": "2023-12-21",
+                        "keep_previous_version_for (days)": null,
+                        "prefix": "foo"
+                    }
+                },
+            },
+        },
         "capacity": {
             "aggregate": {
                 "data_reduction": 1.1179228,
@@ -398,6 +433,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from datetime import datetime
 
 
 MIN_REQUIRED_API_VERSION = "1.3"
@@ -407,6 +443,7 @@ CERT_GROUPS_API_VERSION = "1.8"
 REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
 MIN_32_API = "2.0"
+LIFECYCLE_API_VERSION = "2.1"
 
 
 def generate_default_dict(module, blade):
@@ -887,7 +924,7 @@ def generate_policies_dict(blade):
     return policies_info
 
 
-def generate_bucket_dict(blade):
+def generate_bucket_dict(module, blade):
     bucket_info = {}
     buckets = blade.buckets.list_buckets()
     for bckt in range(0, len(buckets.items)):
@@ -905,7 +942,50 @@ def generate_bucket_dict(blade):
             "created": buckets.items[bckt].created,
             "destroyed": buckets.items[bckt].destroyed,
             "time_remaining": buckets.items[bckt].time_remaining,
+            "lifecycle_rules": {},
         }
+    api_version = blade.api_version.list_versions().versions
+    if LIFECYCLE_API_VERSION in api_version:
+        blade = get_system(module)
+        all_rules = list(blade.get_lifecycle_rules().items)
+        for rule in range(0, len(all_rules)):
+            bucket_name = all_rules[rule].bucket.name
+            rule_id = all_rules[rule].rule_id
+            if all_rules[rule].keep_previous_version_for:
+                keep_previous_version_for = int(
+                    all_rules[rule].keep_previous_version_for / 86400000
+                )
+            else:
+                keep_previous_version_for = None
+            if all_rules[rule].keep_current_version_for:
+                keep_current_version_for = int(
+                    all_rules[rule].keep_current_version_for / 86400000
+                )
+            else:
+                keep_current_version_for = None
+            if all_rules[rule].abort_incomplete_multipart_uploads_after:
+                abort_incomplete_multipart_uploads_after = int(
+                    all_rules[rule].abort_incomplete_multipart_uploads_after / 86400000
+                )
+            else:
+                abort_incomplete_multipart_uploads_after = None
+            if all_rules[rule].keep_current_version_until:
+                keep_current_version_until = datetime.fromtimestamp(
+                    all_rules[rule].keep_current_version_until / 1000
+                ).strftime("%Y-%m-%d")
+            else:
+                keep_current_version_until = None
+            bucket_info[bucket_name]["lifecycle_rules"][rule_id] = {
+                "keep_previous_version_for (days)": keep_previous_version_for,
+                "keep_current_version_for (days)": keep_current_version_for,
+                "keep_current_version_until": keep_current_version_until,
+                "prefix": all_rules[rule].prefix,
+                "enabled": all_rules[rule].enabled,
+                "abort_incomplete_multipart_uploads_after (days)": abort_incomplete_multipart_uploads_after,
+                "cleanup_expired_object_delete_marker": all_rules[
+                    rule
+                ].cleanup_expired_object_delete_marker,
+            }
     return bucket_info
 
 
@@ -1109,7 +1189,7 @@ def main():
     if "snapshots" in subset or "all" in subset:
         info["snapshots"] = generate_snap_dict(blade)
     if "buckets" in subset or "all" in subset:
-        info["buckets"] = generate_bucket_dict(blade)
+        info["buckets"] = generate_bucket_dict(module, blade)
     api_version = blade.api_version.list_versions().versions
     if POLICIES_API_VERSION in api_version:
         if "policies" in subset or "all" in subset:
