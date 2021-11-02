@@ -257,7 +257,8 @@ purefb_info:
             "object_store_users": 1,
             "purity_version": "2.2.0",
             "snapshots": 1,
-            "total_capacity": 83359896948925
+            "total_capacity": 83359896948925,
+            "smb_mode": "native"
         },
         "filesystems": {
             "k8s-pvc-d24b1357-579e-11e8-811f-ecf4bbc88f54": {
@@ -444,6 +445,8 @@ REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
 MIN_32_API = "2.0"
 LIFECYCLE_API_VERSION = "2.1"
+SMB_MODE_API_VERSION = "2.2"
+NFS_POLICY_API_VERSION = "2.3"
 
 
 def generate_default_dict(module, blade):
@@ -490,17 +493,26 @@ def generate_default_dict(module, blade):
     # This section is just for REST 2.x features
     if MIN_32_API in api_version:
         blade = get_system(module)
+        blade_info = list(blade.get_arrays().items)[0]
         default_info["object_store_virtual_hosts"] = len(
             blade.get_object_store_virtual_hosts().items
         )
         default_info["api_clients"] = len(blade.get_api_clients().items)
-        default_info["idle_timeout"] = int(
-            list(blade.get_arrays().items)[0].idle_timeout / 60000
-        )
+        default_info["idle_timeout"] = int(blade_info.idle_timeout / 60000)
         if list(blade.get_arrays_eula().items)[0].signature.accepted:
             default_info["EULA"] = "Signed"
         else:
             default_info["EULA"] = "Not Signed"
+        if NFS_POLICY_API_VERSION in api_version:
+            admin_settings = list(blade.get_admin_settings().items)[0]
+            default_info["max_login_attempts"] = admin_settings.max_login_attempts
+            default_info["min_password_length"] = admin_settings.min_password_length
+            default_info["lockout_duration"] = (
+                str(admin_settings.lockout_duration / 1000) + " seconds"
+            )
+        if NFS_POLICY_API_VERSION in api_version:
+            default_info["smb_mode"] = blade_info.smb_mode
+
     return default_info
 
 
@@ -717,7 +729,7 @@ def generate_lag_dict(blade):
     return lag_info
 
 
-def generate_admin_dict(blade):
+def generate_admin_dict(module, blade):
     admin_info = {}
     api_version = blade.api_version.list_versions().versions
     if MULTIPROTOCOL_API_VERSION in api_version:
@@ -729,6 +741,27 @@ def generate_admin_dict(blade):
                 "public_key": admins.items[admin].public_key,
                 "local": admins.items[admin].is_local,
             }
+
+    if MIN_32_API in api_version:
+        bladev2 = get_system(module)
+        admins = list(bladev2.get_admins().items)
+        for admin in range(0, len(admins)):
+            admin_name = admins[admin].name
+            if admins[admin].api_token.expires_at:
+                admin_info[admin_name]["token_expires"] = datetime.fromtimestamp(
+                    admins[admin].api_token.expires_at / 1000
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                admin_info[admin_name]["token_expires"] = None
+            admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
+                admins[admin].api_token.created_at / 1000
+            ).strftime("%Y-%m-%d %H:%M:%S")
+            admin_info[admin_name]["role"] = admins[admin].role.name
+            if NFS_POLICY_API_VERSION in api_version:
+                admin_info[admin_name]["locked"] = admins[admin].locked
+                admin_info[admin_name]["lockout_remaining"] = admins[
+                    admin
+                ].lockout_remaining
     return admin_info
 
 
@@ -781,7 +814,7 @@ def generate_file_repl_dict(blade):
     return file_repl_info
 
 
-def generate_bucket_repl_dict(blade):
+def generate_bucket_repl_dict(module, blade):
     bucket_repl_info = {}
     bucket_links = blade.bucket_replica_links.list_bucket_replica_links()
     for linkcnt in range(0, len(bucket_links.items)):
@@ -794,7 +827,25 @@ def generate_bucket_repl_dict(blade):
             "remote_bucket": bucket_links.items[linkcnt].remote_bucket.name,
             "remote_credentials": bucket_links.items[linkcnt].remote_credentials.name,
             "recovery_point": bucket_links.items[linkcnt].recovery_point,
+            "object_backlog": {},
         }
+    api_version = blade.api_version.list_versions().versions
+    if SMB_MODE_API_VERSION in api_version:
+        blade = get_system(module)
+        bucket_links = list(blade.get_bucket_replica_links().items)
+        for linkcnt in range(0, len(bucket_links)):
+            bucket_name = bucket_links[linkcnt].local_bucket.name
+            bucket_repl_info[bucket_name]["object_backlog"] = {
+                "bytes_count": bucket_links[linkcnt].object_backlog.bytes_count,
+                "delete_ops_count": bucket_links[
+                    linkcnt
+                ].object_backlog.delete_ops_count,
+                "other_ops_count": bucket_links[linkcnt].object_backlog.other_ops_count,
+                "put_ops_count": bucket_links[linkcnt].object_backlog.put_ops_count,
+            }
+            bucket_repl_info[bucket_name]["cascading_enabled"] = bucket_links[
+                linkcnt
+            ].cascading_enabled
     return bucket_repl_info
 
 
@@ -1024,6 +1075,40 @@ def generate_ad_dict(blade):
     return ad_info
 
 
+def generate_object_store_access_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_object_store_access_policies().items)
+    for policy in range(0, len(policies)):
+        policy_name = policies[policy].name
+        policies_info[policy_name] = {
+            "ARN": policies[policy].arn,
+            "description": policies[policy].description,
+            "enabled": policies[policy].enabled,
+            "local": policies[policy].is_local,
+            "rules": [],
+        }
+        for rule in range(0, len(policies[policy].rules)):
+            policies_info[policy_name]["rules"].append(
+                {
+                    "actions": policies[policy].rules[rule].actions,
+                    "conditions": {
+                        "source_ips": policies[policy]
+                        .rules[rule]
+                        .conditions.source_ips,
+                        "s3_delimiters": policies[policy]
+                        .rules[rule]
+                        .conditions.s3_delimiters,
+                        "s3_prefixes": policies[policy]
+                        .rules[rule]
+                        .conditions.s3_prefixes,
+                    },
+                    "effect": policies[policy].rules[rule].effect,
+                    "name": policies[policy].rules[rule].name,
+                }
+            )
+    return policies_info
+
+
 def generate_object_store_accounts_dict(blade):
     account_info = {}
     accounts = list(blade.get_object_store_accounts().items)
@@ -1137,7 +1222,8 @@ def main():
                 MIN_REQUIRED_API_VERSION
             )
         )
-
+    if not module.params["gather_subset"]:
+        module.params["gather_subset"] = ["minimum"]
     subset = [test.lower() for test in module.params["gather_subset"]]
     valid_subsets = (
         "all",
@@ -1185,7 +1271,7 @@ def main():
     if "filesystems" in subset or "all" in subset:
         info["filesystems"] = generate_fs_dict(blade)
     if "admins" in subset or "all" in subset:
-        info["admins"] = generate_admin_dict(blade)
+        info["admins"] = generate_admin_dict(module, blade)
     if "snapshots" in subset or "all" in subset:
         info["snapshots"] = generate_snap_dict(blade)
     if "buckets" in subset or "all" in subset:
@@ -1194,12 +1280,13 @@ def main():
     if POLICIES_API_VERSION in api_version:
         if "policies" in subset or "all" in subset:
             info["policies"] = generate_policies_dict(blade)
+            info["snapshot_policies"] = generate_policies_dict(blade)
     if REPLICATION_API_VERSION in api_version:
         if "arrays" in subset or "all" in subset:
             info["arrays"] = generate_array_conn_dict(blade)
         if "replication" in subset or "all" in subset:
             info["file_replication"] = generate_file_repl_dict(blade)
-            info["bucket_replication"] = generate_bucket_repl_dict(blade)
+            info["bucket_replication"] = generate_bucket_repl_dict(module, blade)
             info["snap_transfers"] = generate_snap_transfer_dict(blade)
             info["remote_credentials"] = generate_remote_creds_dict(blade)
             info["targets"] = generate_targets_dict(blade)
@@ -1212,6 +1299,11 @@ def main():
             info["active_directory"] = generate_ad_dict(blade)
         if "kerberos" in subset or "all" in subset:
             info["kerberos"] = generate_kerb_dict(blade)
+        if "policies" in subset or "all" in subset:
+            if SMB_MODE_API_VERSION in api_version:
+                info["access_policies"] = generate_object_store_access_policies_dict(
+                    blade
+                )
 
     module.exit_json(changed=False, purefb_info=info)
 
