@@ -119,17 +119,18 @@ def get_system(module):
                 target=blade_name,
                 api_token=api,
                 user_agent=user_agent,
-                version=list(temp_system.get_version().items)[-1]
+                version=list(temp_system.get_versions().items)[-1],
+            )
         elif environ.get("PUREFB_URL") and environ.get("PUREFB_API"):
             temp_system = flashblade.Client(
                 target=(environ.get("PUREFB_URL")),
                 api_token=(environ.get("PUREFB_API")),
             )
-            system = flashblade.Client(
+            temp_system = flashblade.Client(
                 target=(environ.get("PUREFB_URL")),
                 api_token=(environ.get("PUREFB_API")),
                 user_agent=user_agent,
-                version=list(temp_system.get_version().items)[-1]
+                version=list(temp_system.get_versions().items)[-1],
             )
         else:
             module.fail_json(
