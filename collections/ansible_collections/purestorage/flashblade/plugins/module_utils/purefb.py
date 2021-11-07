@@ -111,39 +111,37 @@ def get_system(module):
 
     if HAS_PYPURECLIENT:
         if blade_name and api:
-            # TODO:(SD) when the page has been added to Purity//FB
-            #            versions = requests.get(
-            #                "https://" + blade_name + "/api/api_version", verify=False
-            #            )
-            #            api_version = versions.json()["version"][-1]
+            temp_system = flashblade.Client(
+                target=blade_name,
+                api_token=api,
+            )
             system = flashblade.Client(
                 target=blade_name,
                 api_token=api,
                 user_agent=user_agent,
-                #                version=api_version,
-            )
+                version=list(temp_system.get_version().items)[-1]
         elif environ.get("PUREFB_URL") and environ.get("PUREFB_API"):
-            # TODO:(SD) when the page has been added to Purity//FB
-            #            versions = requests.get(
-            #                "https://" + environ.get("PUREFB_URL") + "/api/api_version", verify=False
-            #            )
-            #            api_version = versions.json()["version"][-1]
+            temp_system = flashblade.Client(
+                target=(environ.get("PUREFB_URL")),
+                api_token=(environ.get("PUREFB_API")),
+            )
             system = flashblade.Client(
                 target=(environ.get("PUREFB_URL")),
                 api_token=(environ.get("PUREFB_API")),
                 user_agent=user_agent,
-                #                version=api_version,
+                version=list(temp_system.get_version().items)[-1]
             )
         else:
             module.fail_json(
                 msg="You must set PUREFB_URL and PUREFB_API environment variables "
                 "or the fb_url and api_token module arguments"
             )
-        try:
-            system.get_hardware()
-        except Exception:
+        res = system.get_hardware()
+        if res.status_code != 200:
             module.fail_json(
-                msg="Pure Storage FlashBlade authentication failed. Check your credentials"
+                msg="Pure Storage FlashBlade authentication failed. Error: {0}".format(
+                    res.errors[0].message
+                )
             )
     else:
         module.fail_json(msg="pypureclient SDK not installed.")
