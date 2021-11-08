@@ -5,6 +5,23 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.8.0
+======
+
+Minor Changes
+-------------
+
+- purefb.py - Add check to ensure FlashBlade uses the latest REST version possible for Purity version installed
+- purefb_info - Add object lifecycles rules to bucket subset
+- purefb_lifecycle - Add support for updated object lifecycle rules. See documentation for details of new parameters.
+- purefb_lifecycle - Change `keep_for` parameter to be `keep_previous_for`. `keep_for` is deprecated and will be removed in a later version.
+- purefb_user - Add support for managing user public key and user unlock
+
+Known Issues
+------------
+
+- purefb_lag - The mac_address field in the response is not populated. This will be fixed in a future FlashBlade update.
+
 v1.7.0
 ======
 
