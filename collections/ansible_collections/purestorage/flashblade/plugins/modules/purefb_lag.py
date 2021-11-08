@@ -129,7 +129,6 @@ def delete_lag(module, blade):
 def update_lag(module, blade):
     """Update Link Aggregation Group"""
     changed = False
-    not_current = False
     used_ports = []
     current_ports = []
     lagfact = []

@@ -205,7 +205,7 @@ plugins:
       namespace: ''
       version_added: 1.6.0
     purefb_user:
-      description: Modify FlashBlade local user account password
+      description: Modify FlashBlade user accounts
       name: purefb_user
       namespace: ''
       version_added: 1.0.0
@@ -228,4 +228,4 @@ plugins:
   shell: {}
   strategy: {}
   vars: {}
-version: 1.7.0
+version: 1.8.0

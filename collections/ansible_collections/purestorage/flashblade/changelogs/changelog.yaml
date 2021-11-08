@@ -209,3 +209,24 @@ releases:
       name: purefb_userquota
       namespace: ''
     release_date: '2021-09-27'
+  1.8.0:
+    changes:
+      known_issues:
+      - purefb_lag - The mac_address field in the response is not populated. This
+        will be fixed in a future FlashBlade update.
+      minor_changes:
+      - purefb.py - Add check to ensure FlashBlade uses the latest REST version possible
+        for Purity version installed
+      - purefb_info - Add object lifecycles rules to bucket subset
+      - purefb_lifecycle - Add support for updated object lifecycle rules. See documentation
+        for details of new parameters.
+      - purefb_lifecycle - Change `keep_for` parameter to be `keep_previous_for`.
+        `keep_for` is deprecated and will be removed in a later version.
+      - purefb_user - Add support for managing user public key and user unlock
+    fragments:
+    - 161_add_lifecycle_info.yaml
+    - 162_new_lifecycle.yaml
+    - 163_admin_key.yaml
+    - 166_lag_mac_note.yaml
+    - 167_fix_logins.yaml
+    release_date: '2021-11-08'
