@@ -5,6 +5,14 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.8.1
+======
+
+Minor Changes
+-------------
+
+- purefb.py - Use latest `pypureclient` SDK with fix for "best fit". No longer requires double login to negotiate best API version.
+
 v1.8.0
 ======
 
