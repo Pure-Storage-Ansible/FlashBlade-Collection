@@ -230,3 +230,11 @@ releases:
     - 166_lag_mac_note.yaml
     - 167_fix_logins.yaml
     release_date: '2021-11-08'
+  1.8.1:
+    changes:
+      minor_changes:
+      - purefb.py - Use latest `pypureclient` SDK with fix for "best fit". No longer
+        requires double login to negotiate best API version.
+    fragments:
+    - 169_pypureclient_fix.yaml
+    release_date: '2021-11-11'
