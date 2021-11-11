@@ -13,9 +13,10 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - Pure Storage FlashBlade system running Purity//FB 2.1.2 or later
     - some modules require higher versions of Purity//FB
 - purity_fb >=v1.12.2
-- py-pure-client >=v1.13.0
+- py-pure-client >=v1.20.1
 - python >=3.6
 - netaddr
+- datetime
 
 ## Idempotency
 
@@ -43,6 +44,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_info - get information about the configuration of a FlashBlade
 - purefb_inventory - get information about the hardware inventory of a FlashBlade
 - purefb_keytabs - manage FlashBlade Kerberos keytabs
+- purefb_lag - manage FlashBlade Link Aggregation Groups
 - purefb_lifecycle - manage FlashBlade Bucket Lifecycle Rules
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade

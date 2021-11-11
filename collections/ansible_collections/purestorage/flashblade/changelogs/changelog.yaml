@@ -35,7 +35,7 @@ releases:
         | This changlelog describes all changes made to the modules and plugins included
         in this collection since Ansible 2.9.0
 
-'
+        '
     fragments:
     - v1.3.0_summary.yaml
     release_date: '2020-08-06'
@@ -176,3 +176,65 @@ releases:
       name: purefb_virtualhost
       namespace: ''
     release_date: '2021-04-21'
+  1.7.0:
+    changes:
+      bugfixes:
+      - purefb_fs - Fix bug where changing the state of both NFS v3 and v4.1 at the
+        same time ignored one of these.
+      - purefb_s3acc - Ensure S3 Account Name is always lowercase
+      - purefb_s3user - Ensure S3 Account Name is always lowercase
+      - purefb_subnet - Allow subnet creation with no gateway
+      minor_changes:
+      - purefb_groupquota - New module for manage individual filesystem group quotas
+      - purefb_lag - Add support for LAG management
+      - purefb_snap - Add support for immeadiate snapshot to remote connected FlashBlade
+      - purefb_subnet - Add support for multiple LAGs.
+      - purefb_userquota - New module for manage individual filesystem user quotas
+    fragments:
+    - 147_no_gateway.yaml
+    - 150_fix_joint_nfs_version_change.yaml
+    - 152_s3acc_lowercase.yaml
+    - 153_add_quota.yaml
+    - 154_add_snap_now.yaml
+    - 158_support_lags.yaml
+    - 159_add_lag.yaml
+    modules:
+    - description: Manage filesystem group quotas
+      name: purefb_groupquota
+      namespace: ''
+    - description: Manage FlashBlade Link Aggregation Groups
+      name: purefb_lag
+      namespace: ''
+    - description: Manage filesystem user quotas
+      name: purefb_userquota
+      namespace: ''
+    release_date: '2021-09-27'
+  1.8.0:
+    changes:
+      known_issues:
+      - purefb_lag - The mac_address field in the response is not populated. This
+        will be fixed in a future FlashBlade update.
+      minor_changes:
+      - purefb.py - Add check to ensure FlashBlade uses the latest REST version possible
+        for Purity version installed
+      - purefb_info - Add object lifecycles rules to bucket subset
+      - purefb_lifecycle - Add support for updated object lifecycle rules. See documentation
+        for details of new parameters.
+      - purefb_lifecycle - Change `keep_for` parameter to be `keep_previous_for`.
+        `keep_for` is deprecated and will be removed in a later version.
+      - purefb_user - Add support for managing user public key and user unlock
+    fragments:
+    - 161_add_lifecycle_info.yaml
+    - 162_new_lifecycle.yaml
+    - 163_admin_key.yaml
+    - 166_lag_mac_note.yaml
+    - 167_fix_logins.yaml
+    release_date: '2021-11-08'
+  1.8.1:
+    changes:
+      minor_changes:
+      - purefb.py - Use latest `pypureclient` SDK with fix for "best fit". No longer
+        requires double login to negotiate best API version.
+    fragments:
+    - 169_pypureclient_fix.yaml
+    release_date: '2021-11-11'

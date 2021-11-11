@@ -5,6 +5,58 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.8.1
+======
+
+Minor Changes
+-------------
+
+- purefb.py - Use latest `pypureclient` SDK with fix for "best fit". No longer requires double login to negotiate best API version.
+
+v1.8.0
+======
+
+Minor Changes
+-------------
+
+- purefb.py - Add check to ensure FlashBlade uses the latest REST version possible for Purity version installed
+- purefb_info - Add object lifecycles rules to bucket subset
+- purefb_lifecycle - Add support for updated object lifecycle rules. See documentation for details of new parameters.
+- purefb_lifecycle - Change `keep_for` parameter to be `keep_previous_for`. `keep_for` is deprecated and will be removed in a later version.
+- purefb_user - Add support for managing user public key and user unlock
+
+Known Issues
+------------
+
+- purefb_lag - The mac_address field in the response is not populated. This will be fixed in a future FlashBlade update.
+
+v1.7.0
+======
+
+Minor Changes
+-------------
+
+- purefb_groupquota - New module for manage individual filesystem group quotas
+- purefb_lag - Add support for LAG management
+- purefb_snap - Add support for immeadiate snapshot to remote connected FlashBlade
+- purefb_subnet - Add support for multiple LAGs.
+- purefb_userquota - New module for manage individual filesystem user quotas
+
+Bugfixes
+--------
+
+- purefb_fs - Fix bug where changing the state of both NFS v3 and v4.1 at the same time ignored one of these.
+- purefb_s3acc - Ensure S3 Account Name is always lowercase
+- purefb_s3user - Ensure S3 Account Name is always lowercase
+- purefb_subnet - Allow subnet creation with no gateway
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_groupquota - Manage filesystem group quotas
+- purestorage.flashblade.purefb_lag - Manage FlashBlade Link Aggregation Groups
+- purestorage.flashblade.purefb_userquota - Manage filesystem user quotas
+
 v1.6.0
 ======
 
