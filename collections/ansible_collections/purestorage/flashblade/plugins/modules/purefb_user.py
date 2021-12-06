@@ -151,7 +151,7 @@ def update_user(module, blade):
                 res = bladev2.patch_admins(
                     names=[module.params["name"]], admin=my_admin
                 )
-                if res.error_code != 200:
+                if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to change public_key for {0}.".format(
                             module.params["name"]
@@ -165,7 +165,7 @@ def update_user(module, blade):
                     res = bladev2.patch_admins(
                         names=[module.params["name"]], admin=my_admin
                     )
-                    if res.error_code != 200:
+                    if res.status_code != 200:
                         module.fail_json(
                             msg="Failed to unlock user {0}.".format(
                                 module.params["name"]
