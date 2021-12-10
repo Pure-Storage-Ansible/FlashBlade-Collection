@@ -47,7 +47,7 @@ options:
     - Type of policy
     default: snapshot
     type: str
-    choices: [ snapshot, access ]
+    choices: [ snapshot, access, nfs ]
     version_added: "1.9.0"
   account:
     description:
@@ -196,6 +196,86 @@ options:
     - To amend policy members use the I(purefb_fs_replica) module
     type: list
     elements: str
+  access:
+    description:
+    - Specifies access control for the export policy rule
+    type: str
+    choices: [ root-squash, all-squash, no-squash ]
+    default: root-squash
+    version_added: "1.9.0"
+  anonuid:
+    description:
+    - Any user whose UID is affected by an I(access) of `root_squash` or `all_squash`
+      will have their UID mapped to anonuid.
+      The defaultis null, which means 65534.
+      Use "" to clear.
+    type: str
+    version_added: "1.9.0"
+  anongid:
+    description:
+    - Any user whose GID is affected by an I(access) of `root_squash` or `all_squash`
+      will have their GID mapped to anongid.
+      The default anongid is null, which means 65534.
+      Use "" to clear.
+    type: str
+    version_added: "1.9.0"
+  atime:
+    description:
+    - After a read operation has occurred, the inode access time is updated only if any
+      of the following conditions is true; the previous access time is less than the
+      inode modify time, the previous access time is less than the inode change time,
+      or the previous access time is more than 24 hours ago.
+    - If set to false, disables the update of inode access times after read operations.
+    type: bool
+    default: True
+    version_added: "1.9.0"
+  client:
+    description:
+    - Specifies the clients that will be permitted to access the export.
+    - Accepted notation is a single IP address, subnet in CIDR notation, netgroup, or
+      anonymous (*).
+    type: str
+    default: "*"
+    version_added: "1.9.0"
+  fileid_32bit:
+    description:
+    - Whether the file id is 32 bits or not.
+    type: bool
+    default: False
+    version_added: "1.9.0"
+  permission:
+    description:
+    - Specifies which read-write client access permissions are allowed for the export.
+    type: str
+    choices: [ rw, ro ]
+    default: ro
+    version_added: "1.9.0"
+  secure:
+    description:
+    - If true, this prevents NFS access to client connections coming from non-reserved ports.
+    - If false, allows NFS access to client connections coming from non-reserved ports.
+    - Applies to NFSv3, NFSv4.1, and auxiliary protocols MOUNT and NLM.
+    type: bool
+    default: false
+    version_added: "1.9.0"
+  security:
+    description:
+    - The security flavors to use for accessing files on this mount point.
+    - If the server does not support the requested flavor, the mount operation fails.
+    - I(sys) trusts the client to specify users identity.
+    - I(krb) provides cryptographic proof of a users identity in each RPC request.
+    - I(krb5i) adds integrity checking to krb5, to ensure the data has not been tampered with.
+    - I(krb5p) adds integrity checking and encryption to krb5.
+    type: list
+    elements: str
+    choices: [ sys, krb5, krb5i, krb5p ]
+    default: sys
+    version_added: "1.9.0"
+  before_rule:
+    description:
+    - The index of the client rule to insert or move a client rule before.
+    type: int
+    version_added: "1.9.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -261,6 +341,48 @@ EXAMPLES = r"""
     object_resources: "*"
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create an empty NFS export policy
+  purefb_policy:
+    name: test_nfs_export
+    policy_type: nfs
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create an NFS export policy with a client rule
+  purefb_policy:
+    name: test_nfs_export
+    policy_type: nfs
+    atime: true
+    client: "10.0.1.0/24"
+    secure: true
+    security: [sys, krb5]
+    permission: rw
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create a new rule for an existing NFS export policy
+  purefb_policy:
+    name: test_nfs_export
+    policy_type: nfs
+    atime: true
+    client: "10.0.2.0/24"
+    security: sys
+    permission: ro
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Delete a client rule from an NFS export policy
+  purefb_policy:
+    name: test_nfs_export
+    client: "10.0.1.0/24"
+    policy_type: nfs
+    state: absent
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Delete an NFS export policy and all associated rules
+  purefb_policy:
+    name: test_nfs_export
+    state: absent
+    policy_type: nfs
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a rule from an object store access policy
   purefb_policy:
     name: test_os_policy_rule
@@ -323,6 +445,8 @@ try:
         PolicyRuleObjectAccessCondition,
         PolicyRuleObjectAccessPost,
         PolicyRuleObjectAccess,
+        NfsExportPolicy,
+        NfsExportPolicyRule,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -349,6 +473,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 MIN_REQUIRED_API_VERSION = "1.9"
 ACCESS_POLICY_API_VERSION = "2.2"
+NFS_POLICY_API_VERSION = "2.3"
 
 
 def _convert_to_millisecs(hour):
@@ -440,6 +565,344 @@ def _get_local_tz(module, timezone="UTC"):
         module.warn("Could not find /etc/timezone. Assuming UTC")
 
     return timezone
+
+
+def delete_nfs_policy(module, blade):
+    """Delete NFS Export Policy, or Rule
+
+    If client is provided then delete the client rule if it exists.
+    """
+
+    changed = False
+    policy_delete = True
+    if module.params["client"]:
+        policy_delete = False
+        res = blade.get_nfs_export_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="client='" + module.params["client"] + "'",
+        )
+        if res.status_code == 200:
+            if res.total_item_count == 0:
+                pass
+            elif res.total_item_count == 1:
+                rule = list(res.items)[0]
+                if module.params["client"] == rule.client:
+                    changed = True
+                    if not module.check_mode:
+                        res = blade.delete_nfs_export_policies_rules(names=[rule.name])
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to delete rule for client {0} in policy {1}. "
+                                "Error: {2}".format(
+                                    module.params["client"],
+                                    module.params["name"],
+                                    res.errors[0].message,
+                                )
+                            )
+            else:
+                rules = list(res.items)
+                for cli in range(0, len(rules)):
+                    if rules[cli].client == "*":
+                        changed = True
+                        if not module.check_mode:
+                            res = blade.delete_nfs_export_policies_rules(
+                                names=[rules[cli].name]
+                            )
+                            if res.status_code != 200:
+                                module.fail_json(
+                                    msg="Failed to delete rule for client {0} in policy {1}. "
+                                    "Error: {2}".format(
+                                        module.params["client"],
+                                        module.params["name"],
+                                        res.errors[0].message,
+                                    )
+                                )
+    if policy_delete:
+        changed = True
+        if not module.check_mode:
+            res = blade.delete_nfs_export_policies(names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to delete export policy {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def update_nfs_policy(module, blade):
+    """Update NFS Export Policy Rule"""
+
+    changed = False
+    if module.params["client"]:
+        current_policy_rule = blade.get_nfs_export_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="client='" + module.params["client"] + "'",
+        )
+        if (
+            current_policy_rule.status_code == 200
+            and current_policy_rule.total_item_count == 0
+        ):
+            rule = NfsExportPolicyRule(
+                client=module.params["client"],
+                permission=module.params["permission"],
+                access=module.params["access"],
+                anonuid=module.params["anonuid"],
+                anongid=module.params["anongid"],
+                fileid_32bit=module.params["fileid_32bit"],
+                atime=module.params["atime"],
+                secure=module.params["secure"],
+                security=module.params["security"],
+            )
+            changed = True
+            if not module.check_mode:
+                if module.params["before_rule"]:
+                    before_name = (
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    )
+                    res = blade.post_nfs_export_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                        before_rule_name=before_name,
+                    )
+                else:
+                    res = blade.post_nfs_export_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                    )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to create rule for client {0} "
+                        "in export policy {1}. Error: {2}".format(
+                            module.params["client"],
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+        else:
+            rules = list(current_policy_rule.items)
+            cli_count = None
+            done = False
+            if module.params["client"] == "*":
+                for cli in range(0, len(rules)):
+                    if rules[cli].client == "*":
+                        cli_count = cli
+                if not cli_count:
+                    rule = NfsExportPolicyRule(
+                        client=module.params["client"],
+                        permission=module.params["permission"],
+                        access=module.params["access"],
+                        anonuid=module.params["anonuid"],
+                        anongid=module.params["anongid"],
+                        fileid_32bit=module.params["fileid_32bit"],
+                        atime=module.params["atime"],
+                        secure=module.params["secure"],
+                        security=module.params["security"],
+                    )
+                    done = True
+                    changed = True
+                    if not module.check_mode:
+                        if module.params["before_rule"]:
+                            res = blade.post_object_store_access_policies_rules(
+                                policy_names=[module.params["name"]],
+                                rule=rule,
+                                before_rule_name=(
+                                    module.params["name"]
+                                    + "."
+                                    + str(module.params["before_rule"]),
+                                ),
+                            )
+                        else:
+                            res = blade.post_nfs_export_policies_rules(
+                                policy_names=[module.params["name"]],
+                                rule=rule,
+                            )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to create rule for "
+                                "client {0} in export policy {1}. Error: {2}".format(
+                                    module.params["client"],
+                                    module.params["name"],
+                                    res.errors[0].message,
+                                )
+                            )
+            if not done:
+                old_policy_rule = rules[0]
+                current_rule = {
+                    "anongid": getattr(old_policy_rule, "anongid", None),
+                    "anonuid": getattr(old_policy_rule, "anonuid", None),
+                    "atime": old_policy_rule.atime,
+                    "client": sorted(old_policy_rule.client),
+                    "fileid_32bit": old_policy_rule.fileid_32bit,
+                    "permission": sorted(old_policy_rule.permission),
+                    "secure": old_policy_rule.secure,
+                    "security": sorted(old_policy_rule.security),
+                }
+                if module.params["permission"]:
+                    new_permission = sorted(module.params["permission"])
+                else:
+                    new_permission = sorted(current_rule["permission"])
+                if module.params["client"]:
+                    new_client = sorted(module.params["client"])
+                else:
+                    new_client = sorted(current_rule["client"])
+                if module.params["security"]:
+                    new_security = sorted(module.params["security"])
+                else:
+                    new_security = sorted(current_rule["security"])
+                if module.params["anongid"]:
+                    new_anongid = module.params["anongid"]
+                else:
+                    new_anongid = current_rule["anongid"]
+                if module.params["anonuid"]:
+                    new_anonuid = module.params["anonuid"]
+                else:
+                    new_anonuid = current_rule["anonuid"]
+                if module.params["atime"] != current_rule["atime"]:
+                    new_atime = module.params["atime"]
+                else:
+                    new_atime = current_rule["atime"]
+                if module.params["secure"] != current_rule["secure"]:
+                    new_secure = module.params["secure"]
+                else:
+                    new_secure = current_rule["secure"]
+                if module.params["fileid_32bit"] != current_rule["fileid_32bit"]:
+                    new_fileid_32bit = module.params["fileid_32bit"]
+                else:
+                    new_fileid_32bit = current_rule["fileid_32bit"]
+                new_rule = {
+                    "anongid": new_anongid,
+                    "anonuid": new_anonuid,
+                    "atime": new_atime,
+                    "client": new_client,
+                    "fileid_32bit": new_fileid_32bit,
+                    "permission": new_permission,
+                    "secure": new_secure,
+                    "security": new_security,
+                }
+                if current_rule != new_rule:
+                    changed = True
+                    if not module.check_mode:
+                        rule = NfsExportPolicyRule(
+                            client=module.params["client"],
+                            permission=module.params["permission"],
+                            access=module.params["access"],
+                            anonuid=module.params["anonuid"],
+                            anongid=module.params["anongid"],
+                            fileid_32bit=module.params["fileid_32bit"],
+                            atime=module.params["atime"],
+                            secure=module.params["secure"],
+                            security=module.params["security"],
+                        )
+                        res = blade.patch_nfs_export_policies_rules(
+                            names=[
+                                module.params["name"] + "." + str(old_policy_rule.index)
+                            ],
+                            rule=rule,
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to update NFS export rule {0}. Error: {1}".format(
+                                    module.params["name"]
+                                    + "."
+                                    + str(old_policy_rule.index),
+                                    res.errors[0].message,
+                                )
+                            )
+                if (
+                    module.params["before_rule"]
+                    and module.params["before_rule"] != old_policy_rule.index
+                ):
+                    changed = True
+                    if not module.check_mode:
+                        before_name = (
+                            module.params["name"]
+                            + "."
+                            + str(module.params["before_rule"])
+                        )
+                        res = blade.patch_nfs_export_policies_rules(
+                            names=[
+                                module.params["name"] + "." + str(old_policy_rule.index)
+                            ],
+                            rule=NfsExportPolicyRule(),
+                            before_rule_name=before_name,
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to move NFS export rule {0}. Error: {1}".format(
+                                    module.params["name"]
+                                    + "."
+                                    + str(old_policy_rule.index),
+                                    res.errors[0].message,
+                                )
+                            )
+    current_policy = list(
+        blade.get_nfs_export_policies(names=[module.params["name"]]).items
+    )[0]
+    if current_policy.enabled != module.params["enabled"]:
+        changed = True
+        if not module.check_mode:
+            res = blade.patch_nfs_export_policies(
+                policy=NfsExportPolicy(enabled=module.params["enabled"]),
+                names=[module.params["name"]],
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to change state of nfs export policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def create_nfs_policy(module, blade):
+    """Create NFS Export Policy"""
+    changed = True
+    if not module.check_mode:
+        res = blade.post_nfs_export_policies(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create nfs export policy {0}.Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+        if not module.params["enabled"]:
+            res = blade.patch_nfs_export_policies(
+                policy=NfsExportPolicy(enabled=False), names=[module.params["name"]]
+            )
+            if res.status_code != 200:
+                blade.delete_nfs_export_policies(names=[module.params["name"]])
+                module.fail_json(
+                    msg="Failed to create nfs export policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+        if not module.params["client"]:
+            module.fail_json(msg="client is required to create a new rule")
+        else:
+            rule = NfsExportPolicyRule(
+                client=module.params["client"],
+                permission=module.params["permission"],
+                access=module.params["access"],
+                anonuid=module.params["anonuid"],
+                anongid=module.params["anongid"],
+                fileid_32bit=module.params["fileid_32bit"],
+                atime=module.params["atime"],
+                secure=module.params["secure"],
+                security=module.params["security"],
+            )
+            res = blade.post_object_store_access_policies_rules(
+                policy_names=[module.params["name"]],
+                rule=rule,
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to rule for policy {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
+                    )
+                )
+    module.exit_json(changed=changed)
 
 
 def delete_os_policy(module, blade):
@@ -597,7 +1060,7 @@ def create_os_policy(module, blade):
     module.exit_json(changed=changed)
 
 
-def update_os_policy(module, blade, policy):
+def update_os_policy(module, blade):
     """Update Object Store Access Policy"""
     changed = False
     policy_name = module.params["account"] + "/" + module.params["name"]
@@ -1024,7 +1487,7 @@ def main():
                 type="str", default="present", choices=["absent", "present", "copy"]
             ),
             policy_type=dict(
-                type="str", default="snapshot", choices=["snapshot", "access"]
+                type="str", default="snapshot", choices=["snapshot", "access", "nfs"]
             ),
             enabled=dict(type="bool", default=True),
             timezone=dict(type="str"),
@@ -1074,11 +1537,33 @@ def main():
             s3_delimiters=dict(type="list", elements="str"),
             ignore_enforcement=dict(type="bool", default=True),
             force_delete=dict(type="bool", default=False),
+            access=dict(
+                type="str",
+                choices=["root-squash", "all-squash", "no-squash"],
+                default="root-squash",
+            ),
+            anonuid=dict(type="str"),
+            anongid=dict(type="str"),
+            atime=dict(type="bool", default=True),
+            client=dict(type="str", default="*"),
+            fileid_32bit=dict(type="bool", default=False),
+            permission=dict(type="str", choices=["rw", "ro"], default="ro"),
+            secure=dict(type="bool", default=False),
+            security=dict(
+                type="list",
+                elements="str",
+                choices=["sys", "krb5", "krb5i", "krb5p"],
+                default=["sys"],
+            ),
+            before_rule=dict(type="int"),
         )
     )
 
     required_together = [["keep_for", "every"]]
-    required_if = [["policy_type", "access", ["account", "name"]]]
+    required_if = [
+        ["policy_type", "access", ["account", "name"]],
+        ["policy_type", "nfs", ["name"]],
+    ]
 
     module = AnsibleModule(
         argument_spec,
@@ -1098,8 +1583,10 @@ def main():
     if module.params["policy_type"] == "access":
         if ACCESS_POLICY_API_VERSION not in versions:
             module.fail_json(
-                msg="Minimum FlashBlade REST version required: {0}".format(
-                    MIN_REQUIRED_API_VERSION
+                msg=(
+                    "Minimum FlashBlade REST version required: {0}".format(
+                        ACCESS_POLICY_API_VERSION
+                    )
                 )
             )
         if not HAS_PYPURECLIENT:
@@ -1114,9 +1601,8 @@ def main():
         except AttributeError:
             policy = None
         if module.params["user"]:
-            policy_name = module.params["account"] + "/" + module.params["name"]
             member_name = module.params["account"] + "/" + module.params["user"]
-            res = blade.get_object_store_users(filter='name="member_name"')
+            res = blade.get_object_store_users(filter='name="' + member_name + "'")
             if res.status_code != 200:
                 module.fail_json(
                     msg="User {0} does not exist in account {1}".format(
@@ -1146,6 +1632,43 @@ def main():
                     )
                 )
             copy_os_policy_rule(module, blade)
+    elif module.params["policy_type"] == "nfs":
+        if NFS_POLICY_API_VERSION not in versions:
+            module.fail_json(
+                msg=(
+                    "Minimum FlashBlade REST version required: {0}".format(
+                        NFS_POLICY_API_VERSION
+                    )
+                )
+            )
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required for this module")
+        blade = get_system(module)
+        try:
+            policy = list(
+                blade.get_nfs_export_policies(names=[module.params["name"]]).items
+            )[0]
+        except AttributeError:
+            policy = None
+        if policy and state == "present":
+            if module.params["before_rule"]:
+                res = blade.get_nfs_export_policies_rules(
+                    policy_names=[module.params["name"]],
+                    names=[
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    ],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Rule index {0} does not exist.".format(
+                            module.params["before_rule"]
+                        )
+                    )
+            update_nfs_policy(module, blade)
+        elif state == "present" and not policy:
+            create_nfs_policy(module, blade)
+        elif state == "absent" and policy:
+            delete_nfs_policy(module, blade)
     else:
         if MIN_REQUIRED_API_VERSION not in versions:
             module.fail_json(
