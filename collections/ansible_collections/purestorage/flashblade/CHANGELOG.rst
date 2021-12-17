@@ -5,6 +5,21 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.9.0
+======
+
+Minor Changes
+-------------
+
+- purefb_admin - New module to manage global admin settings
+- purefb_connect - Add support for array connections to have bandwidth throttling defined
+- purefb_fs - Add support for NFS export policies
+- purefb_info - Add NFS export policies and rules
+- purefb_info - Show array connections bandwidth throttle information
+- purefb_policy - Add NFS export policies, with rules, as a new policy type
+- purefb_policy - Add support for Object Store Access Policies, associated rules and user grants
+- purefb_policy - New parameter `policy_type` added. For backwards compatability, default to `snapshot` if not provided.
+
 v1.8.1
 ======
 
