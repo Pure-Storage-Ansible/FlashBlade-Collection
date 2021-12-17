@@ -1150,6 +1150,34 @@ def generate_object_store_access_policies_dict(blade):
     return policies_info
 
 
+def generate_nfs_export_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_nfs_export_policies().items)
+    for policy in range(0, len(policies)):
+        policy_name = policies[policy].name
+        policies_info[policy_name] = {
+            "local": policies[policy].is_local,
+            "enabled": policies[policy].enabled,
+            "rules": [],
+        }
+        for rule in range(0, len(policies[policy].rules)):
+            policies_info[policy_name]["rules"].append(
+                {
+                    "access": policies[policy].rules[rule].access,
+                    "anongid": policies[policy].rules[rule].anongid,
+                    "anonuid": policies[policy].rules[rule].anonuid,
+                    "atime": policies[policy].rules[rule].atime,
+                    "client": policies[policy].rules[rule].client,
+                    "fileid_32bit": policies[policy].rules[rule].fileid_32bit,
+                    "permission": policies[policy].rules[rule].permission,
+                    "secure": policies[policy].rules[rule].secure,
+                    "security": policies[policy].rules[rule].security,
+                    "index": policies[policy].rules[rule].index,
+                }
+            )
+    return policies_info
+
+
 def generate_object_store_accounts_dict(blade):
     account_info = {}
     accounts = list(blade.get_object_store_accounts().items)
@@ -1206,7 +1234,11 @@ def generate_object_store_accounts_dict(blade):
     return account_info
 
 
-def generate_fs_dict(blade):
+def generate_fs_dict(module, blade):
+    api_version = blade.api_version.list_versions().versions
+    if NFS_POLICY_API_VERSION in api_version:
+        bladev2 = get_system(module)
+        fsys_v2 = list(bladev2.get_file_systems().items)
     fs_info = {}
     fsys = blade.file_systems.list_file_systems()
     for fsystem in range(0, len(fsys.items)):
@@ -1216,13 +1248,14 @@ def generate_fs_dict(blade):
             "snapshot_enabled": fsys.items[fsystem].snapshot_directory_enabled,
             "provisioned": fsys.items[fsystem].provisioned,
             "destroyed": fsys.items[fsystem].destroyed,
+            "nfs_rules": fsys.items[fsystem].nfs.rules,
+            "nfs_v3": getattr(fsys.items[fsystem].nfs, "v3_enabled", False),
+            "nfs_v4_1": getattr(fsys.items[fsystem].nfs, "v4_1_enabled", False),
         }
         if fsys.items[fsystem].http.enabled:
             fs_info[share]["http"] = fsys.items[fsystem].http.enabled
         if fsys.items[fsystem].smb.enabled:
             fs_info[share]["smb_mode"] = fsys.items[fsystem].smb.acl_mode
-        if fsys.items[fsystem].nfs.enabled:
-            fs_info[share]["nfs_rules"] = fsys.items[fsystem].nfs.rules
         api_version = blade.api_version.list_versions().versions
         if MULTIPROTOCOL_API_VERSION in api_version:
             fs_info[share]["multi_protocol"] = {
@@ -1243,6 +1276,12 @@ def generate_fs_dict(blade):
                 "is_local": fsys.items[fsystem].source.is_local,
                 "name": fsys.items[fsystem].source.name,
             }
+            if NFS_POLICY_API_VERSION in api_version:
+                for v2fs in range(0, len(fsys_v2)):
+                    if fsys_v2[v2fs].name == share:
+                        fs_info[share]["export_policy"] = fsys_v2[
+                            v2fs
+                        ].nfs.export_policy.name
     return fs_info
 
 
@@ -1295,6 +1334,7 @@ def main():
 
     info = {}
 
+    api_version = blade.api_version.list_versions().versions
     if "minimum" in subset or "all" in subset:
         info["default"] = generate_default_dict(module, blade)
     if "performance" in subset or "all" in subset:
@@ -1310,14 +1350,13 @@ def main():
     if "subnets" in subset or "all" in subset:
         info["subnet"] = generate_subnet_dict(blade)
     if "filesystems" in subset or "all" in subset:
-        info["filesystems"] = generate_fs_dict(blade)
+        info["filesystems"] = generate_fs_dict(module, blade)
     if "admins" in subset or "all" in subset:
         info["admins"] = generate_admin_dict(module, blade)
     if "snapshots" in subset or "all" in subset:
         info["snapshots"] = generate_snap_dict(blade)
     if "buckets" in subset or "all" in subset:
         info["buckets"] = generate_bucket_dict(module, blade)
-    api_version = blade.api_version.list_versions().versions
     if POLICIES_API_VERSION in api_version:
         if "policies" in subset or "all" in subset:
             info["policies"] = generate_policies_dict(blade)
@@ -1345,6 +1384,8 @@ def main():
                 info["access_policies"] = generate_object_store_access_policies_dict(
                     blade
                 )
+            if NFS_POLICY_API_VERSION in api_version:
+                info["export_policies"] = generate_nfs_export_policies_dict(blade)
 
     module.exit_json(changed=False, purefb_info=info)
 
