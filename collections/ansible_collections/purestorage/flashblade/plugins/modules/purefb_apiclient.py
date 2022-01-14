@@ -67,7 +67,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create API token ansible-token
-  purefb_apiclient:
+  purestorage.flashblade.purefb_apiclient:
     name: ansible_token
     issuer: "Pure_Storage"
     token_ttl: 3000
@@ -77,21 +77,21 @@ EXAMPLES = r"""
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Disable API CLient
-  purefb_apiclient:
+  purestorage.flashblade.purefb_apiclient:
     name: ansible_token
     enabled: false
     fb_url: 10.10.10.2
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Enable API CLient
-  purefb_apiclient:
+  purestorage.flashblade.purefb_apiclient:
     name: ansible_token
     enabled: true
     fb_url: 10.10.10.2
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Delete API Client
-  purefb_apiclient:
+  purestorage.flashblade.purefb_apiclient:
     state: absent
     name: ansible_token
     fb_url: 10.10.10.2

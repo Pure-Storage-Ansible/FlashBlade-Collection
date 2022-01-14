@@ -22,7 +22,7 @@ short_description: Manage remote S3-capable targets for a FlashBlade
 description:
 - Manage remote S3-capable targets for a FlashBlade system
 - Use this for non-FlashBlade targets.
-- Use I(purefb_connect) for FlashBlade targets.
+- Use I(purestorage.flashblade.purefb_connect) for FlashBlade targets.
 author:
 - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
@@ -47,13 +47,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create a connection to remote S3-capable target
-  purefb_target:
+  purestorage.flashblade.purefb_target:
     name: target_1
     address: 10.10.10.20
     fb_url: 10.10.10.2
     api_token: T-89faa581-c668-483d-b77d-23c5d88ba35c
 - name: Delete connection to remote S3-capable system
-  purefb_target:
+  purestorage.flashblade.purefb_target:
     state: absent
     name: target_1
     target_api: 9c0b56bc-f941-f7a6-9f85-dcc3e9a8f7d6

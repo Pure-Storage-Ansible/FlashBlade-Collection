@@ -187,13 +187,13 @@ options:
   filesystem:
     description:
     - List of filesystems to add to a policy on creation
-    - To amend policy members use the I(purefb_fs) module
+    - To amend policy members use the I(purestorage.flashblade.purefb_fs) module
     type: list
     elements: str
   replica_link:
     description:
     - List of filesystem replica links to add to a policy on creation
-    - To amend policy members use the I(purefb_fs_replica) module
+    - To amend policy members use the I(purestorage.flashblade.purefb_fs_replica) module
     type: list
     elements: str
   access:
@@ -282,13 +282,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create a simple snapshot policy with no rules
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_policy
     policy_type: snapshot
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create a snapshot policy and connect to existing filesystems and filesystem replica links
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_policy_with_members
     policy_type: snapshot
     filesystem:
@@ -300,7 +300,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create a snapshot policy with rules
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_policy2
     policy_type: snapshot
     at: 11AM
@@ -310,21 +310,21 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a snapshot policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_policy
     policy_type: snapshot
     state: absent
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create an empty object store access policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy
     account: test
     policy_type: access
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create an empty object store access policy and assign user
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy
     account: test
     policy_type: access
@@ -332,7 +332,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create a object store access policy with simple rule
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy_rule
     policy_type: access
     account: test
@@ -342,13 +342,13 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create an empty NFS export policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_nfs_export
     policy_type: nfs
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create an NFS export policy with a client rule
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_nfs_export
     policy_type: nfs
     atime: true
@@ -359,7 +359,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create a new rule for an existing NFS export policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_nfs_export
     policy_type: nfs
     atime: true
@@ -369,7 +369,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a client rule from an NFS export policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_nfs_export
     client: "10.0.1.0/24"
     policy_type: nfs
@@ -377,14 +377,14 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete an NFS export policy and all associated rules
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_nfs_export
     state: absent
     policy_type: nfs
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a rule from an object store access policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy_rule
     account: test
     policy_type: access
@@ -393,7 +393,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a user from an object store access policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy_rule
     account: test
     user: fred
@@ -402,7 +402,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete an object store access policy with attached users (USE WITH CAUTION)
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy_rule
     account: test
     policy_type: access
@@ -411,7 +411,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete an object store access policy with no attached users
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy_rule
     account: test
     policy_type: access
@@ -419,7 +419,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Copy an object store access policy rule to another exisitng policy
-  purefb_policy:
+  purestorage.flashblade.purefb_policy:
     name: test_os_policy_rule
     policy_type: access
     account: test

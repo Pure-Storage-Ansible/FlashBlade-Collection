@@ -43,14 +43,14 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Set new banner text
-  purefb_banner:
+  purestorage.flashblade.purefb_banner:
     banner: "Banner over\ntwo lines"
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete banner text
-  purefb_banner:
+  purestorage.flashblade.purefb_banner:
     state: absent
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641

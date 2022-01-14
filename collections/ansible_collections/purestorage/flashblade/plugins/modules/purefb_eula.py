@@ -48,7 +48,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Sign EULA for FlashBlade
-  purefb_eula:
+  purestorage.flashblade.purefb_eula:
     company: "ACME Storage, Inc."
     name: "Fred Bloggs"
     title: "Storage Manager"

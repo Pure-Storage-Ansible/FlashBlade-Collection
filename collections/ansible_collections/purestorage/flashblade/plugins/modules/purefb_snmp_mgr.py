@@ -87,20 +87,20 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Delete exisitng SNMP manager
-  purefb_snmp_mgr:
+  purestorage.flashblade.purefb_snmp_mgr:
     name: manager1
     state: absent
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create v2c SNMP manager
-  purefb_snmp_mgr:
+  purestorage.flashblade.purefb_snmp_mgr:
     name: manager1
     community: public
     host: 10.21.22.23
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create v3 SNMP manager
-  purefb_snmp_mgr:
+  purestorage.flashblade.purefb_snmp_mgr:
     name: manager2
     version: v3
     auth_protocol: MD5
@@ -109,7 +109,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Update existing SNMP manager
-  purefb_snmp_mgr:
+  purestorage.flashblade.purefb_snmp_mgr:
     name: manager1
     community: private
     fb_url: 10.10.10.2

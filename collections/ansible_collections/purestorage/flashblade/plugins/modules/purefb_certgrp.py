@@ -45,12 +45,12 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create a certifcate group
-  purefb_certgrp:
+  purestorage.flashblade.purefb_certgrp:
     name: test_grp
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create a cerifcate group and add existing certificates
-  purefb_certgrp:
+  purestorage.flashblade.purefb_certgrp:
     name: test_grp
     certifcates:
     - cert1
@@ -58,7 +58,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a certifcate from a group
-  purefb_certgrp:
+  purestorage.flashblade.purefb_certgrp:
     name: test_grp
     certificates:
     - cert2
@@ -66,7 +66,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a certifcate group
-  purefb_certgrp:
+  purestorage.flashblade.purefb_certgrp:
     name: test_grp
     state: absent
     fb_url: 10.10.10.2

@@ -45,7 +45,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Set global login parameters
-  purefb_admin:
+  purestorage.flashblade.purefb_admin:
     max_login: 5
     min_password: 10
     lockout: 300

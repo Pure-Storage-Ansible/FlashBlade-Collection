@@ -88,13 +88,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create a connection to remote FlashBlade system
-  purefb_connect:
+  purestorage.flashblade.purefb_connect:
     target_url: 10.10.10.20
     target_api: T-b3275b1c-8958-4190-9052-eb46b0bd09f8
     fb_url: 10.10.10.2
     api_token: T-91528421-fe42-47ee-bcb1-47eefb0a9220
 - name: Create a connection to remote FlashBlade system with bandwidth limits
-  purefb_connect:
+  purestorage.flashblade.purefb_connect:
     target_url: 10.10.10.20
     target_api: T-b3275b1c-8958-4190-9052-eb46b0bd09f8
     window_limit: 28G
@@ -104,7 +104,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: T-91528421-fe42-47ee-bcb1-47eefb0a9220
 - name: Delete connection to target FlashBlade system
-  purefb_connect:
+  purestorage.flashblade.purefb_connect:
     state: absent
     target_url: 10.10.10.20
     target_api: T-b3275b1c-8958-4190-9052-eb46b0bd09f8

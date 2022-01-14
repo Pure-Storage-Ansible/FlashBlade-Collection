@@ -52,7 +52,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Import a binary keytab
-  purefb_keytabs:
+  purestorage.flashblade.purefb_keytabs:
     state: import
     prefix: example
     keytab_file: pure_krb.keytab
@@ -61,7 +61,7 @@ EXAMPLES = r"""
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Import a base64 keytab
-  purefb_keytabs:
+  purestorage.flashblade.purefb_keytabs:
     state: import
     prefix: example
     keytab_file: pure_krb.keytab.mime
@@ -70,7 +70,7 @@ EXAMPLES = r"""
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Export a keytab
-  purefb_keytabs:
+  purestorage.flashblade.purefb_keytabs:
     state: export
     name: example.3
     fb_url: 10.10.10.2
@@ -78,19 +78,19 @@ EXAMPLES = r"""
   register: download_file
 
 - name: Delete a keytab
-  purefb_keytabs:
+  purestorage.flashblade.purefb_keytabs:
     state: absent
     name: example.3
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Rotate current AD account keytabs
-  purefb_keytabs:
+  purestorage.flashblade.purefb_keytabs:
     state: rotate
     fb_url: 10.10.10.2
 
 - name: Rotate AD account keytabs by creating new series
-  purefb_keytabs:
+  purestorage.flashblade.purefb_keytabs:
     state: rotate
     name: next_prefix
     fb_url: 10.10.10.2

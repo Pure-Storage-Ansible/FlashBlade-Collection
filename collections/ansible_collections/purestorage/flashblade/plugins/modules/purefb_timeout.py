@@ -42,14 +42,14 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Set GUI idle timeout to 25 minutes
-  purefb_timeout:
+  purestorage.flashblade.purefb_timeout:
     timeout: 25
     state: present
     fb_url: 10.10.10.2
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Disable idle timeout
-  purefb_timeout:
+  purestorage.flashblade.purefb_timeout:
     state: absent
     fb_url: 10.10.10.2
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3

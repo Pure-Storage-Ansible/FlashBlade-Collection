@@ -53,7 +53,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Add LAG
-  purefb_lag:
+  purestorage.flashblade.purefb_lag:
     name: lag2
     ports:
     - ch1.eth2
@@ -61,7 +61,7 @@ EXAMPLES = r"""
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Upate LAG
-  purefb_lag:
+  purestorage.flashblade.purefb_lag:
     name: lag2
     ports:
     - ch1.eth2
@@ -70,7 +70,7 @@ EXAMPLES = r"""
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Delete LAG
-  purefb_lag:
+  purestorage.flashblade.purefb_lag:
     name: lag2
     state: absent
     fb_url: 10.10.10.2

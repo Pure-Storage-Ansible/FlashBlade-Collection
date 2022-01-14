@@ -58,7 +58,7 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new user (using UID) quota for filesystem named foo
-  purefb_userquota:
+  purestorage.flashblade.purefb_userquota:
     name: foo
     quota: 1T
     uid: 1234
@@ -67,7 +67,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Create new user (using username) quota for filesystem named foo
-  purefb_userquota:
+  purestorage.flashblade.purefb_userquota:
     name: foo
     quota: 1T
     uname: bar
@@ -76,7 +76,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete user quota on filesystem foo for user by UID
-  purefb_userquota:
+  purestorage.flashblade.purefb_userquota:
     name: foo
     uid: 1234
     state: absent
@@ -84,7 +84,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete user quota on filesystem foo for user by username
-  purefb_userquota:
+  purestorage.flashblade.purefb_userquota:
     name: foo
     uname: bar
     state: absent
@@ -92,7 +92,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Update user quota on filesystem foo for user by username
-  purefb_userquota:
+  purestorage.flashblade.purefb_userquota:
     name: foo
     quota: 20G
     uname: bar
@@ -101,7 +101,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Update user quota on filesystem foo for user by UID
-  purefb_userquota:
+  purestorage.flashblade.purefb_userquota:
     name: foo
     quota: 20G
     uid: bar

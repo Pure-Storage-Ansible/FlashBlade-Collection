@@ -61,14 +61,14 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new bucket named foo in account bar
-  purefb_bucket:
+  purestorage.flashblade.purefb_bucket:
     name: foo
     account: bar
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete bucket named foo in account bar
-  purefb_bucket:
+  purestorage.flashblade.purefb_bucket:
     name: foo
     account: bar
     state: absent
@@ -76,7 +76,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Change bucket versioning state
-  purefb_bucket:
+  purestorage.flashblade.purefb_bucket:
     name: foo
     account: bar
     versioning: enabled
@@ -84,7 +84,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Recover deleted bucket named foo in account bar
-  purefb_bucket:
+  purestorage.flashblade.purefb_bucket:
     name: foo
     account: bar
     state: present
@@ -92,7 +92,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Eradicate bucket named foo in account bar
-  purefb_bucket:
+  purestorage.flashblade.purefb_bucket:
     name: foo
     account: bar
     state: absent

@@ -45,7 +45,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: collect default set of info
-  purefb_info:
+  purestorage.flashblade.purefb_info:
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
   register: blade_info
@@ -54,7 +54,7 @@ EXAMPLES = r"""
     msg: "{{ blade_info['purefb_info']['default'] }}"
 
 - name: collect configuration and capacity info
-  purefb_info:
+  purestorage.flashblade.purefb_info:
     gather_subset:
       - config
     fb_url: 10.10.10.2
@@ -65,7 +65,7 @@ EXAMPLES = r"""
     msg: "{{ blade_info['purefb_info']['config'] }}"
 
 - name: collect all info
-  purefb_info:
+  purestorage.flashblade.purefb_info:
     gather_subset:
       - all
     fb_url: 10.10.10.2

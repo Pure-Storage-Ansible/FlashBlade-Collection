@@ -116,7 +116,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create new AD account
-  purefb_ad:
+  purestorage.flashblade.purefb_ad:
     name: ad_account
     computer: FLASHBLADE
     domain: acme.com
@@ -136,7 +136,7 @@ EXAMPLES = r"""
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Connect to existing AD account
-  purefb_ad:
+  purestorage.flashblade.purefb_ad:
     name: ad_account
     computer: FLASHBLADE
     domain: acme.com
@@ -151,7 +151,7 @@ EXAMPLES = r"""
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Update existing AD account
-  purefb_ad:
+  purestorage.flashblade.purefb_ad:
     name: ad_account
     encryption:
     - aes256-cts-hmac-sha1-96
@@ -165,14 +165,14 @@ EXAMPLES = r"""
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete local AD account
-  purefb_ad:
+  purestorage.flashblade.purefb_ad:
     name: ad_account
     local_only: True
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Fully delete AD account
-  purefb_ad:
+  purestorage.flashblade.purefb_ad:
     name: ad_account
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641

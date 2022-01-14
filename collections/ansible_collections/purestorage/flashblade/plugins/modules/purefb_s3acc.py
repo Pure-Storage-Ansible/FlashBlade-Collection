@@ -41,13 +41,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Crrate object store account foo
-  purefb_s3acc:
+  purestorage.flashblade.purefb_s3acc:
     name: foo
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Delete object store account foo
-  purefb_s3acc:
+  purestorage.flashblade.purefb_s3acc:
     name: foo
     state: absent
     fb_url: 10.10.10.2
