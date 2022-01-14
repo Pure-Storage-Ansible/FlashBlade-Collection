@@ -238,3 +238,23 @@ releases:
     fragments:
     - 169_pypureclient_fix.yaml
     release_date: '2021-11-11'
+  1.9.0:
+    changes:
+      minor_changes:
+      - purefb_admin - New module to manage global admin settings
+      - purefb_connect - Add support for array connections to have bandwidth throttling
+        defined
+      - purefb_fs - Add support for NFS export policies
+      - purefb_info - Add NFS export policies and rules
+      - purefb_info - Show array connections bandwidth throttle information
+      - purefb_policy - Add NFS export policies, with rules, as a new policy type
+      - purefb_policy - Add support for Object Store Access Policies, associated rules
+        and user grants
+      - purefb_policy - New parameter `policy_type` added. For backwards compatability,
+        default to `snapshot` if not provided.
+    fragments:
+    - 164_add_admin.yaml
+    - 174_access_policies.yaml
+    - 175_throttle_support.yaml
+    - 176_nfs_export_policies.yaml
+    release_date: '2021-12-17'

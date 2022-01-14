@@ -60,14 +60,14 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Delete exisitng syslog server entries
-  purefb_syslog:
+  purestorage.flashblade.purefb_syslog:
     name: syslog1
     state: absent
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Set array syslog servers
-  purefb_syslog:
+  purestorage.flashblade.purefb_syslog:
     state: present
     name: syslog1
     address: syslog1.com

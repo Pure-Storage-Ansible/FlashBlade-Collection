@@ -38,11 +38,11 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Enable Remote Assist port
-  purefb_ra:
+  purestorage.flashblade.purefb_ra:
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Disable Remote Assist port
-  purefb_ra:
+  purestorage.flashblade.purefb_ra:
     state: absent
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6

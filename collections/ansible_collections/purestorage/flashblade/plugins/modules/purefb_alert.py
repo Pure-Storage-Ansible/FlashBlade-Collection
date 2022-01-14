@@ -55,14 +55,14 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Add new email recipient and enable, or enable existing email
-  purefb_alert:
+  purestorage.flashblade.purefb_alert:
     address: "user@domain.com"
     enabled: true
     state: present
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 - name: Delete existing email recipient
-  purefb_alert:
+  purestorage.flashblade.purefb_alert:
     state: absent
     address: "user@domain.com"
     fb_url: 10.10.10.2

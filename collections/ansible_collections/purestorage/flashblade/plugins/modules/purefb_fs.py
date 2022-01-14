@@ -68,6 +68,7 @@ options:
       - Supported binary options are ro/rw, secure/insecure, fileid_32bit/no_fileid_32bit,
         root_squash/no_root_squash, all_squash/no_all_squash and atime/noatime
       - Supported non-binary options are anonuid=#, anongid=#, sec=(sys|krb5)
+      - Superceeded by I(export_policy) if provided
     required: false
     type: str
   smb:
@@ -171,13 +172,20 @@ options:
       - Only available from Purity//FB 3.1.1
     type: bool
     default: True
+  export_policy:
+    description:
+    - Name of NFS export policy to assign to filesystem
+    - Overrides I(nfs_rules)
+    - Only valid for Purity//FB 3.3.0 or higher
+    type: str
+    version_added: "1.9.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
 
 EXAMPLES = """
 - name: Create new filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     size: 1T
     state: present
@@ -185,21 +193,21 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     state: absent
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Recover filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Eradicate filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     state: absent
     eradicate: true
@@ -207,21 +215,21 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Promote filesystem named foo ready for failover
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     promote: true
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Demote filesystem named foo after failover
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     promote: false
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Modify attributes of an existing filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     size: 2T
     nfsv3 : false
@@ -253,6 +261,16 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+HAS_PYPURECLIENT = True
+try:
+    from pypureclient.flashblade import (
+        FileSystemPatch,
+        NfsPatch,
+        Reference,
+    )
+except ImportError:
+    HAS_PYPURECLIENT = False
+
 HAS_JSON = True
 try:
     import json
@@ -262,6 +280,7 @@ except ImportError:
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
@@ -270,6 +289,7 @@ HARD_LIMIT_API_VERSION = "1.4"
 NFSV4_API_VERSION = "1.6"
 REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
+EXPORT_POLICY_API_VERSION = "2.3"
 
 
 def get_fs(module, blade):
@@ -449,6 +469,25 @@ def create_fs(module, blade):
                             module.params["policy"], module.params["name"]
                         )
                     )
+        if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
+            system = get_system(module)
+            export_attr = FileSystemPatch(
+                nfs=NfsPatch(
+                    export_policy=Reference(name=module.params["export_policy"])
+                )
+            )
+            res = system.patch_file_systems(
+                names=[module.params["name"]], file_system=export_attr
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Filesystem {0} created, but failed to assign export "
+                    "policy {1}. Error: {2}".format(
+                        module.params["name"],
+                        module.params["export_policy"],
+                        res.errors[0].message,
+                    )
+                )
     module.exit_json(changed=changed)
 
 
@@ -682,6 +721,38 @@ def modify_fs(module, blade):
                             module.params["name"], message
                         )
                     )
+    if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
+        system = get_system(module)
+        change_export = False
+        current_fs = list(
+            system.get_file_systems(filter="name='" + module.params["name"] + "'").items
+        )[0]
+        if (
+            current_fs.nfs.export_policy.name
+            and current_fs.nfs.export_policy.name != module.params["export_policy"]
+        ):
+            change_export = True
+        if not current_fs.nfs.export_policy.name and module.params["export_policy"]:
+            change_export = True
+        if change_export and not module.check_mode:
+            export_attr = FileSystemPatch(
+                nfs=NfsPatch(
+                    export_policy=Reference(name=module.params["export_policy"])
+                )
+            )
+            res = system.patch_file_systems(
+                names=[module.params["name"]], file_system=export_attr
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to modify export policy {1} for "
+                    "filesystem {0}. Error: {2}".format(
+                        module.params["name"],
+                        module.params["export_policy"],
+                        res.errors[0].message,
+                    )
+                )
+
     module.exit_json(changed=changed)
 
 
@@ -838,6 +909,7 @@ def main():
                 choices=["nfs", "smb", "shared", "independent", "mode-bits"],
             ),
             size=dict(type="str"),
+            export_policy=dict(type="str"),
         )
     )
 

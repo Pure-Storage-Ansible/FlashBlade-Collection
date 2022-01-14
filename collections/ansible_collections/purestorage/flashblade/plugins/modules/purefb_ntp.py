@@ -46,13 +46,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Delete exisitng NTP server entries
-  purefb_ntp:
+  purestorage.flashblade.purefb_ntp:
     state: absent
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Set array NTP servers
-  purefb_ntp:
+  purestorage.flashblade.purefb_ntp:
     state: present
     ntp_servers:
       - "0.pool.ntp.org"

@@ -73,7 +73,7 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new network subnet named foo
-  purefb_subnet:
+  purestorage.flashblade.purefb_subnet:
     name: foo
     prefix: "10.21.200.3/24"
     gateway: 10.21.200.1
@@ -85,7 +85,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Change configuration of existing subnet foo
-  purefb_network:
+  purestorage.flashblade.purefb_subnet:
     name: foo
     state: present
     prefix: "10.21.100.3/24"
@@ -96,7 +96,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete network subnet named foo
-  purefb_subnet:
+  purestorage.flashblade.purefb_subnet:
     name: foo
     state: absent
     fb_url: 10.10.10.2

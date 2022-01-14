@@ -45,7 +45,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: collect default set of info
-  purefb_info:
+  purestorage.flashblade.purefb_info:
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
   register: blade_info
@@ -54,7 +54,7 @@ EXAMPLES = r"""
     msg: "{{ blade_info['purefb_info']['default'] }}"
 
 - name: collect configuration and capacity info
-  purefb_info:
+  purestorage.flashblade.purefb_info:
     gather_subset:
       - config
     fb_url: 10.10.10.2
@@ -65,7 +65,7 @@ EXAMPLES = r"""
     msg: "{{ blade_info['purefb_info']['config'] }}"
 
 - name: collect all info
-  purefb_info:
+  purestorage.flashblade.purefb_info:
     gather_subset:
       - all
     fb_url: 10.10.10.2
@@ -449,6 +449,25 @@ SMB_MODE_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 
 
+def _millisecs_to_time(millisecs):
+    if millisecs:
+        return (str(int(millisecs / 3600000 % 24)).zfill(2) + ":00",)
+    return None
+
+
+def _bytes_to_human(bytes_number):
+    if bytes_number:
+        labels = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s", "PB/s"]
+        i = 0
+        double_bytes = bytes_number
+        while i < len(labels) and bytes_number >= 1024:
+            double_bytes = bytes_number / 1024.0
+            i += 1
+            bytes_number = bytes_number / 1024
+        return str(round(double_bytes, 2)) + " " + labels[i]
+    return None
+
+
 def generate_default_dict(module, blade):
     default_info = {}
     defaults = blade.arrays.list_arrays().items[0]
@@ -504,12 +523,13 @@ def generate_default_dict(module, blade):
         else:
             default_info["EULA"] = "Not Signed"
         if NFS_POLICY_API_VERSION in api_version:
-            admin_settings = list(blade.get_admin_settings().items)[0]
+            admin_settings = list(blade.get_admins_settings().items)[0]
             default_info["max_login_attempts"] = admin_settings.max_login_attempts
             default_info["min_password_length"] = admin_settings.min_password_length
-            default_info["lockout_duration"] = (
-                str(admin_settings.lockout_duration / 1000) + " seconds"
-            )
+            if admin_settings.lockout_duration:
+                default_info["lockout_duration"] = (
+                    str(admin_settings.lockout_duration / 1000) + " seconds"
+                )
         if NFS_POLICY_API_VERSION in api_version:
             default_info["smb_mode"] = blade_info.smb_mode
 
@@ -941,23 +961,44 @@ def generate_snap_transfer_dict(blade):
     return snap_transfer_info
 
 
-def generate_array_conn_dict(blade):
+def generate_array_conn_dict(module, blade):
     array_conn_info = {}
+    arraysv2 = {}
+    api_version = blade.api_version.list_versions().versions
     arrays = blade.array_connections.list_array_connections()
+    if NFS_POLICY_API_VERSION in api_version:
+        bladev2 = get_system(module)
+        arraysv2 = list(bladev2.get_array_connections().items)
     for arraycnt in range(0, len(arrays.items)):
         array = arrays.items[arraycnt].remote.name
         array_conn_info[array] = {
             "encrypted": arrays.items[arraycnt].encrypted,
             "replication_addresses": arrays.items[arraycnt].replication_addresses,
             "management_address": arrays.items[arraycnt].management_address,
-            "id": arrays.items[arraycnt].remote.id,
             "status": arrays.items[arraycnt].status,
             "version": arrays.items[arraycnt].version,
+            "throttle": [],
         }
         if arrays.items[arraycnt].encrypted:
             array_conn_info[array]["ca_certificate_group"] = arrays.items[
                 arraycnt
             ].ca_certificate_group.name
+        for v2array in range(0, len(arraysv2)):
+            if arraysv2[v2array].remote.name == array:
+                array_conn_info[array]["throttle"] = {
+                    "default_limit": _bytes_to_human(
+                        arraysv2[v2array].throttle.default_limit
+                    ),
+                    "window_limit": _bytes_to_human(
+                        arraysv2[v2array].throttle.window_limit
+                    ),
+                    "window_start": _millisecs_to_time(
+                        arraysv2[v2array].throttle.window.start
+                    ),
+                    "window_end": _millisecs_to_time(
+                        arraysv2[v2array].throttle.window.end
+                    ),
+                }
     return array_conn_info
 
 
@@ -1109,6 +1150,34 @@ def generate_object_store_access_policies_dict(blade):
     return policies_info
 
 
+def generate_nfs_export_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_nfs_export_policies().items)
+    for policy in range(0, len(policies)):
+        policy_name = policies[policy].name
+        policies_info[policy_name] = {
+            "local": policies[policy].is_local,
+            "enabled": policies[policy].enabled,
+            "rules": [],
+        }
+        for rule in range(0, len(policies[policy].rules)):
+            policies_info[policy_name]["rules"].append(
+                {
+                    "access": policies[policy].rules[rule].access,
+                    "anongid": policies[policy].rules[rule].anongid,
+                    "anonuid": policies[policy].rules[rule].anonuid,
+                    "atime": policies[policy].rules[rule].atime,
+                    "client": policies[policy].rules[rule].client,
+                    "fileid_32bit": policies[policy].rules[rule].fileid_32bit,
+                    "permission": policies[policy].rules[rule].permission,
+                    "secure": policies[policy].rules[rule].secure,
+                    "security": policies[policy].rules[rule].security,
+                    "index": policies[policy].rules[rule].index,
+                }
+            )
+    return policies_info
+
+
 def generate_object_store_accounts_dict(blade):
     account_info = {}
     accounts = list(blade.get_object_store_accounts().items)
@@ -1165,7 +1234,11 @@ def generate_object_store_accounts_dict(blade):
     return account_info
 
 
-def generate_fs_dict(blade):
+def generate_fs_dict(module, blade):
+    api_version = blade.api_version.list_versions().versions
+    if NFS_POLICY_API_VERSION in api_version:
+        bladev2 = get_system(module)
+        fsys_v2 = list(bladev2.get_file_systems().items)
     fs_info = {}
     fsys = blade.file_systems.list_file_systems()
     for fsystem in range(0, len(fsys.items)):
@@ -1175,13 +1248,14 @@ def generate_fs_dict(blade):
             "snapshot_enabled": fsys.items[fsystem].snapshot_directory_enabled,
             "provisioned": fsys.items[fsystem].provisioned,
             "destroyed": fsys.items[fsystem].destroyed,
+            "nfs_rules": fsys.items[fsystem].nfs.rules,
+            "nfs_v3": getattr(fsys.items[fsystem].nfs, "v3_enabled", False),
+            "nfs_v4_1": getattr(fsys.items[fsystem].nfs, "v4_1_enabled", False),
         }
         if fsys.items[fsystem].http.enabled:
             fs_info[share]["http"] = fsys.items[fsystem].http.enabled
         if fsys.items[fsystem].smb.enabled:
             fs_info[share]["smb_mode"] = fsys.items[fsystem].smb.acl_mode
-        if fsys.items[fsystem].nfs.enabled:
-            fs_info[share]["nfs_rules"] = fsys.items[fsystem].nfs.rules
         api_version = blade.api_version.list_versions().versions
         if MULTIPROTOCOL_API_VERSION in api_version:
             fs_info[share]["multi_protocol"] = {
@@ -1202,6 +1276,12 @@ def generate_fs_dict(blade):
                 "is_local": fsys.items[fsystem].source.is_local,
                 "name": fsys.items[fsystem].source.name,
             }
+            if NFS_POLICY_API_VERSION in api_version:
+                for v2fs in range(0, len(fsys_v2)):
+                    if fsys_v2[v2fs].name == share:
+                        fs_info[share]["export_policy"] = fsys_v2[
+                            v2fs
+                        ].nfs.export_policy.name
     return fs_info
 
 
@@ -1254,6 +1334,7 @@ def main():
 
     info = {}
 
+    api_version = blade.api_version.list_versions().versions
     if "minimum" in subset or "all" in subset:
         info["default"] = generate_default_dict(module, blade)
     if "performance" in subset or "all" in subset:
@@ -1269,21 +1350,20 @@ def main():
     if "subnets" in subset or "all" in subset:
         info["subnet"] = generate_subnet_dict(blade)
     if "filesystems" in subset or "all" in subset:
-        info["filesystems"] = generate_fs_dict(blade)
+        info["filesystems"] = generate_fs_dict(module, blade)
     if "admins" in subset or "all" in subset:
         info["admins"] = generate_admin_dict(module, blade)
     if "snapshots" in subset or "all" in subset:
         info["snapshots"] = generate_snap_dict(blade)
     if "buckets" in subset or "all" in subset:
         info["buckets"] = generate_bucket_dict(module, blade)
-    api_version = blade.api_version.list_versions().versions
     if POLICIES_API_VERSION in api_version:
         if "policies" in subset or "all" in subset:
             info["policies"] = generate_policies_dict(blade)
             info["snapshot_policies"] = generate_policies_dict(blade)
     if REPLICATION_API_VERSION in api_version:
         if "arrays" in subset or "all" in subset:
-            info["arrays"] = generate_array_conn_dict(blade)
+            info["arrays"] = generate_array_conn_dict(module, blade)
         if "replication" in subset or "all" in subset:
             info["file_replication"] = generate_file_repl_dict(blade)
             info["bucket_replication"] = generate_bucket_repl_dict(module, blade)
@@ -1304,6 +1384,8 @@ def main():
                 info["access_policies"] = generate_object_store_access_policies_dict(
                     blade
                 )
+            if NFS_POLICY_API_VERSION in api_version:
+                info["export_policies"] = generate_nfs_export_policies_dict(blade)
 
     module.exit_json(changed=False, purefb_info=info)
 

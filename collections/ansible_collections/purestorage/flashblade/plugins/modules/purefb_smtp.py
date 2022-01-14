@@ -40,7 +40,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Configure SMTP settings
-  purefb_smtp:
+  purestorage.flashblade.purefb_smtp:
     host: hostname
     domain: xyz.com
     fb_url: 10.10.10.2

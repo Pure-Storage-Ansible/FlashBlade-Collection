@@ -43,13 +43,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Add Object Store Virtual Host
-  purefb_virtualhost:
+  purestorage.flashblade.purefb_virtualhost:
     name: "s3.acme.com"
     fb_url: 10.10.10.2
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Delete Object Store Virtual Host
-  purefb_virtualhost:
+  purestorage.flashblade.purefb_virtualhost:
     name: "nohost.acme.com"
     state: absent
     fb_url: 10.10.10.2

@@ -53,7 +53,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: List existng ruser access policies for a specific user
-  purefb_userpolicy:
+  purestorage.flashblade.purefb_userpolicy:
     state: show
     account: foo
     name: bar
@@ -62,14 +62,14 @@ EXAMPLES = r"""
   register: policy_list
 
 - name: List all available user access policies
-  purefb_userpolicy:
+  purestorage.flashblade.purefb_userpolicy:
     state: show
     fb_url: 10.10.10.2
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
   register: policy_list
 
 - name: Add user access policies to account user foo/bar
-  purefb_userpolicy:
+  purestorage.flashblade.purefb_userpolicy:
     name: bar
     account: foo
     policy:
@@ -79,7 +79,7 @@ EXAMPLES = r"""
     api_token: T-68618f31-0c9e-4e57-aa44-5306a2cf10e3
 
 - name: Delete user access policies to account user foo/bar
-  purefb_userpolicy:
+  purestorage.flashblade.purefb_userpolicy:
     name: bar
     account: foo
     policy:

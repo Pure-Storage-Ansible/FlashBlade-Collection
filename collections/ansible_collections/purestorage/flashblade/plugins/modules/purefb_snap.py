@@ -65,7 +65,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create snapshot foo.ansible
-  purefb_snap:
+  purestorage.flashblade.purefb_snap:
     name: foo
     suffix: ansible
     fb_url: 10.10.10.2
@@ -73,7 +73,7 @@ EXAMPLES = r"""
     state: present
 
 - name: Create immeadiate snapshot foo.ansible to connected FB bar
-  purefb_snap:
+  purestorage.flashblade.purefb_snap:
     name: foo
     suffix: ansible
     now: True
@@ -84,7 +84,7 @@ EXAMPLES = r"""
     state: present
 
 - name: Delete snapshot named foo.snap
-  purefb_snap:
+  purestorage.flashblade.purefb_snap:
     name: foo
     suffix: snap
     fb_url: 10.10.10.2
@@ -92,7 +92,7 @@ EXAMPLES = r"""
     state: absent
 
 - name: Recover deleted snapshot foo.ansible
-  purefb_snap:
+  purestorage.flashblade.purefb_snap:
     name: foo
     suffix: ansible
     fb_url: 10.10.10.2
@@ -100,14 +100,14 @@ EXAMPLES = r"""
     state: present
 
 - name: Restore filesystem foo (uses latest snapshot)
-  purefb_snap:
+  purestorage.flashblade.purefb_snap:
     name: foo
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: restore
 
 - name: Eradicate snapshot named foo.snap
-  purefb_snap:
+  purestorage.flashblade.purefb_snap:
     name: foo
     suffix: snap
     eradicate: true

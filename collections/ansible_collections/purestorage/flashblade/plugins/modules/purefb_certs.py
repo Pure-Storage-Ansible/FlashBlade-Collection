@@ -52,19 +52,19 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create a SSL certifcate
-  purefb_certs:
+  purestorage.flashblade.purefb_certs:
     name: test_cert
     contents: "{{lookup('file', 'certicate_file_name') }}"
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a SSL certifcate
-  purefb_certs:
+  purestorage.flashblade.purefb_certs:
     name: test_cert
     state: absent
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Update SSL certificate
-  purefb_certs:
+  purestorage.flashblade.purefb_certs:
     name: global
     contents: "{{ lookup('file', 'certificate_file_name') }}"
     private_key: "{{ lookup('file', 'certificate_key_file_name') }}"
