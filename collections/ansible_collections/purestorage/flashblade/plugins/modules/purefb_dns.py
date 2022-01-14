@@ -52,13 +52,13 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Delete exisitng DNS settings
-  purefb_dns:
+  purestorage.flashblade.purefb_dns:
     state: absent
     fa_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Set DNS settings
-  purefb_dns:
+  purestorage.flashblade.purefb_dns:
     domain: purestorage.com
     nameservers:
       - 8.8.8.8

@@ -65,7 +65,7 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new network interface named foo
-  purefb_network:
+  purestorage.flashblade.purefb_network:
     name: foo
     address: 10.21.200.23
     state: present
@@ -73,7 +73,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Change IP address of network interface named foo
-  purefb_network:
+  purestorage.flashblade.purefb_network:
     name: foo
     state: present
     address: 10.21.200.123
@@ -81,7 +81,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete network interface named foo
-  purefb_network:
+  purestorage.flashblade.purefb_network:
     name: foo
     state: absent
     fb_url: 10.10.10.2

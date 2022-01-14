@@ -57,7 +57,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create remote credential
-  purefb_remote_cred:
+  purestorage.flashblade.purefb_remote_cred:
     name: cred1
     access_key: "3794fb12c6204e19195f"
     secret: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
@@ -66,7 +66,7 @@ EXAMPLES = r"""
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete remote credential
-  purefb_remote_cred:
+  purestorage.flashblade.purefb_remote_cred:
     name: cred1
     target: target1
     state: absent

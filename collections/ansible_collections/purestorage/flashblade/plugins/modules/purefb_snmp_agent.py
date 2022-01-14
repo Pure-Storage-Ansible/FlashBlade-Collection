@@ -66,12 +66,12 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Update v2c SNMP agent
-  purefb_snmp_agent:
+  purestorage.flashblade.purefb_snmp_agent:
     community: public
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Update v3 SNMP agent
-  purefb_snmp_agent:
+  purestorage.flashblade.purefb_snmp_agent:
     version: v3
     auth_protocol: MD5
     auth_passphrase: password

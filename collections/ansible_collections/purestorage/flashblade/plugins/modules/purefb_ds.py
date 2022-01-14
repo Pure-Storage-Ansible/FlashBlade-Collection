@@ -97,14 +97,14 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Delete existing management directory service
-  purefb_ds:
+  purestorage.flashblade.purefb_ds:
     dstype: management
     state: absent
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Create NFS directory service (disabled)
-  purefb_ds:
+  purestorage.flashblade.purefb_ds:
     dstype: nfs
     uri: "ldaps://lab.purestorage.com"
     base_dn: "DC=lab,DC=purestorage,DC=com"
@@ -114,21 +114,21 @@ EXAMPLES = r"""
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Enable existing SMB directory service
-  purefb_ds:
+  purestorage.flashblade.purefb_ds:
     dstypr: smb
     enable: true
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Disable existing management directory service
-  purefb_ds:
+  purestorage.flashblade.purefb_ds:
     dstype: management
     enable: false
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Create NFS directory service (enabled)
-  purefb_ds:
+  purestorage.flashblade.purefb_ds:
     dstype: nfs
     enable: true
     uri: "ldaps://lab.purestorage.com"

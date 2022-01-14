@@ -59,7 +59,7 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new filesystem replica from foo to bar on arrayB
-  purefb_fs_replica:
+  purestorage.flashblade.purefb_fs_replica:
     name: foo
     target_array: arrayB
     target_fs: bar
@@ -69,14 +69,14 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Add new snapshot policy to exisitng filesystem replica link
-  purefb_fs_replica:
+  purestorage.flashblade.purefb_fs_replica:
     name: foo
     policy: weekly
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete snapshot policy from filesystem replica foo
-  purefb_fs_replica:
+  purestorage.flashblade.purefb_fs_replica:
     name: foo
     policy: weekly
     state: absent

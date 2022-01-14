@@ -42,7 +42,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Set new FlashBlade name
-  purefb_bladename:
+  purestorage.flashblade.purefb_bladename:
     name: new-flashblade-name
     state: present
     fb_url: 10.10.10.2

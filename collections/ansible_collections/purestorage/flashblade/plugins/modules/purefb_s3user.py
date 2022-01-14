@@ -66,7 +66,7 @@ options:
   policy:
     description:
     - User Access Policies to be assigned to user on creation
-    - To amend policies use the I(purefb_userpolicy) module
+    - To amend policies use the I(purestorage.flashblade.purefb_userpolicy) module
     - If not specified, I(pure\:policy/full-access) will be added
     type: list
     elements: str
@@ -77,7 +77,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create object store user (with access ID and key) foo in account bar
-  purefb_s3user:
+  purestorage.flashblade.purefb_s3user:
     name: foo
     account: bar
     access_key: true
@@ -89,7 +89,7 @@ EXAMPLES = r"""
     msg: "S3 User: {{ result['s3user_info'] }}"
 
 - name: Create object store user (with access ID and key) foo in account bar with access policy (Purity 3.2 and higher)
-  purefb_s3user:
+  purestorage.flashblade.purefb_s3user:
     name: foo
     account: bar
     access_key: true
@@ -99,7 +99,7 @@ EXAMPLES = r"""
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Create object store user foo using imported key/secret in account bar
-  purefb_s3user:
+  purestorage.flashblade.purefb_s3user:
     name: foo
     account: bar
     imported_key: "PSABSSZRHPMEDKHMAAJPJBONPJGGDDAOFABDGLBJLHO"
@@ -108,7 +108,7 @@ EXAMPLES = r"""
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Delete object store user foo in account bar
-  purefb_s3user:
+  purestorage.flashblade.purefb_s3user:
     name: foo
     account: bar
     state: absent

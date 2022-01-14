@@ -185,7 +185,7 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     size: 1T
     state: present
@@ -193,21 +193,21 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     state: absent
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Recover filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Eradicate filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     state: absent
     eradicate: true
@@ -215,21 +215,21 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Promote filesystem named foo ready for failover
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     promote: true
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Demote filesystem named foo after failover
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     promote: false
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Modify attributes of an existing filesystem named foo
-  purefb_fs:
+  purestorage.flashblade.purefb_fs:
     name: foo
     size: 2T
     nfsv3 : false

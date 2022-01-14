@@ -58,7 +58,7 @@ extends_documentation_fragment:
 
 EXAMPLES = """
 - name: Create new group (using GID) quota for filesystem named foo
-  purefb_groupquota:
+  purestorage.flashblade.purefb_groupquota:
     name: foo
     quota: 1T
     gid: 1234
@@ -67,7 +67,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Create new group (using groupname) quota for filesystem named foo
-  purefb_groupquota:
+  purestorage.flashblade.purefb_groupquota:
     name: foo
     quota: 1T
     gname: bar
@@ -76,7 +76,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete group quota on filesystem foo for group by GID
-  purefb_groupquota:
+  purestorage.flashblade.purefb_groupquota:
     name: foo
     gid: 1234
     state: absent
@@ -84,7 +84,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete group quota on filesystem foo for group by groupname
-  purefb_groupquota:
+  purestorage.flashblade.purefb_groupquota:
     name: foo
     gname: bar
     state: absent
@@ -92,7 +92,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Update group quota on filesystem foo for group by groupname
-  purefb_groupquota:
+  purestorage.flashblade.purefb_groupquota:
     name: foo
     quota: 20G
     gname: bar
@@ -101,7 +101,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Update group quota on filesystem foo for group by GID
-  purefb_groupquota:
+  purestorage.flashblade.purefb_groupquota:
     name: foo
     quota: 20G
     gid: bar

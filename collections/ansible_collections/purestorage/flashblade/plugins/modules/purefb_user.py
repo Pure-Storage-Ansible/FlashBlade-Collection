@@ -56,7 +56,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Change password for local user (NOT IDEMPOTENT)
-  purefb_user:
+  purestorage.flashblade.purefb_user:
     name: pureuser
     password: anewpassword
     old_password: apassword
@@ -64,14 +64,14 @@ EXAMPLES = r"""
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Set public key for user
-  purefb_user:
+  purestorage.flashblade.purefb_user:
     name: fred
     public_key: "{{lookup('file', 'public_pem_file') }}"
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Clear user lockout
-  purefb_user:
+  purestorage.flashblade.purefb_user:
     name: fred
     clear_lock: true
     fb_url: 10.10.10.2
