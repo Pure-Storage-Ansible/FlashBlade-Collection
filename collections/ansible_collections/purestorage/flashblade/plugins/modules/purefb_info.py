@@ -488,6 +488,7 @@ def generate_default_dict(module, blade):
     default_info["certificates"] = len(blade.certificates.list_certificates().items)
     default_info["total_capacity"] = blade.arrays.list_arrays_space().items[0].capacity
     api_version = blade.api_version.list_versions().versions
+    default_info["api_versions"] = api_version
     if POLICIES_API_VERSION in api_version:
         default_info["policies"] = len(blade.policies.list_policies().items)
     if CERT_GROUPS_API_VERSION in api_version:
