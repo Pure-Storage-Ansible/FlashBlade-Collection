@@ -18,15 +18,15 @@ DOCUMENTATION = r"""
 ---
 module: purefb_certs
 version_added: '1.4.0'
-short_description: Manage FlashBlade SSL Certifcates
+short_description: Manage FlashBlade SSL Certificates
 description:
-- Manage SSL certifcates for FlashBlades
+- Manage SSL certificates for FlashBlades
 author:
 - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:
-    - Create or delete certifcate
+    - Create or delete certificate
     default: present
     type: str
     choices: [ absent, present ]
@@ -36,7 +36,7 @@ options:
     type: str
   contents:
     description:
-    - SSL certifcate text
+    - SSL certificate text
     type: str
   private_key:
     description:
@@ -51,13 +51,13 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Create a SSL certifcate
+- name: Create a SSL certificate
   purestorage.flashblade.purefb_certs:
     name: test_cert
-    contents: "{{lookup('file', 'certicate_file_name') }}"
+    contents: "{{lookup('file', 'certificate_file_name') }}"
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-- name: Delete a SSL certifcate
+- name: Delete a SSL certificate
   purestorage.flashblade.purefb_certs:
     name: test_cert
     state: absent
@@ -100,7 +100,7 @@ def delete_cert(module, blade):
             blade.certificates.delete_certificates(names=[module.params["name"]])
         except Exception:
             module.fail_json(
-                msg="Failed to delete certifcate {0}.".format(module.params["name"])
+                msg="Failed to delete certificate {0}.".format(module.params["name"])
             )
     module.exit_json(changed=changed)
 
