@@ -269,25 +269,49 @@ def create_v2_connection(module, blade):
     connection_key = list(remote_system.post_array_connections_connection_key().items)[
         0
     ].connection_key
-    if THROTTLE_API_VERSION in list(blade.get_versions().items):
-        if THROTTLE_API_VERSION not in list(remote_system.get_versions().items):
-            module.fail_json(msg="Remote array does not support throttling")
-        window = flashblade.TimeWindow(
-            start=_convert_to_millisecs(module.params["window_start"]),
-            end=_convert_to_millisecs(module.params["window_end"]),
-        )
-        throttle = flashblade.Throttle(
-            default_limit=human_to_bytes(module.params["default_limit"]),
-            window_limit=human_to_bytes(module.params["window_limit"]),
-            window=window,
-        )
-        connection_info = ArrayConnectionPost(
-            management_address=module.params["target_url"],
-            replication_addresses=module.params["target_repl"],
-            encrypted=module.params["encrypted"],
-            connection_key=connection_key,
-            throttle=throttle,
-        )
+
+    if module.params["default_limit"] or module.params["window_limit"]:
+        if THROTTLE_API_VERSION in list(blade.get_versions().items):
+            if THROTTLE_API_VERSION not in list(remote_system.get_versions().items):
+                module.fail_json(msg="Remote array does not support throttling")
+            if module.params["window_limit"]:
+                if not module.params["window_start"]:
+                    module.params["window_start"] = "12AM"
+                if not module.params["window_end"]:
+                    module.params["window_end"] = "12AM"
+                window = flashblade.TimeWindow(
+                    start=_convert_to_millisecs(module.params["window_start"]),
+                    end=_convert_to_millisecs(module.params["window_end"]),
+                )
+            if module.params["window_limit"] and module.params["default_limit"]:
+                throttle = flashblade.Throttle(
+                    default_limit=human_to_bytes(module.params["default_limit"]),
+                    window_limit=human_to_bytes(module.params["window_limit"]),
+                    window=window,
+                )
+            elif module.params["window_limit"] and not module.params["default_limit"]:
+                throttle = flashblade.Throttle(
+                    window_limit=human_to_bytes(module.params["window_limit"]),
+                    window=window,
+                )
+            else:
+                throttle = flashblade.Throttle(
+                    default_limit=human_to_bytes(module.params["default_limit"]),
+                )
+            connection_info = ArrayConnectionPost(
+                management_address=module.params["target_url"],
+                replication_addresses=module.params["target_repl"],
+                encrypted=module.params["encrypted"],
+                connection_key=connection_key,
+                throttle=throttle,
+            )
+        else:
+            connection_info = ArrayConnectionPost(
+                management_address=module.params["target_url"],
+                replication_addresses=module.params["target_repl"],
+                encrypted=module.params["encrypted"],
+                connection_key=connection_key,
+            )
     else:
         connection_info = ArrayConnectionPost(
             management_address=module.params["target_url"],
@@ -523,8 +547,7 @@ def main():
     target_blade = _check_connected(module, blade)
     if state == "present" and not target_blade:
         # REST 1 does not support fan-out for replication
-        # REST 2 has a limit which we can checkt
-        # fail and expose the error message
+        # REST 2 has a limit which we can check
         if v2_connection:
             create_v2_connection(module, bladev2)
         else:
