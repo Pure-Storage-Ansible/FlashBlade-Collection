@@ -703,7 +703,7 @@ def update_nfs_policy(module, blade):
                     changed = True
                     if not module.check_mode:
                         if module.params["before_rule"]:
-                            res = blade.post_object_store_access_policies_rules(
+                            res = blade.post_nfs_export_policies_rules(
                                 policy_names=[module.params["name"]],
                                 rule=rule,
                                 before_rule_name=(
@@ -891,7 +891,7 @@ def create_nfs_policy(module, blade):
                 secure=module.params["secure"],
                 security=module.params["security"],
             )
-            res = blade.post_object_store_access_policies_rules(
+            res = blade.post_nfs_export_policies_rules(
                 policy_names=[module.params["name"]],
                 rule=rule,
             )
