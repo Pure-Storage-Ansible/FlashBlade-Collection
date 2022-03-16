@@ -1,5 +1,6 @@
 netaddr
 datetime
+pytz
 python >= '3.6'
 purity-fb >= '1.12.2'
-py-pure-client >= '1.21.0'
+py-pure-client >= '1.26.0'
