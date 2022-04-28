@@ -97,6 +97,7 @@ purefb_info:
         "buckets": {
             "central": {
                 "account_name": "jake",
+                "bucket_type": "classic",
                 "created": 1628900154000,
                 "data_reduction": null,
                 "destroyed": false,
@@ -1027,6 +1028,7 @@ def generate_bucket_dict(module, blade):
         bucket = buckets.items[bckt].name
         bucket_info[bucket] = {
             "versioning": buckets.items[bckt].versioning,
+            "bucket_type": getattr(buckets.items[bckt], "bucket_type", None),
             "object_count": buckets.items[bckt].object_count,
             "id": buckets.items[bckt].id,
             "account_name": buckets.items[bckt].account.name,
@@ -1082,6 +1084,12 @@ def generate_bucket_dict(module, blade):
                     rule
                 ].cleanup_expired_object_delete_marker,
             }
+        if VSO_VERSION in api_version:
+            buckets = list(blade.get_buckets().items)
+            for bucket in range(0, len(buckets)):
+                bucket_info[buckets[bucket].name]["bucket_type"] = bucket_info[
+                    buckets[bucket]
+                ].bucket_type
     return bucket_info
 
 
