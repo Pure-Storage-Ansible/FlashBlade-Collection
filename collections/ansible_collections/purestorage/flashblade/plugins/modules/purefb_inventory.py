@@ -32,35 +32,79 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: collect FlashBlade invenroty
-  purestorage.flashblade.purefa_inventory:
+- name: collect FlashBlade inventory
+  purestorage.flashblade.purefb_inventory:
     fa_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
+  register: blade_info
 - name: show default information
   debug:
-    msg: "{{ array_info['purefb_info'] }}"
+    msg: "{{ blade_info['purefb_info'] }}"
 
 """
 
 RETURN = r"""
 purefb_inventory:
-  description: Returns the inventory information for the FlashArray
+  description: Returns the inventory information for the FlashBlade
   returned: always
   type: complex
   sample: {
-        "admins": {
-            "pureuser": {
-                "role": "array_admin",
-                "type": "local"
+        "blades": {
+            "CH1.FB1": {
+                "model": "FB-17TB",
+                "serial": "PPCXA1942AFF5",
+                "slot": 1,
+                "status": "healthy"
             }
         },
-        "apps": {
-            "offload": {
-                "description": "Snapshot offload to NFS or Amazon S3",
-                "status": "healthy",
-                "version": "5.2.1"
+        "chassis": {
+            "CH1": {
+                "index": 1,
+                "model": null,
+                "serial": "PMPAM163402AE",
+                "slot": null,
+                "status": "healthy"
             }
-        }
+        },
+        "controllers": {},
+        "ethernet": {
+            "CH1.FM1.ETH1": {
+                "model": "624410002",
+                "serial": "APF16360021PRV",
+                "slot": 1,
+                "speed": 40000000000,
+                "status": "healthy"
+            }
+        },
+        "fans": {
+            "CH1.FM1.FAN1": {
+                "slot": 1,
+                "status": "healthy"
+            }
+        },
+        "modules": {
+            "CH1.FM1": {
+                "model": "EFM-110",
+                "serial": "PSUFS1640002C",
+                "slot": 1,
+                "status": "healthy"
+            },
+            "CH1.FM2": {
+                "model": "EFM-110",
+                "serial": "PSUFS1640004A",
+                "slot": 2,
+                "status": "healthy"
+            }
+        },
+        "power": {
+            "CH1.PWR1": {
+                "model": "DS1600SPE-3",
+                "serial": "M0500E00D8AJZ",
+                "slot": 1,
+                "status": "healthy"
+            }
+        },
+        "switch": {}
     }
 """
 
@@ -91,6 +135,9 @@ def generate_hardware_dict(blade):
             "status": components.items[component].status,
             "serial": components.items[component].serial,
             "model": components.items[component].model,
+            "identify": getattr(
+                components.items[component], "identify_enabled", "None"
+            ),
         }
     components = blade.hardware.list_hardware(filter="type='eth'")
     for component in range(0, len(components.items)):
@@ -108,6 +155,9 @@ def generate_hardware_dict(blade):
         hw_info["fans"][component_name] = {
             "slot": components.items[component].slot,
             "status": components.items[component].status,
+            "identify": getattr(
+                components.items[component], "identify_enabled", "None"
+            ),
         }
     components = blade.hardware.list_hardware(filter="type='fb'")
     for component in range(0, len(components.items)):
@@ -117,6 +167,10 @@ def generate_hardware_dict(blade):
             "status": components.items[component].status,
             "serial": components.items[component].serial,
             "model": components.items[component].model,
+            "temperature": getattr(components.items[component], "temperature", "None"),
+            "identify": getattr(
+                components.items[component], "identify_enabled", "None"
+            ),
         }
     components = blade.hardware.list_hardware(filter="type='pwr'")
     for component in range(0, len(components.items)):
@@ -145,6 +199,19 @@ def generate_hardware_dict(blade):
             "status": components.items[component].status,
             "serial": components.items[component].serial,
             "model": components.items[component].model,
+        }
+    components = blade.hardware.list_hardware(filter="type='bay'")
+    for component in range(0, len(components.items)):
+        component_name = components.items[component].name
+        hw_info["chassis"][component_name] = {
+            "slot": components.items[component].slot,
+            "index": components.items[component].index,
+            "status": components.items[component].status,
+            "serial": components.items[component].serial,
+            "model": components.items[component].model,
+            "identify": getattr(
+                components.items[component], "identify_enabled", "None"
+            ),
         }
 
     return hw_info
