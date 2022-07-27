@@ -661,6 +661,7 @@ def rename_nfs_policy(module, blade):
                     res.errors[0].message,
                 )
             )
+        module.exit_json(changed=changed)
 
 
 def update_nfs_policy(module, blade):
@@ -1691,7 +1692,7 @@ def main():
                 )[0]
             except AttributeError:
                 new_policy = None
-        if policy and state == "present":
+        if policy and state == "present" and "rename" not in module.params:
             if module.params["before_rule"]:
                 res = blade.get_nfs_export_policies_rules(
                     policy_names=[module.params["name"]],
@@ -1710,7 +1711,7 @@ def main():
             state == "present" and module.params["rename"] and policy and not new_policy
         ):
             rename_nfs_policy(module, blade)
-        elif state == "present" and not policy:
+        elif state == "present" and not policy and "rename" not in module.params:
             create_nfs_policy(module, blade)
         elif state == "absent" and policy:
             delete_nfs_policy(module, blade)
