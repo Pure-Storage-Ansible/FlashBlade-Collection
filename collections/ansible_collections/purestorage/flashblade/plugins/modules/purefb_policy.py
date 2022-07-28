@@ -276,6 +276,12 @@ options:
     - The index of the client rule to insert or move a client rule before.
     type: int
     version_added: "1.9.0"
+  rename:
+    description:
+    - New name for export policy
+    - Only applies to NFS export policies
+    type: str
+    version_added: "1.10.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -428,6 +434,13 @@ EXAMPLES = r"""
     state: copy
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name:  Rename an NFS Export Policy
+  purestorage.flashblade.purefb_policy:
+    name: old_name
+    policy_type: nfs
+    rename: new_name
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 """
 
 RETURN = r"""
@@ -474,6 +487,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 MIN_REQUIRED_API_VERSION = "1.9"
 ACCESS_POLICY_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
+NFS_RENAME_API_VERSION = "2.4"
 
 
 def _convert_to_millisecs(hour):
@@ -628,6 +642,26 @@ def delete_nfs_policy(module, blade):
                     )
                 )
     module.exit_json(changed=changed)
+
+
+def rename_nfs_policy(module, blade):
+    """Rename NFS Export Policy"""
+
+    changed = True
+    if not module.check_mode:
+        res = blade.patch_nfs_export_policies(
+            names=[module.params["name"]],
+            policy=NfsExportPolicy(name=module.params["rename"]),
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to rename NFS export policy {0} to {1}. Error: {2}".format(
+                    module.params["name"],
+                    module.params["rename"],
+                    res.errors[0].message,
+                )
+            )
+        module.exit_json(changed=changed)
 
 
 def update_nfs_policy(module, blade):
@@ -1500,6 +1534,7 @@ def main():
             account=dict(type="str"),
             target=dict(type="str"),
             target_rule=dict(type="str"),
+            rename=dict(type="str"),
             rule=dict(type="str"),
             user=dict(type="str"),
             effect=dict(type="str", default="allow", choices=["allow"]),
@@ -1650,7 +1685,14 @@ def main():
             )[0]
         except AttributeError:
             policy = None
-        if policy and state == "present":
+        if module.params["rename"]:
+            try:
+                new_policy = list(
+                    blade.get_nfs_export_policies(names=[module.params["rename"]]).items
+                )[0]
+            except AttributeError:
+                new_policy = None
+        if policy and state == "present" and not module.params["rename"]:
             if module.params["before_rule"]:
                 res = blade.get_nfs_export_policies_rules(
                     policy_names=[module.params["name"]],
@@ -1665,7 +1707,11 @@ def main():
                         )
                     )
             update_nfs_policy(module, blade)
-        elif state == "present" and not policy:
+        elif (
+            state == "present" and module.params["rename"] and policy and not new_policy
+        ):
+            rename_nfs_policy(module, blade)
+        elif state == "present" and not policy and not module.params["rename"]:
             create_nfs_policy(module, blade)
         elif state == "absent" and policy:
             delete_nfs_policy(module, blade)
