@@ -1692,7 +1692,7 @@ def main():
                 )[0]
             except AttributeError:
                 new_policy = None
-        if policy and state == "present" and not module.params["rename"]
+        if policy and state == "present" and not module.params["rename"]:
             if module.params["before_rule"]:
                 res = blade.get_nfs_export_policies_rules(
                     policy_names=[module.params["name"]],
