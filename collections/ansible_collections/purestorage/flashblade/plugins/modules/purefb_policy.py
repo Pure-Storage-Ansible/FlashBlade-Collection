@@ -1645,7 +1645,7 @@ def main():
                     )
                 )
         if policy and state == "present":
-            update_os_policy(module, blade, policy)
+            update_os_policy(module, blade)
         elif state == "present" and not policy:
             create_os_policy(module, blade)
         elif state == "absent" and policy:
