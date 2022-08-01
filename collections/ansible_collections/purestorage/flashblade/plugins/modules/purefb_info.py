@@ -447,6 +447,7 @@ MIN_32_API = "2.0"
 LIFECYCLE_API_VERSION = "2.1"
 SMB_MODE_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
+VSO_VERSION = "2.4"
 
 
 def _millisecs_to_time(millisecs):
@@ -533,6 +534,8 @@ def generate_default_dict(module, blade):
                 )
         if NFS_POLICY_API_VERSION in api_version:
             default_info["smb_mode"] = blade_info.smb_mode
+        if VSO_VERSION in api_version:
+            default_info["timezone"] = blade_info.time_zone
 
     return default_info
 
