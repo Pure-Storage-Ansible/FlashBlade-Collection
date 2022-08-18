@@ -34,7 +34,8 @@ options:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
         capacity, network, subnets, lags, filesystems, snapshots, buckets,
-        replication, policies, arrays, accounts, admins, ad and kerberos.
+        replication, policies, arrays, accounts, admins, ad, kerberos
+        and quotas.
     required: false
     type: list
     elements: str
@@ -263,6 +264,8 @@ purefb_info:
         },
         "filesystems": {
             "k8s-pvc-d24b1357-579e-11e8-811f-ecf4bbc88f54": {
+                "default_group_quota": 0,
+                "default_user_quota": 0,
                 "destroyed": false,
                 "fast_remove": false,
                 "hard_limit": true,
@@ -271,6 +274,8 @@ purefb_info:
                 "snapshot_enabled": false
             },
             "z": {
+                "default_group_quota": 0,
+                "default_user_quota": 0,
                 "destroyed": false,
                 "fast_remove": false,
                 "hard_limit": false,
@@ -1248,7 +1253,7 @@ def generate_object_store_accounts_dict(blade):
 
 def generate_fs_dict(module, blade):
     api_version = blade.api_version.list_versions().versions
-    if NFS_POLICY_API_VERSION in api_version:
+    if SMB_MODE_API_VERSION in api_version:
         bladev2 = get_system(module)
         fsys_v2 = list(bladev2.get_file_systems().items)
     fs_info = {}
@@ -1263,6 +1268,8 @@ def generate_fs_dict(module, blade):
             "nfs_rules": fsys.items[fsystem].nfs.rules,
             "nfs_v3": getattr(fsys.items[fsystem].nfs, "v3_enabled", False),
             "nfs_v4_1": getattr(fsys.items[fsystem].nfs, "v4_1_enabled", False),
+            "user_quotas": {},
+            "group_quotas": {},
         }
         if fsys.items[fsystem].http.enabled:
             fs_info[share]["http"] = fsys.items[fsystem].http.enabled
@@ -1288,12 +1295,57 @@ def generate_fs_dict(module, blade):
                 "is_local": fsys.items[fsystem].source.is_local,
                 "name": fsys.items[fsystem].source.name,
             }
-            if NFS_POLICY_API_VERSION in api_version:
-                for v2fs in range(0, len(fsys_v2)):
-                    if fsys_v2[v2fs].name == share:
+        if SMB_MODE_API_VERSION in api_version:
+            for v2fs in range(0, len(fsys_v2)):
+                if fsys_v2[v2fs].name == share:
+                    fs_info[share]["default_group_quota"] = fsys_v2[
+                        v2fs
+                    ].default_group_quota
+                    fs_info[share]["default_user_quota"] = fsys_v2[
+                        v2fs
+                    ].default_user_quota
+                    if NFS_POLICY_API_VERSION in api_version:
                         fs_info[share]["export_policy"] = fsys_v2[
                             v2fs
                         ].nfs.export_policy.name
+        if VSO_VERSION in api_version:
+            for v2fs in range(0, len(fsys_v2)):
+                if fsys_v2[v2fs].name == share:
+                    try:
+                        fs_groups = True
+                        fs_group_quotas = list(
+                            bladev2.get_quotas_groups(file_system_names=[share]).items
+                        )
+                    except Exception:
+                        fs_groups = False
+                    try:
+                        fs_users = True
+                        fs_user_quotas = list(
+                            bladev2.get_quotas_users(file_system_names=[share]).items
+                        )
+                    except Exception:
+                        fs_users = False
+                    if fs_groups:
+                        for group_quota in range(0, len(fs_group_quotas)):
+                            group_name = fs_group_quotas[group_quota].name.rsplit("/")[
+                                1
+                            ]
+                            fs_info[share]["group_quotas"][group_name] = {
+                                "group_id": fs_group_quotas[group_quota].group.id,
+                                "group_name": fs_group_quotas[group_quota].group.name,
+                                "quota": fs_group_quotas[group_quota].quota,
+                                "usage": fs_group_quotas[group_quota].usage,
+                            }
+                    if fs_users:
+                        for user_quota in range(0, len(fs_user_quotas)):
+                            user_name = fs_user_quotas[user_quota].name.rsplit("/")[1]
+                            fs_info[share]["user_quotas"][user_name] = {
+                                "user_id": fs_user_quotas[user_quota].user.id,
+                                "user_name": fs_user_quotas[user_quota].user.name,
+                                "quota": fs_user_quotas[user_quota].quota,
+                                "usage": fs_user_quotas[user_quota].usage,
+                            }
+
     return fs_info
 
 
