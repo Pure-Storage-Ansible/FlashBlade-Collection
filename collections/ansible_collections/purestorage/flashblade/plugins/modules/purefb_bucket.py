@@ -55,6 +55,15 @@ options:
     required: false
     type: bool
     default: false
+  mode:
+    description:
+      - The type of bucket to be created. Also referred to a VSO Mode.
+      - Requires Purity//FB 3.3.3 or higher
+      - I(multi-site) type can only be used after feature is
+        enabled by Pure Technical Support
+    type: str
+    choices: [ "classic", "multi-site" ]
+    version_added: '1.10.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -110,15 +119,23 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+HAS_PYPURECLIENT = True
+try:
+    from pypureclient import flashblade
+except ImportError:
+    HAS_PYPURECLIENT = False
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
 MIN_REQUIRED_API_VERSION = "1.5"
 VERSIONING_VERSION = "1.9"
+VSO_VERSION = "2.4"
 
 
 def get_s3acc(module, blade):
@@ -147,7 +164,23 @@ def create_bucket(module, blade):
     if not module.check_mode:
         try:
             api_version = blade.api_version.list_versions().versions
-            if VERSIONING_VERSION in api_version:
+            if VSO_VERSION in api_version and module.params["mode"]:
+                bladev2 = get_system(module)
+                res = bladev2.post_buckets(
+                    names=[module.params["name"]],
+                    bucket=flashblade.BucketPost(
+                        account=flashblade.Reference(name=module.params["account"]),
+                        bucket_type=module.params["mode"],
+                    ),
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Object Store Bucket {0} creation failed. Error: {1}".format(
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+            elif VERSIONING_VERSION in api_version:
                 attr = BucketPost()
                 attr.account = Reference(name=module.params["account"])
                 blade.buckets.create_buckets(names=[module.params["name"]], bucket=attr)
@@ -240,8 +273,14 @@ def update_bucket(module, blade, bucket):
     """Update Bucket"""
     changed = False
     api_version = blade.api_version.list_versions().versions
+    if VSO_VERSION in api_version:
+        if module.params["mode"]:
+            bladev2 = get_system(module)
+            bucket_detail = bladev2.get_buckets(names=[module.params["name"]])
+            if list(bucket_detail.items)[0].bucket_type != module.params["mode"]:
+                module.warn("Changing bucket type is not permitted.")
+
     if VERSIONING_VERSION in api_version:
-        module.warn("{0}".format(bucket.versioning))
         if bucket.versioning != "none":
             if module.params["versioning"] == "absent":
                 versioning = "suspended"
@@ -302,6 +341,7 @@ def main():
             name=dict(required=True),
             account=dict(required=True),
             eradicate=dict(default="false", type="bool"),
+            mode=dict(type="str", choices=["classic", "multi-site"]),
             versioning=dict(
                 default="absent", choices=["enabled", "suspended", "absent"]
             ),
@@ -313,12 +353,18 @@ def main():
 
     if not HAS_PURITY_FB:
         module.fail_json(msg="purity_fb sdk is required for this module")
+    if module.params["mode"]:
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required to support VSO mode")
 
     state = module.params["state"]
     blade = get_blade(module)
     api_version = blade.api_version.list_versions().versions
     if MIN_REQUIRED_API_VERSION not in api_version:
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
+    if module.params["mode"] and VSO_VERSION not in api_version:
+        module.fail_json(msg="VSO mode requires Purity//FB 3.3.3 or higher.")
+
     bucket = get_bucket(module, blade)
     if not get_s3acc(module, blade):
         module.fail_json(
