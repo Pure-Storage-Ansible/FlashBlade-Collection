@@ -1092,8 +1092,8 @@ def generate_bucket_dict(module, blade):
         if VSO_VERSION in api_version:
             buckets = list(blade.get_buckets().items)
             for bucket in range(0, len(buckets)):
-                bucket_info[buckets[bucket].name]["bucket_type"] = bucket_info[
-                    buckets[bucket]
+                bucket_info[buckets[bucket].name]["bucket_type"] = buckets[
+                    bucket
                 ].bucket_type
     return bucket_info
 
