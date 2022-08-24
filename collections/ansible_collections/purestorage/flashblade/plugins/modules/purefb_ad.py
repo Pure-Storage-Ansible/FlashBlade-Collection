@@ -102,7 +102,8 @@ options:
     description:
     - Service protocol for Active Directory principals
     - Refer to FlashBlade User Guide for more details
-    type: str
+    type: list
+    elements: str
     choices: ['nfs', 'cifs', 'HOST']
     default: nfs
   local_only:
@@ -297,11 +298,12 @@ def update_account(module, blade):
         if current_ad.service_principal_names:
             full_spns = []
             for spn in range(0, len(module.params["service_principals"])):
-                full_spns.append(
-                    module.params["service"]
-                    + "/"
-                    + module.params["service_principals"][spn]
-                )
+                for service in range(0, len(module.params["service"])):
+                    full_spns.append(
+                        module.params["service"][service]
+                        + "/"
+                        + module.params["service_principals"][spn]
+                    )
             if set(current_ad.service_principal_names) != set(full_spns):
                 attr["service_principal_names"] = full_spns
                 mod_ad = True
@@ -329,7 +331,12 @@ def main():
             username=dict(type="str"),
             password=dict(type="str", no_log=True),
             name=dict(type="str", required=True),
-            service=dict(type="str", default="nfs", choices=["nfs", "cifs", "HOST"]),
+            service=dict(
+                type="list",
+                elements="str",
+                default="nfs",
+                choices=["nfs", "cifs", "HOST"],
+            ),
             computer=dict(type="str"),
             existing=dict(type="bool", default=False),
             local_only=dict(type="bool", default=False),
@@ -375,10 +382,6 @@ def main():
     # TODO: Check SMB mode.
     # If mode is SMB adapter only allow nfs
     # Only allow cifs or HOST is SMB mode is native
-    if module.params["service"].lower() in ["nfs", "cifs"]:
-        module.params["service"] = module.params["service"].lower()
-    if module.params["service"].upper() == "HOST":
-        module.params["service"] = module.params["service"].upper()
 
     if not module.params["computer"]:
         module.params["computer"] = module.params["name"].replace("_", "-")
