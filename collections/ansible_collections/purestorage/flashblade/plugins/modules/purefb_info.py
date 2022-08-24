@@ -35,7 +35,7 @@ options:
         Possible values for this include all, minimum, config, performance,
         capacity, network, subnets, lags, filesystems, snapshots, buckets,
         replication, policies, arrays, accounts, admins, ad, kerberos
-        and quotas.
+        and drives.
     required: false
     type: list
     elements: str
@@ -114,6 +114,7 @@ purefb_info:
             },
             "test": {
                 "account_name": "acme",
+                "bucket_type": "classic",
                 "created": 1630591952000,
                 "data_reduction": 3.6,
                 "destroyed": false,
@@ -454,6 +455,7 @@ LIFECYCLE_API_VERSION = "2.1"
 SMB_MODE_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 VSO_VERSION = "2.4"
+DRIVES_API_VERSION = "2.5"
 
 
 def _millisecs_to_time(millisecs):
@@ -542,6 +544,10 @@ def generate_default_dict(module, blade):
             default_info["smb_mode"] = blade_info.smb_mode
         if VSO_VERSION in api_version:
             default_info["timezone"] = blade_info.time_zone
+        if DRIVES_API_VERSION in api_version:
+            default_info["product_type"] = getattr(
+                blade_info, "product_type", "Unknown"
+            )
 
     return default_info
 
@@ -1349,6 +1355,26 @@ def generate_fs_dict(module, blade):
     return fs_info
 
 
+def generate_drives_dict(blade):
+    """
+    Drives information is only available for the Legend chassis.
+    The Legend chassis product_name has // in it so only bother if
+    that is the case.
+    """
+    drives_info = {}
+    drives = list(blade.get_drives().items)
+    if "//" in list(blade.get_arrays().items)[0].product_type:
+        for drive in range(0, len(drives)):
+            name = drives[drive].name
+            drives_info[name] = {
+                "progress": getattr(drives[drive], "progress", None),
+                "raw_capacity": getattr(drives[drive], "raw_capacity", None),
+                "status": getattr(drives[drive], "status", None),
+                "details": getattr(drives[drive], "details", None),
+            }
+    return drives_info
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
@@ -1388,6 +1414,7 @@ def main():
         "admins",
         "ad",
         "kerberos",
+        "drives",
     )
     subset_test = (test in valid_subsets for test in subset)
     if not all(subset_test):
@@ -1450,7 +1477,8 @@ def main():
                 )
             if NFS_POLICY_API_VERSION in api_version:
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
-
+        if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_version:
+            info["drives"] = generate_drives_dict(blade)
     module.exit_json(changed=False, purefb_info=info)
 
 
