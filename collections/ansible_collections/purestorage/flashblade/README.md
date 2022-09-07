@@ -53,6 +53,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_keytabs - manage FlashBlade Kerberos keytabs
 - purefb_lag - manage FlashBlade Link Aggregation Groups
 - purefb_lifecycle - manage FlashBlade Bucket Lifecycle Rules
+- purefb_messages - list FlashBlade alert messages
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade
 - purefb_phonehome - manage the phone home settings for a FlashBlade
