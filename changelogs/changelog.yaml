@@ -1,5 +1,40 @@
 ancestor: null
 releases:
+  1.10.0:
+    changes:
+      bugfixes:
+        - purefb_connect - Resolve connection issues between two FBs that are throttling
+          capable
+        - purefb_policy - Fix incorrect API call for NFS export policy rule creation
+      minor_changes:
+        - All - Update documentation examples with FQCNs
+        - purefb_ad - Allow service to be a list
+        - purefb_bucket - Allow setting of bucket type to support VSO - requires Purity//FB
+          3.3.3 or higher
+        - purefb_certs - Fix several misspellings of certificate
+        - purefb_info - Added filesystem default, user and group quotas where available
+        - purefb_info - Expose object store bucket type from Purity//FB 3.3.3
+        - purefb_info - Show information for current timezone
+        - purefb_policy - Allow rename of NFS Export Policies from Purity//FB 3.3.3
+        - purefb_tz - Add support for FlashBlade timezone management
+    fragments:
+      - 179_fqcn.yaml
+      - 183_v2_connections.yaml
+      - 184_certificate_typos.yaml
+      - 185_nfs_export_rule.yaml
+      - 186_add_tz.yaml
+      - 187_rename_nfs_policy.yaml
+      - 188_bucket_type.yaml
+      - 191_add_quota_info.yaml
+      - 194_lists_for_service.yaml
+    modules:
+      - description: List FlashBlade Alert Messages
+        name: purefb_messages
+        namespace: ''
+      - description: Configure Pure Storage FlashBlade timezone
+        name: purefb_tz
+        namespace: ''
+    release_date: '2022-09-12'
   1.3.0:
     changes:
       bugfixes:
