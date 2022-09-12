@@ -5,6 +5,34 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.10.0
+=======
+
+Minor Changes
+-------------
+
+- All - Update documentation examples with FQCNs
+- purefb_ad - Allow service to be a list
+- purefb_bucket - Allow setting of bucket type to support VSO - requires Purity//FB 3.3.3 or higher
+- purefb_certs - Fix several misspellings of certificate
+- purefb_info - Added filesystem default, user and group quotas where available
+- purefb_info - Expose object store bucket type from Purity//FB 3.3.3
+- purefb_info - Show information for current timezone
+- purefb_policy - Allow rename of NFS Export Policies from Purity//FB 3.3.3
+- purefb_tz - Add support for FlashBlade timezone management
+
+Bugfixes
+--------
+
+- purefb_connect - Resolve connection issues between two FBs that are throttling capable
+- purefb_policy - Fix incorrect API call for NFS export policy rule creation
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_messages - List FlashBlade Alert Messages
+- purestorage.flashblade.purefb_tz - Configure Pure Storage FlashBlade timezone
+
 v1.9.0
 ======
 
