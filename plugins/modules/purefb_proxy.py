@@ -22,7 +22,7 @@ author:
   - Pure Storage ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 short_description: Configure FlashBlade phonehome HTTPs proxy settings
 description:
-- Set or erase configuration for the HTTPS phonehome proxy settings.
+- Set or erase configuration for the phonehome proxy settings.
 options:
   state:
     description:
@@ -38,6 +38,13 @@ options:
     description:
     - The proxy TCP/IP port number.
     type: int
+  secure:
+    description:
+    - Use http or https as the proxy protocol.
+    - True uses https, false uses http.
+    default: true
+    type: bool
+    version_added: '1.11.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -93,11 +100,15 @@ def create_proxy(module, blade):
     """Set proxy settings"""
     changed = False
     current_proxy = blade.support.list_support().items[0].proxy
+    if module.params["secure"]:
+        protocol = "https://"
+    else:
+        protocol = "http://"
     if current_proxy is not None:
         changed = True
         if not module.check_mode:
             new_proxy = (
-                "https://" + module.params["host"] + ":" + str(module.params["port"])
+                protocol + module.params["host"] + ":" + str(module.params["port"])
             )
             if new_proxy != current_proxy:
                 try:
@@ -114,6 +125,7 @@ def main():
     argument_spec.update(
         dict(
             state=dict(type="str", default="present", choices=["absent", "present"]),
+            secure=dict(type="bool", default=True),
             host=dict(type="str"),
             port=dict(type="int"),
         )
