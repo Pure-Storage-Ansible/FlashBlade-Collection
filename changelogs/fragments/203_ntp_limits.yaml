@@ -1,0 +1,2 @@
+minor_changes:
+  - purefb_ntp - Removed artifical limit of 4 for number of NTP servers that can be configured.

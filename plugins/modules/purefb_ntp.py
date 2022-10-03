@@ -34,11 +34,9 @@ options:
     type: list
     elements: str
     description:
-    - A list of up to 4 alternate NTP servers. These may include IPv4,
+    - A list of NTP servers. These may include IPv4,
       IPv6 or FQDNs. Invalid IP addresses will cause the module to fail.
       No validation is performed for FQDNs.
-    - If more than 4 servers are provided, only the first 4 unique
-      nameservers will be used.
     - if no servers are given a default of I(0.pool.ntp.org) will be used.
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
@@ -111,7 +109,7 @@ def create_ntp(module, blade):
         if not module.params["ntp_servers"]:
             module.params["ntp_servers"] = ["0.pool.ntp.org"]
         try:
-            blade_settings = PureArray(ntp_servers=module.params["ntp_servers"][0:4])
+            blade_settings = PureArray(ntp_servers=module.params["ntp_servers"])
             blade.arrays.update_arrays(array_settings=blade_settings)
         except Exception:
             module.fail_json(msg="Update of NTP servers failed")
@@ -148,7 +146,7 @@ def main():
     else:
         module.params["ntp_servers"] = remove(module.params["ntp_servers"])
         if sorted(blade.arrays.list_arrays().items[0].ntp_servers) != sorted(
-            module.params["ntp_servers"][0:4]
+            module.params["ntp_servers"]
         ):
             create_ntp(module, blade)
 
