@@ -20,7 +20,12 @@ module: purefb_policy
 version_added: '1.0.0'
 short_description: Manage FlashBlade policies
 description:
-- Manage policies for filesystem, file replica links and object store access
+- Manage policies for filesystem, file replica links and object store access.
+- To update an existing snapshot policy rule, you must first delete the
+  original rule and then add the new rule to replace it. Purity's best-fit
+  will try to ensure that any required snapshots deleted on the deletion of
+  the first rule will be recovered as long replacement rule is added before
+  the snapshot eradication period is exceeded (usuually 24 hours).
 author:
 - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
@@ -282,6 +287,12 @@ options:
     - Only applies to NFS export policies
     type: str
     version_added: "1.10.0"
+  destroy_snapshots:
+    description:
+    - This parameter must be set to true in order to modify a policy such that local or remote snapshots would be destroyed.
+    type: bool
+    version_added: '1.11.0'
+    default: false
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -460,6 +471,8 @@ try:
         PolicyRuleObjectAccess,
         NfsExportPolicy,
         NfsExportPolicyRule,
+        Policy,
+        PolicyRule,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -485,6 +498,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 
 MIN_REQUIRED_API_VERSION = "1.9"
+SNAPSHOT_POLICY_API_VERSION = "2.1"
 ACCESS_POLICY_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 NFS_RENAME_API_VERSION = "2.4"
@@ -1275,6 +1289,171 @@ def delete_policy(module, blade):
     module.exit_json(changed=changed)
 
 
+def delete_snap_policy(module, blade):
+    """Delete REST 2 snapshot policy
+
+    If any rule parameters are provided then delete any rules that match
+    all of the parameters provided.
+    If no rule parameters are provided delete the entire policy
+    """
+
+    changed = False
+    rule_delete = False
+    if (
+        module.params["at"]
+        or module.params["every"]
+        or module.params["timezone"]
+        or module.params["keep_for"]
+    ):
+        rule_delete = True
+    if rule_delete:
+        current_rules = list(blade.get_policies(names=[module.params["name"]]).items)[
+            0
+        ].rules
+        for rule in range(0, len(current_rules)):
+            current_rule = {
+                "at": current_rules[rule].at,
+                "every": current_rules[rule].every,
+                "keep_for": current_rules[rule].keep_for,
+                "time_zone": current_rules[rule].time_zone,
+            }
+            if not module.params["at"]:
+                delete_at = current_rules[rule].at
+            else:
+                delete_at = _convert_to_millisecs(module.params["at"])
+            if module.params["keep_for"]:
+                delete_keep_for = module.params["keep_for"]
+            else:
+                delete_keep_for = int(current_rules[rule].keep_for / 1000)
+            if module.params["every"]:
+                delete_every = module.params["every"]
+            else:
+                delete_every = int(current_rules[rule].every / 1000)
+            if not module.params["timezone"]:
+                delete_tz = current_rules[rule].time_zone
+            else:
+                delete_tz = module.params["timezone"]
+            delete_rule = {
+                "at": delete_at,
+                "every": delete_every * 1000,
+                "keep_for": delete_keep_for * 1000,
+                "time_zone": delete_tz,
+            }
+            if current_rule == delete_rule:
+                changed = True
+                attr = PolicyPatch(remove_rules=[delete_rule])
+                if not module.check_mode:
+                    res = blade.patch_policies(
+                        destroy_snapshots=module.params["destroy_snapshots"],
+                        names=[module.params["name"]],
+                        policy=attr,
+                    )
+                    if res.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to delete policy rule {0}. Error: {1}".format(
+                                module.params["name"], res.errors[0].message
+                            )
+                        )
+    else:
+        changed = True
+        if not module.check_mode:
+            res = blade.delete_policies(names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to delete policy {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def create_snap_policy(module, blade):
+    """Create REST 2 snapshot policy"""
+    changed = True
+    if (
+        module.params["keep_for"]
+        and not module.params["every"]
+        or module.params["every"]
+        and not module.params["keep_for"]
+    ):
+        module.fail_json(msg="`keep_for` and `every` are required.")
+    if module.params["timezone"] and not module.params["at"]:
+        module.fail_json(msg="`timezone` requires `at` to be provided.")
+    if module.params["at"] and not module.params["every"]:
+        module.fail_json(msg="`at` requires `every` to be provided.")
+
+    if not module.check_mode:
+        if module.params["at"] and module.params["every"]:
+            if not module.params["every"] % 86400 == 0:
+                module.fail_json(
+                    msg="At time can only be set if every value is a multiple of 86400"
+                )
+            if not module.params["timezone"]:
+                module.params["timezone"] = _get_local_tz(module)
+                if module.params["timezone"] not in pytz.all_timezones_set:
+                    module.fail_json(
+                        msg="Timezone {0} is not valid".format(
+                            module.params["timezone"]
+                        )
+                    )
+        if not module.params["keep_for"]:
+            module.params["keep_for"] = 0
+        if not module.params["every"]:
+            module.params["every"] = 0
+        if module.params["keep_for"] < module.params["every"]:
+            module.fail_json(
+                msg="Retention period cannot be less than snapshot interval."
+            )
+        if module.params["at"] and not module.params["timezone"]:
+            module.params["timezone"] = _get_local_tz(module)
+            if module.params["timezone"] not in set(pytz.all_timezones_set):
+                module.fail_json(
+                    msg="Timezone {0} is not valid".format(module.params["timezone"])
+                )
+
+        if module.params["keep_for"]:
+            if not 300 <= module.params["keep_for"] <= 34560000:
+                module.fail_json(
+                    msg="keep_for parameter is out of range (300 to 34560000)"
+                )
+            if not 300 <= module.params["every"] <= 34560000:
+                module.fail_json(
+                    msg="every parameter is out of range (300 to 34560000)"
+                )
+            if module.params["at"]:
+                attr = Policy(
+                    enabled=module.params["enabled"],
+                    rules=[
+                        PolicyRule(
+                            keep_for=module.params["keep_for"] * 1000,
+                            every=module.params["every"] * 1000,
+                            at=_convert_to_millisecs(module.params["at"]),
+                            time_zone=module.params["timezone"],
+                        )
+                    ],
+                )
+            else:
+                attr = Policy(
+                    enabled=module.params["enabled"],
+                    rules=[
+                        PolicyRule(
+                            keep_for=module.params["keep_for"] * 1000,
+                            every=module.params["every"] * 1000,
+                        )
+                    ],
+                )
+        else:
+            attr = Policy(enabled=module.params["enabled"])
+        res = blade.post_policies(names=[module.params["name"]], policy=attr)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create snapshot policy {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+    module.exit_json(changed=changed)
+
+
 def create_policy(module, blade):
     """Create snapshot policy"""
     changed = True
@@ -1384,6 +1563,147 @@ def create_policy(module, blade):
                             link, module.params["name"]
                         )
                     )
+    module.exit_json(changed=changed)
+
+
+def update_snap_policy(module, blade):
+    """Update REST 2 snapshot policy
+
+    Add new rules to the policy using this function.
+    Should it be necessary to modify an existing rule these are the rules:
+
+    Due to the 'best fit' nature of Purity we only add new rulkes in this function.
+    If you trying to update an existing rule, then this should be done by deleting
+    the current rule and then adding the new rule.
+
+    Purity may recover some snapshots as long as the add happens before the eradication delay
+    (typically 24h) causes the snapshots to be eradicated.
+    """
+
+    changed = False
+    if (
+        module.params["keep_for"]
+        and not module.params["every"]
+        or module.params["every"]
+        and not module.params["keep_for"]
+    ):
+        module.fail_json(msg="`keep_for` and `every` are required.")
+    if module.params["timezone"] and not module.params["at"]:
+        module.fail_json(msg="`timezone` requires `at` to be provided.")
+    if module.params["at"] and not module.params["every"]:
+        module.fail_json(msg="`at` requires `every` to be provided.")
+    current_rules = list(blade.get_policies(names=[module.params["name"]]).items)[
+        0
+    ].rules
+    create_new = True
+    for rule in range(0, len(current_rules)):
+        current_rule = {
+            "at": current_rules[rule].at,
+            "every": current_rules[rule].every,
+            "keep_for": current_rules[rule].keep_for,
+            "time_zone": current_rules[rule].time_zone,
+        }
+        if not module.params["at"]:
+            new_at = current_rules[rule].at
+        else:
+            new_at = _convert_to_millisecs(module.params["at"])
+        if module.params["keep_for"]:
+            new_keep_for = module.params["keep_for"]
+        else:
+            new_keep_for = int(current_rules[rule].keep_for / 1000)
+        if module.params["every"]:
+            new_every = module.params["every"]
+        else:
+            new_every = int(current_rules[rule].every / 1000)
+        if not module.params["timezone"]:
+            new_tz = current_rules[rule].time_zone
+        else:
+            new_tz = module.params["timezone"]
+        new_rule = {
+            "at": new_at,
+            "every": new_every * 1000,
+            "keep_for": new_keep_for * 1000,
+            "time_zone": new_tz,
+        }
+        if current_rule == new_rule:
+            create_new = False
+
+    if create_new:
+        changed = True
+        if not module.check_mode:
+            if module.params["at"] and module.params["every"]:
+                if not module.params["every"] % 86400 == 0:
+                    module.fail_json(
+                        msg="At time can only be set if every value is a multiple of 86400"
+                    )
+                if not module.params["timezone"]:
+                    module.params["timezone"] = _get_local_tz(module)
+                    if module.params["timezone"] not in pytz.all_timezones_set:
+                        module.fail_json(
+                            msg="Timezone {0} is not valid".format(
+                                module.params["timezone"]
+                            )
+                        )
+            if not module.params["keep_for"]:
+                module.params["keep_for"] = 0
+            if not module.params["every"]:
+                module.params["every"] = 0
+            if module.params["keep_for"] < module.params["every"]:
+                module.fail_json(
+                    msg="Retention period cannot be less than snapshot interval."
+                )
+            if module.params["at"] and not module.params["timezone"]:
+                module.params["timezone"] = _get_local_tz(module)
+                if module.params["timezone"] not in set(pytz.all_timezones_set):
+                    module.fail_json(
+                        msg="Timezone {0} is not valid".format(
+                            module.params["timezone"]
+                        )
+                    )
+
+            if module.params["keep_for"]:
+                if not 300 <= module.params["keep_for"] <= 34560000:
+                    module.fail_json(
+                        msg="keep_for parameter is out of range (300 to 34560000)"
+                    )
+                if not 300 <= module.params["every"] <= 34560000:
+                    module.fail_json(
+                        msg="every parameter is out of range (300 to 34560000)"
+                    )
+                if module.params["at"]:
+                    attr = PolicyPatch(
+                        enabled=module.params["enabled"],
+                        add_rules=[
+                            PolicyRule(
+                                keep_for=module.params["keep_for"] * 1000,
+                                every=module.params["every"] * 1000,
+                                at=_convert_to_millisecs(module.params["at"]),
+                                time_zone=module.params["timezone"],
+                            )
+                        ],
+                    )
+                else:
+                    attr = PolicyPatch(
+                        enabled=module.params["enabled"],
+                        add_rules=[
+                            PolicyRule(
+                                keep_for=module.params["keep_for"] * 1000,
+                                every=module.params["every"] * 1000,
+                            )
+                        ],
+                    )
+            else:
+                attr = PolicyPatch(enabled=module.params["enabled"])
+            res = blade.patch_policies(
+                names=[module.params["name"]],
+                policy=attr,
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update snapshot policy {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
     module.exit_json(changed=changed)
 
 
@@ -1584,6 +1904,7 @@ def main():
             fileid_32bit=dict(type="bool", default=False),
             permission=dict(type="str", choices=["rw", "ro"], default="ro"),
             secure=dict(type="bool", default=False),
+            destroy_snapshots=dict(type="bool", default=False),
             security=dict(
                 type="list",
                 elements="str",
@@ -1715,6 +2036,20 @@ def main():
             create_nfs_policy(module, blade)
         elif state == "absent" and policy:
             delete_nfs_policy(module, blade)
+    elif SNAPSHOT_POLICY_API_VERSION in versions:
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required for this module")
+        blade = get_system(module)
+        try:
+            policy = list(blade.get_policies(names=[module.params["name"]]).items)[0]
+        except AttributeError:
+            policy = None
+        if not policy and state == "present":
+            create_snap_policy(module, blade)
+        elif policy and state == "present":
+            update_snap_policy(module, blade)
+        elif policy and state == "absent":
+            delete_snap_policy(module, blade)
     else:
         if MIN_REQUIRED_API_VERSION not in versions:
             module.fail_json(
