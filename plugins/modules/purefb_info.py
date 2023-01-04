@@ -1056,45 +1056,49 @@ def generate_bucket_dict(module, blade):
     api_version = blade.api_version.list_versions().versions
     if LIFECYCLE_API_VERSION in api_version:
         blade = get_system(module)
-        all_rules = list(blade.get_lifecycle_rules().items)
-        for rule in range(0, len(all_rules)):
-            bucket_name = all_rules[rule].bucket.name
-            rule_id = all_rules[rule].rule_id
-            if all_rules[rule].keep_previous_version_for:
-                keep_previous_version_for = int(
-                    all_rules[rule].keep_previous_version_for / 86400000
-                )
-            else:
-                keep_previous_version_for = None
-            if all_rules[rule].keep_current_version_for:
-                keep_current_version_for = int(
-                    all_rules[rule].keep_current_version_for / 86400000
-                )
-            else:
-                keep_current_version_for = None
-            if all_rules[rule].abort_incomplete_multipart_uploads_after:
-                abort_incomplete_multipart_uploads_after = int(
-                    all_rules[rule].abort_incomplete_multipart_uploads_after / 86400000
-                )
-            else:
-                abort_incomplete_multipart_uploads_after = None
-            if all_rules[rule].keep_current_version_until:
-                keep_current_version_until = datetime.fromtimestamp(
-                    all_rules[rule].keep_current_version_until / 1000
-                ).strftime("%Y-%m-%d")
-            else:
-                keep_current_version_until = None
-            bucket_info[bucket_name]["lifecycle_rules"][rule_id] = {
-                "keep_previous_version_for (days)": keep_previous_version_for,
-                "keep_current_version_for (days)": keep_current_version_for,
-                "keep_current_version_until": keep_current_version_until,
-                "prefix": all_rules[rule].prefix,
-                "enabled": all_rules[rule].enabled,
-                "abort_incomplete_multipart_uploads_after (days)": abort_incomplete_multipart_uploads_after,
-                "cleanup_expired_object_delete_marker": all_rules[
-                    rule
-                ].cleanup_expired_object_delete_marker,
-            }
+        for bckt in range(0, len(buckets.items)):
+            all_rules = list(
+                blade.get_lifecycle_rules(bucket_ids=[buckets.items[bckt].id]).items
+            )
+            for rule in range(0, len(all_rules)):
+                bucket_name = all_rules[rule].bucket.name
+                rule_id = all_rules[rule].rule_id
+                if all_rules[rule].keep_previous_version_for:
+                    keep_previous_version_for = int(
+                        all_rules[rule].keep_previous_version_for / 86400000
+                    )
+                else:
+                    keep_previous_version_for = None
+                if all_rules[rule].keep_current_version_for:
+                    keep_current_version_for = int(
+                        all_rules[rule].keep_current_version_for / 86400000
+                    )
+                else:
+                    keep_current_version_for = None
+                if all_rules[rule].abort_incomplete_multipart_uploads_after:
+                    abort_incomplete_multipart_uploads_after = int(
+                        all_rules[rule].abort_incomplete_multipart_uploads_after
+                        / 86400000
+                    )
+                else:
+                    abort_incomplete_multipart_uploads_after = None
+                if all_rules[rule].keep_current_version_until:
+                    keep_current_version_until = datetime.fromtimestamp(
+                        all_rules[rule].keep_current_version_until / 1000
+                    ).strftime("%Y-%m-%d")
+                else:
+                    keep_current_version_until = None
+                bucket_info[bucket_name]["lifecycle_rules"][rule_id] = {
+                    "keep_previous_version_for (days)": keep_previous_version_for,
+                    "keep_current_version_for (days)": keep_current_version_for,
+                    "keep_current_version_until": keep_current_version_until,
+                    "prefix": all_rules[rule].prefix,
+                    "enabled": all_rules[rule].enabled,
+                    "abort_incomplete_multipart_uploads_after (days)": abort_incomplete_multipart_uploads_after,
+                    "cleanup_expired_object_delete_marker": all_rules[
+                        rule
+                    ].cleanup_expired_object_delete_marker,
+                }
         if VSO_VERSION in api_version:
             buckets = list(blade.get_buckets().items)
             for bucket in range(0, len(buckets)):
