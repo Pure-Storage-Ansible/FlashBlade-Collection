@@ -1057,6 +1057,9 @@ def generate_bucket_dict(module, blade):
     if LIFECYCLE_API_VERSION in api_version:
         blade = get_system(module)
         for bckt in range(0, len(buckets.items)):
+            if buckets.items[bckt].destroyed:
+                # skip processing buckets marked as destroyed
+                continue
             all_rules = list(
                 blade.get_lifecycle_rules(bucket_ids=[buckets.items[bckt].id]).items
             )
