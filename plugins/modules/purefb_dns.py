@@ -140,7 +140,6 @@ def update_dns(module, blade):
 
 
 def main():
-
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
