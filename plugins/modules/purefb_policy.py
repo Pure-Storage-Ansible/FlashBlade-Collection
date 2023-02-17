@@ -63,7 +63,7 @@ options:
   rule:
     description:
     - Name of the rule for the Object Store Access Policy
-    - Rules in system-wide policies cannot be deleted or modified
+    - Rules in system wide policies cannot be deleted or modified
     type: str
     version_added: "1.9.0"
   effect:
