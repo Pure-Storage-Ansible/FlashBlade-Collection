@@ -57,7 +57,7 @@ options:
   account:
     description:
     - Name of Object Store account policy applies to.
-    - B(Special Case) I(pure:policy) is used for the system-wide S3 policies
+    - B(Special Case) I(pure policy) is used for the system-wide S3 policies
     type: str
     version_added: "1.9.0"
   rule:
