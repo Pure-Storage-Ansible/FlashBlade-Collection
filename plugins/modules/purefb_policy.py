@@ -80,28 +80,29 @@ options:
     - System-wide policy rules cannot be deleted or modified
     type: list
     elements: str
-    choices: [ s3:*,
-              s3:AbortMultipartUpload,
-              s3:CreateBucket,
-              s3:DeleteBucket,
-              s3:DeleteObject,
-              s3:DeleteObjectVersion,
-              s3:ExtendSafemodeRetentionPeriod,
-              s3:GetBucketAcl,
-              s3:GetBucketLocation,
-              s3:GetBucketVersioning,
-              s3:GetLifecycleConfiguration,
-              s3:GetObject,
-              s3:GetObjectAcl,
-              s3:GetObjectVersion,
-              s3:ListAllMyBuckets,
-              s3:ListBucket,
-              s3:ListBucketMultipartUploads,
-              s3:ListBucketVersions,
-              s3:ListMultipartUploadParts,
-              s3:PutBucketVersioning,
-              s3:PutLifecycleConfiguration,
-              s3:PutObject ]
+    choices:
+      - s3:*
+      - s3:AbortMultipartUpload
+      - s3:CreateBucket
+      - s3:DeleteBucket
+      - s3:DeleteObject
+      - s3:DeleteObjectVersion
+      - s3:ExtendSafemodeRetentionPeriod
+      - s3:GetBucketAcl
+      - s3:GetBucketLocation
+      - s3:GetBucketVersioning
+      - s3:GetLifecycleConfiguration
+      - s3:GetObject
+      - s3:GetObjectAcl
+      - s3:GetObjectVersion
+      - s3:ListAllMyBuckets
+      - s3:ListBucket
+      - s3:ListBucketMultipartUploads
+      - s3:ListBucketVersions
+      - s3:ListMultipartUploadParts
+      - s3:PutBucketVersioning
+      - s3:PutLifecycleConfiguration
+      - s3:PutObject
     version_added: "1.9.0"
   object_resources:
     description:
