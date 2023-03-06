@@ -145,7 +145,7 @@ options:
     - If set to true, operations which attempt to set these combinations will fail.
     - If set to false, such operations will instead be allowed.
     type: bool
-    default: True
+    default: true
     version_added: "1.9.0"
   user:
     description:
@@ -159,7 +159,7 @@ options:
     - WARNING This can have undesired side-effects.
     - System-wide policies cannot be deleted
     type: bool
-    default: False
+    default: false
     version_added: "1.9.0"
   name:
     description:
@@ -169,7 +169,7 @@ options:
     description:
     - State of policy
     type: bool
-    default: True
+    default: true
   every:
     description:
     - Interval between snapshots in seconds
@@ -233,7 +233,7 @@ options:
       or the previous access time is more than 24 hours ago.
     - If set to false, disables the update of inode access times after read operations.
     type: bool
-    default: True
+    default: true
     version_added: "1.9.0"
   client:
     description:
@@ -247,7 +247,7 @@ options:
     description:
     - Whether the file id is 32 bits or not.
     type: bool
-    default: False
+    default: false
     version_added: "1.9.0"
   permission:
     description:

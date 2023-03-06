@@ -143,7 +143,7 @@ EXAMPLES = r"""
     domain: acme.com
     username: Administrator
     password: Password
-    existing: True
+    existing: true
     kerberos_servers:
     - kdc.acme.com
     directory_servers:
@@ -168,7 +168,7 @@ EXAMPLES = r"""
 - name: Delete local AD account
   purestorage.flashblade.purefb_ad:
     name: ad_account
-    local_only: True
+    local_only: true
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 

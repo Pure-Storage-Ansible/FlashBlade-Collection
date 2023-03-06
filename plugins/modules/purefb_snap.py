@@ -44,7 +44,7 @@ options:
   targets:
     description:
     - Name of target to replicate snapshot to.
-    - This is only applicable when I(now) is B(True)
+    - This is only applicable when I(now) is B(true)
     type: list
     elements: str
     version_added: "1.7.0"
@@ -52,13 +52,13 @@ options:
     description:
     - Whether to initiate a snapshot replication immeadiately
     type: bool
-    default: False
+    default: false
     version_added: "1.7.0"
   eradicate:
     description:
     - Define whether to eradicate the snapshot on delete or leave in trash.
     type: bool
-    default: 'no'
+    default: false
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -76,7 +76,7 @@ EXAMPLES = r"""
   purestorage.flashblade.purefb_snap:
     name: foo
     suffix: ansible
-    now: True
+    now: true
     targets:
     - bar
     fb_url: 10.10.10.2
