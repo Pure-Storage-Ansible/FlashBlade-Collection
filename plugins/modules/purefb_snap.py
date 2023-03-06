@@ -76,7 +76,7 @@ EXAMPLES = r"""
   purestorage.flashblade.purefb_snap:
     name: foo
     suffix: ansible
-    now: True
+    now: true
     targets:
     - bar
     fb_url: 10.10.10.2
