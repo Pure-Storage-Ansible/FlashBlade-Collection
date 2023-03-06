@@ -34,7 +34,7 @@ options:
     description:
     - Define if replication connection is encrypted
     type: bool
-    default: False
+    default: false
   target_url:
     description:
     - Management IP address of target FlashBlade system
