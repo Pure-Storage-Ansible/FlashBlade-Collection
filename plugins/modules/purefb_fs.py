@@ -171,7 +171,7 @@ options:
       - See Purity//FB documentation for detailed description.
       - Only available from Purity//FB 3.1.1
     type: bool
-    default: True
+    default: true
   export_policy:
     description:
     - Name of NFS export policy to assign to filesystem
