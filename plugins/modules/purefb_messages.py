@@ -40,7 +40,7 @@ options:
   flagged:
     description:
     - Show alerts that have been acknowledged or not
-    default: False
+    default: false
     type: bool
   history:
     description:
@@ -56,7 +56,7 @@ EXAMPLES = r"""
 - name: Show critical alerts from past 4 weeks that haven't been acknowledged
   purefb_messages:
     history: 4w
-    flagged : False
+    flagged : false
     severity:
     - critical
     fb_url: 10.10.10.2
