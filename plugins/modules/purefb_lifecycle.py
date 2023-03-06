@@ -44,7 +44,7 @@ options:
     description:
     - State of lifecycle rule
     type: bool
-    default: True
+    default: true
   keep_previous_for:
     aliases: [ keep_for ]
     description:
