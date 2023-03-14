@@ -136,10 +136,10 @@ def update_s3acc(module):
         "quota": str(acc_settings.quota_limit),
         "default_quota": str(acc_settings.bucket_defaults.quota_limit),
     }
-    if current_account["quota"] == 'None':
-        current_account["quota"] = ''
-    if current_account["default_quota"] == 'None':
-        current_account["default_quota"] = ''
+    if current_account["quota"] == "None":
+        current_account["quota"] = ""
+    if current_account["default_quota"] == "None":
+        current_account["default_quota"] = ""
     if module.params["quota"] is None:
         module.params["quota"] = current_account["quota"]
     if module.params["default_quota"] is None:
