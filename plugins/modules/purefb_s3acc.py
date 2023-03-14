@@ -43,7 +43,7 @@ options:
     type: str
   hard_limit:
     description:
-    - If set to true, the account’s size, as defined by I(quota_limit), is used as a hard limit quota.
+    - If set to true, the account size, as defined by I(quota_limit), is used as a hard limit quota.
     - If set to false, a hard limit quota will not be applied to the account, but soft quota alerts
       will still be sent if the account has a value set for I(quota_limit).
     version_added: 1.11.0
