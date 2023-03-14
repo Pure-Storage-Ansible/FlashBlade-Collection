@@ -38,7 +38,7 @@ options:
   quota:
     description:
     - The effective quota limit to be applied against the size of the account in bytes.
-    - If set to "" (empty string), the account is unlimited in size.
+    - If set to '' (empty string), the account is unlimited in size.
     version_added: 1.11.0
     type: str
   hard_limit:
