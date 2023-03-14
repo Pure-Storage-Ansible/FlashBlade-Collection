@@ -47,7 +47,7 @@ options:
     - If set to false, a hard limit quota will not be applied to the account, but soft quota alerts
       will still be sent if the account has a value set for I(quota_limit).
     version_added: 1.11.0
-    typr: bool
+    type: bool
     default: false
   default_quota:
     description:
@@ -61,7 +61,7 @@ options:
     - The value of this field will be used to configure the I(hard_limit) field of newly created buckets
       associated with this object store account, if the bucket creation does not specify its own value.
     version_added: 1.11.0
-    typr: bool
+    type: bool
     default: false
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
