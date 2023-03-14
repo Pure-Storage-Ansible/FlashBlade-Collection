@@ -70,17 +70,17 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Crrate object store account foo (with no quotas)
   purestorage.flashblade.purefb_s3acc:
-      name: foo
+    name: foo
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
 - name: Create object store account foo (with quotas)
   purestorage.flashblade.purefb_s3acc:
-      name: foo
-      quota: 20480000
-      hard_limit: true
-      default_quota: 1024000
-      default_hard_limit: false
+    name: foo
+    quota: 20480000
+    hard_limit: true
+    default_quota: 1024000
+    default_hard_limit: false
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
