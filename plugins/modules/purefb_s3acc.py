@@ -53,7 +53,7 @@ options:
     description:
     - The value of this field will be used to configure the I(quota_limit) field of newly created buckets
       associated with this object store account, if the bucket creation does not specify its own value.
-    - If set to "" (empty string), the bucket default is unlimited in size.
+    - If set to '' (empty string), the bucket default is unlimited in size.
     version_added: 1.11.0
     type: str
   default_hard_limit:
