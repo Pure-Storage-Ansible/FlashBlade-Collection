@@ -74,7 +74,7 @@ EXAMPLES = r"""
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
 
-- name: Crrate object store account foo (with quotas)
+- name: Create object store account foo (with quotas)
   purestorage.flashblade.purefb_s3acc:
       name: foo
       quota: 20480000
