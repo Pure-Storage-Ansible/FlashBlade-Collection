@@ -456,6 +456,7 @@ SMB_MODE_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 VSO_VERSION = "2.4"
 DRIVES_API_VERSION = "2.5"
+SECURITY_API_VERSION = "2.7"
 
 
 def _millisecs_to_time(millisecs):
@@ -547,6 +548,10 @@ def generate_default_dict(module, blade):
         if DRIVES_API_VERSION in api_version:
             default_info["product_type"] = getattr(
                 blade_info, "product_type", "Unknown"
+            )
+        if SECURITY_API_VERSION in api_version:
+            default_info["security_update"] = getattr(
+                blade_info, "security_update", None
             )
 
     return default_info
