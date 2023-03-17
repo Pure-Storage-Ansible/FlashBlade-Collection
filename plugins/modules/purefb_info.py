@@ -550,6 +550,12 @@ def generate_default_dict(module, blade):
                 blade_info, "product_type", "Unknown"
             )
         if SECURITY_API_VERSION in api_version:
+            dar = blade_info.encryption.data_at_rest
+            default_info["encryption"] = {
+                "data_at_rest_enabled": dar.enabled,
+                "data_at_rest_algorithms": dar.algorithms,
+                "data_at_rest_entropy_source": dar.entropy_source,
+            }
             keys = list(blade.get_support_verification_keys().items)
             default_info["support_keys"] = {}
             for key in range(0, len(keys)):
