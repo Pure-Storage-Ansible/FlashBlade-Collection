@@ -457,6 +457,7 @@ NFS_POLICY_API_VERSION = "2.3"
 VSO_VERSION = "2.4"
 DRIVES_API_VERSION = "2.5"
 SECURITY_API_VERSION = "2.7"
+BUCKET_API_VERSION = "2.8"
 
 
 def _millisecs_to_time(millisecs):
@@ -1124,6 +1125,28 @@ def generate_bucket_dict(module, blade):
                 bucket_info[buckets[bucket].name]["bucket_type"] = buckets[
                     bucket
                 ].bucket_type
+            if BUCKET_API_VERSION in api_version:
+                for bucket in range(0, len(buckets)):
+                    bucket_info[buckets[bucket].name]["retention_lock"] = buckets[
+                        bucket
+                    ].retention_lock
+                    bucket_info[buckets[bucket].name]["quota_limit"] = buckets[
+                        bucket
+                    ].quota_limit
+                    bucket_info[buckets[bucket].name]["object_lock_config"] = {
+                        "enabled": buckets[bucket].object_lock_config.enabled,
+                        "freeze_locked_objects": buckets[
+                            bucket
+                        ].object_lock_config.freeze_locked_objects,
+                    }
+                    bucket_info[buckets[bucket].name]["eradication_config"] = {
+                        "eradication_delay": buckets[
+                            bucket
+                        ].eradication_config.eradication_delay,
+                        "manual_eradication": buckets[
+                            bucket
+                        ].eradication_config.manual_eradication,
+                    }
     return bucket_info
 
 
