@@ -112,107 +112,153 @@ purefb_inventory:
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
-def generate_hardware_dict(blade):
+MIN_API_VERSION = "2.1"
+PART_NUMBER_API_VERSION = "2.8"
+
+
+def generate_hardware_dict(module, blade, api_version):
     hw_info = {
+        "modules": {},
+        "ethernet": {},
+        "mgmt_ports": {},
         "fans": {},
+        "bays": {},
         "controllers": {},
         "blades": {},
         "chassis": {},
-        "ethernet": {},
-        "modules": {},
         "power": {},
         "switch": {},
     }
-    components = blade.hardware.list_hardware(filter="type='fm'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+    blade = get_system(module)
+    components = list(blade.get_hardware(filter="type='fm'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["modules"][component_name] = {
-            "slot": components.items[component].slot,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
-            "identify": getattr(
-                components.items[component], "identify_enabled", "None"
-            ),
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
+            "identify": components[component].identify_enabled,
         }
-    components = blade.hardware.list_hardware(filter="type='eth'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["modules"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='eth'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["ethernet"][component_name] = {
-            "slot": components.items[component].slot,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
-            "speed": components.items[component].speed,
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
+            "speed": components[component].speed,
         }
-    components = blade.hardware.list_hardware(filter="type='fan'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["ethernet"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='mgmt_port'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
+        hw_info["mgmt_ports"][component_name] = {
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
+            "speed": components[component].speed,
+        }
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["mgmt_ports"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='fan'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["fans"][component_name] = {
-            "slot": components.items[component].slot,
-            "status": components.items[component].status,
-            "identify": getattr(
-                components.items[component], "identify_enabled", "None"
-            ),
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "identify": components[component].identify_enabled,
         }
-    components = blade.hardware.list_hardware(filter="type='fb'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["fans"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='fb'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["blades"][component_name] = {
-            "slot": components.items[component].slot,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
-            "temperature": getattr(components.items[component], "temperature", "None"),
-            "identify": getattr(
-                components.items[component], "identify_enabled", "None"
-            ),
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
+            "temperature": components[component].temperature,
+            "identify": components[component].identify_enabled,
         }
-    components = blade.hardware.list_hardware(filter="type='pwr'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["blades"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='pwr'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["power"][component_name] = {
-            "slot": components.items[component].slot,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
         }
-    components = blade.hardware.list_hardware(filter="type='xfm'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["power"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='xfm'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["switch"][component_name] = {
-            "slot": components.items[component].slot,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
+            "slot": components[component].slot,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
         }
-    components = blade.hardware.list_hardware(filter="type='ch'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["switch"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='ch'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
         hw_info["chassis"][component_name] = {
-            "slot": components.items[component].slot,
-            "index": components.items[component].index,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
+            "slot": components[component].slot,
+            "index": components[component].index,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
         }
-    components = blade.hardware.list_hardware(filter="type='bay'")
-    for component in range(0, len(components.items)):
-        component_name = components.items[component].name
-        hw_info["chassis"][component_name] = {
-            "slot": components.items[component].slot,
-            "index": components.items[component].index,
-            "status": components.items[component].status,
-            "serial": components.items[component].serial,
-            "model": components.items[component].model,
-            "identify": getattr(
-                components.items[component], "identify_enabled", "None"
-            ),
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["chassis"][component_name]["part_number"] = components[
+                component
+            ].part_number
+    components = list(blade.get_hardware(filter="type='bay'").items)
+    for component in range(0, len(components)):
+        component_name = components[component].name
+        hw_info["bays"][component_name] = {
+            "slot": components[component].slot,
+            "index": components[component].index,
+            "status": components[component].status,
+            "serial": components[component].serial,
+            "model": components[component].model,
+            "identify": components[component].identify_enabled,
         }
+        if PART_NUMBER_API_VERSION in api_version:
+            hw_info["bay"][component_name]["part_number"] = components[
+                component
+            ].part_number
 
     return hw_info
 
@@ -222,8 +268,11 @@ def main():
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
     blade = get_blade(module)
+    api_version = blade.api_version.list_versions().versions
 
-    module.exit_json(changed=False, purefb_info=generate_hardware_dict(blade))
+    module.exit_json(
+        changed=False, purefb_info=generate_hardware_dict(module, blade, api_version)
+    )
 
 
 if __name__ == "__main__":
