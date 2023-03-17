@@ -550,6 +550,13 @@ def generate_default_dict(module, blade):
                 blade_info, "product_type", "Unknown"
             )
         if SECURITY_API_VERSION in api_version:
+            keys = list(blade.get_support_verification_keys().items)
+            default_info["support_keys"] = {}
+            for key in range(0, len(keys)):
+                keyname = keys[key].name
+                default_info["support_keys"][keyname] = {
+                    keys[key].verification_key
+                }
             default_info["security_update"] = getattr(
                 blade_info, "security_update", None
             )
