@@ -1259,8 +1259,24 @@ def generate_object_store_accounts_dict(blade):
             "total_physical_space": accounts[account].space.total_physical,
             "unique_space": accounts[account].space.unique,
             "virtual_space": accounts[account].space.virtual,
+            "quota_limit": getattr(accounts[account], "quota_limit", None),
+            "hard_limit_enabled": getattr(
+                accounts[account], "hard_limit_enabled", None
+            ),
+            "total_provisioned": getattr(
+                accounts[account].space, "total_provisioned", None
+            ),
             "users": {},
         }
+        try:
+            account_info[acc_name]["bucket_defaults"] = {
+                "hard_limit_enabled": accounts[
+                    account
+                ].bucket_defaults.hard_limit_enabled,
+                "quota_limit": accounts[account].bucket_defaults.quota_limit,
+            }
+        except AttributeError:
+            pass
         acc_users = list(
             blade.get_object_store_users(filter='name="' + acc_name + '/*"').items
         )
