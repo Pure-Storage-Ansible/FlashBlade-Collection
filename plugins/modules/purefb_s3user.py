@@ -253,7 +253,7 @@ def create_s3user(module, blade):
                     "access_id": result.items[0].name,
                 }
             except Exception:
-                delete_s3user(module, blade)
+                delete_s3user(module, blade, True)
                 module.fail_json(
                     msg="Object Store User {0}: Creation failed".format(user)
                 )
@@ -345,7 +345,7 @@ def remove_key(module, blade):
     module.exit_json(changed=changed)
 
 
-def delete_s3user(module, blade):
+def delete_s3user(module, blade, internal=False):
     """Delete Object Store Account"""
     changed = True
     if not module.check_mode:
@@ -358,6 +358,8 @@ def delete_s3user(module, blade):
                     module.params["name"]
                 )
             )
+    if internal:
+        return
     module.exit_json(changed=changed)
 
 
