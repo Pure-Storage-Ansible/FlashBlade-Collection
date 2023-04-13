@@ -6,6 +6,7 @@ plugins:
   callback: {}
   cliconf: {}
   connection: {}
+  filter: {}
   httpapi: {}
   inventory: {}
   lookup: {}
@@ -145,6 +146,11 @@ plugins:
       name: purefb_phonehome
       namespace: ''
       version_added: 1.0.0
+    purefb_pingtrace:
+      description: Employ the internal FlashBlade ping and trace mechanisms
+      name: purefb_pingtrace
+      namespace: ''
+      version_added: 1.11.0
     purefb_policy:
       description: Manage FlashBlade policies
       name: purefb_policy
@@ -243,5 +249,6 @@ plugins:
   netconf: {}
   shell: {}
   strategy: {}
+  test: {}
   vars: {}
-version: 1.10.0
+version: 1.11.0
