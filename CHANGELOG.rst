@@ -5,6 +5,33 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.11.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_info - Added `encryption` and `support_keys` information.
+- purefb_info - Added bucket quota and safemode information per bucket
+- purefb_info - Added security update version for Purity//FB 4.0.2, or higher
+- purefb_info - Updated object store account information
+- purefb_inventory - Added `part_number` to hardware item information.
+- purefb_policy - Added support for multiple rules in snapshot policies
+- purefb_proxy - Added new boolean parameter `secure`. Default of true (for backwards compatability) sets the protocol to be `https://`. False sets `http://`
+- purefb_s3acc - Added support for default bucket quotas and hard limits
+- purefb_s3acc - Added support for object account quota and hard limit
+
+Bugfixes
+--------
+
+- purefa_info - Fixed issue when more than 10 buckets have lifecycle rules.
+- purefb_s3user - Fix incorrect response when bad key/secret pair provided for new user
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_pingtrace - Employ the internal FlashBlade ping and trace mechanisms
+
 v1.10.0
 =======
 
