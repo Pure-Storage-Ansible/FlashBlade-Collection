@@ -59,10 +59,10 @@ options:
     description:
       - The type of bucket to be created. Also referred to a VSO Mode.
       - Requires Purity//FB 3.3.3 or higher
-      - I(multi-site) type can only be used after feature is
+      - I(multi-site-writable) type can only be used after feature is
         enabled by Pure Technical Support
     type: str
-    choices: [ "classic", "multi-site" ]
+    choices: [ "classic", "multi-site-writable" ]
     version_added: '1.10.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
@@ -341,7 +341,7 @@ def main():
             name=dict(required=True),
             account=dict(required=True),
             eradicate=dict(default="false", type="bool"),
-            mode=dict(type="str", choices=["classic", "multi-site"]),
+            mode=dict(type="str", choices=["classic", "multi-site-writable"]),
             versioning=dict(
                 default="absent", choices=["enabled", "suspended", "absent"]
             ),
