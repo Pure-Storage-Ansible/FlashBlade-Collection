@@ -1433,6 +1433,7 @@ def generate_drives_dict(blade):
                 "raw_capacity": getattr(drives[drive], "raw_capacity", None),
                 "status": getattr(drives[drive], "status", None),
                 "details": getattr(drives[drive], "details", None),
+                "type": getattr(drives[drive], "type", None),
             }
     return drives_info
 
