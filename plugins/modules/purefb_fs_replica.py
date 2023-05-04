@@ -53,6 +53,12 @@ options:
       - Name of filesystem snapshot policy to apply to the replica link.
     required: false
     type: str
+  in_progress:
+    description:
+     - Confirmation that you wish to delete a filesystem replica link
+     - This may cancel any in-progress replication transfers)
+    type: bool
+    default: false
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -97,8 +103,11 @@ MIN_REQUIRED_API_VERSION = "1.9"
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
+
+DELETE_RL_API_VERSION = "2.10"
 
 
 def get_local_fs(module, blade):
@@ -241,6 +250,30 @@ def delete_rl_policy(module, blade):
     module.exit_json(changed=changed)
 
 
+def delete_rl(module, blade):
+    """Delete filesystem replica link"""
+    changed = True
+    if not module.check_mode:
+        res = list(
+            blade.delete_file_system_replica_links(
+                local_file_system_names=[module.params["name"]],
+                remote_file_system_names=[module.params["target_fs"]],
+                remote_names=[module.params["target_array"]],
+                cancel_in_progress_transfers=module.params["in_progress"],
+            )
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to delete replica link from {0} to {1}:{2}. Error: {3}".format(
+                    module.params["name"],
+                    module.params["target_array"],
+                    module.params["target_fs"],
+                    res.errors[0].message,
+                )
+            )
+    module.exit_jsob(changed=changed)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
@@ -249,6 +282,7 @@ def main():
             target_fs=dict(type="str"),
             target_array=dict(type="str"),
             policy=dict(type="str"),
+            in_progress=dict(type="bool", default=False),
             state=dict(default="present", choices=["present", "absent"]),
         )
     )
@@ -296,6 +330,12 @@ def main():
         policy = None
     if state == "present" and not local_replica_link:
         create_rl(module, blade)
+    elif state == "absent" and local_replica_link:
+        if DELETE_RL_API_VERSION not in versions:
+            module.fail_json("Deleting a replica link requires REST 2.10 or higher")
+        else:
+            bladev6 = get_system(module)
+            delete_rl(module, bladev6)
     elif state == "present" and local_replica_link and policy:
         add_rl_policy(module, blade)
     elif state == "absent" and policy:
