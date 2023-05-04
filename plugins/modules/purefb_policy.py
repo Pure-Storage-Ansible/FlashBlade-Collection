@@ -52,7 +52,7 @@ options:
     - Type of policy
     default: snapshot
     type: str
-    choices: [ snapshot, access, nfs ]
+    choices: [ snapshot, access, nfs, smb_share, smb_client ]
     version_added: "1.9.0"
   account:
     description:
@@ -213,7 +213,7 @@ options:
     description:
     - Any user whose UID is affected by an I(access) of `root_squash` or `all_squash`
       will have their UID mapped to anonuid.
-      The defaultis null, which means 65534.
+      The default is null, which means 65534.
       Use "" to clear.
     type: str
     version_added: "1.9.0"
@@ -284,8 +284,8 @@ options:
     version_added: "1.9.0"
   rename:
     description:
-    - New name for export policy
-    - Only applies to NFS export policies
+    - New name for policy
+    - Only applies to NFS and SMB policies
     type: str
     version_added: "1.10.0"
   destroy_snapshots:
@@ -294,6 +294,32 @@ options:
     type: bool
     version_added: '1.11.0'
     default: false
+  principal:
+    description:
+     - The user or group who is the subject of this rule, and their domain
+    type: str
+    version_added: '1.12.0'
+  change:
+    description:
+     - The state of the SMB share principals Change access permission.
+     - Setting to "" will clear the current setting
+    type: str
+    choices: [ allow, deny, "" ]
+    version_added: '1.12.0'
+  read:
+    description:
+     - The state of the SMB share principals Read access permission.
+     - Setting to "" will clear the current setting
+    type: str
+    choices: [ allow, deny, "" ]
+    version_added: '1.12.0'
+  full_control:
+    description:
+     - The state of the SMB share principals Full Control access permission.
+     - Setting to "" will clear the current setting
+    type: str
+    choices: [ allow, deny, "" ]
+    version_added: '1.12.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -357,6 +383,20 @@ EXAMPLES = r"""
     rule: rule1
     actions: "s3:*"
     object_resources: "*"
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create an empty SMB client policy
+  purestorage.flashblade.purefb_policy:
+    name: test_smb_client
+    policy_type: smb_client
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create an SMB client policy with a client rule
+  purestorage.flashblade.purefb_policy:
+    name: test_smb_client
+    policy_type: smb_client
+    client: "10.0.1.0/24"
+    permission: rw
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Create an empty NFS export policy
@@ -474,6 +514,10 @@ try:
         NfsExportPolicyRule,
         Policy,
         PolicyRule,
+        SmbSharePolicyRule,
+        SmbSharePolicy,
+        SmbClientPolicyRule,
+        SmbClientPolicy,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -503,6 +547,7 @@ SNAPSHOT_POLICY_API_VERSION = "2.1"
 ACCESS_POLICY_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 NFS_RENAME_API_VERSION = "2.4"
+SMB_POLICY_API_VERSION = "2.10"
 
 
 def _convert_to_millisecs(hour):
@@ -594,6 +639,561 @@ def _get_local_tz(module, timezone="UTC"):
         module.warn("Could not find /etc/timezone. Assuming UTC")
 
     return timezone
+
+
+def delete_smb_share_policy(module, blade):
+    """Delete SMB Share Policy, or Rule
+
+    If principal is provided then delete the principal rule if it exists.
+    """
+
+    changed = False
+    policy_delete = True
+    if module.params["principal"]:
+        policy_delete = False
+        prin_rule = blade.get_smb_share_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="principal='" + module.params["principal"] + "'",
+        )
+        if prin_rule.status_code == 200:
+            rule = list(prin_rule.items)[0]
+            changed = True
+            if not module.check_mode:
+                res = blade.delete_smb_share_policies_rules(names=[rule.name])
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to delete rule for principal {0} in policy {1}. "
+                        "Error: {2}".format(
+                            module.params["principal"],
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+    if policy_delete:
+        changed = True
+        if not module.check_mode:
+            res = blade.delete_smb_share_policies(names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to delete SMB share policy {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def rename_smb_share_policy(module, blade):
+    """Rename SMB Share Policy"""
+
+    changed = True
+    if not module.check_mode:
+        res = blade.patch_smb_share_policies(
+            names=[module.params["name"]],
+            policy=SmbSharePolicy(name=module.params["rename"]),
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to rename SMB share policy {0} to {1}. Error: {2}".format(
+                    module.params["name"],
+                    module.params["rename"],
+                    res.errors[0].message,
+                )
+            )
+    module.exit_json(changed=changed)
+
+
+def create_smb_share_policy(module, blade):
+    """Create SMB Share Policy"""
+    changed = True
+    if not module.check_mode:
+        res = blade.post_smb_share_policies(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create SMB share policy {0}.Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+        if not module.params["enabled"]:
+            res = blade.patch_smb_share_policies(
+                policy=SmbSharePolicy(enabled=False), names=[module.params["name"]]
+            )
+            if res.status_code != 200:
+                blade.delete_smb_share_policies(names=[module.params["name"]])
+                module.fail_json(
+                    msg="Failed to create SMB share policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+        if not module.params["principal"]:
+            module.fail_json(msg="principal is required to create a new rule")
+        else:
+            rule = SmbSharePolicyRule(
+                principal=module.params["principal"],
+                change=module.params["change"],
+                read=module.params["read"],
+                full_control=module.params["full_control"],
+            )
+            res = blade.post_smb_share_policies_rules(
+                policy_names=[module.params["name"]],
+                rule=rule,
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to create rule for policy {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def update_smb_share_policy(module, blade):
+    """Update SMB Share Policy Rule"""
+
+    changed = False
+    if module.params["principal"]:
+        current_policy_rule = blade.get_smb_share_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="principal='" + module.params["principal"] + "'",
+        )
+        if (
+            current_policy_rule.status_code == 200
+            and current_policy_rule.total_item_count == 0
+        ):
+            rule = SmbSharePolicyRule(
+                principal=module.params["principal"],
+                change=module.params["change"],
+                read=module.params["read"],
+                full_control=module.params["full_control"],
+            )
+            changed = True
+            if not module.check_mode:
+                if module.params["before_rule"]:
+                    before_name = (
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    )
+                    res = blade.post_smb_share_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                        before_rule_name=before_name,
+                    )
+                else:
+                    res = blade.post_smb_share_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                    )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to create rule for principal {0} "
+                        "in policy {1}. Error: {2}".format(
+                            module.params["principal"],
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+        else:
+            rules = list(current_policy_rule.items)
+            cli_count = None
+            old_policy_rule = rules[0]
+            current_rule = {
+                "principal": sorted(old_policy_rule.principal),
+                "read": sorted(old_policy_rule.read),
+                "change": sorted(old_policy_rule.change),
+                "full_control": sorted(old_policy_rule.full_control),
+            }
+            if module.params["read"]:
+                if module.params["read"] == "":
+                    new_read = ""
+                else:
+                    new_read = module.params["read"]
+            else:
+                new_read = current_rule["read"]
+            if module.params["full_control"]:
+                if module.params["full_control"] == "":
+                    new_full_control = ""
+                else:
+                    new_full_control = module.params["full_control"]
+            else:
+                new_full_control = current_rule["full_control"]
+            if module.params["change"]:
+                if module.params["change"] == "":
+                    new_change = ""
+                else:
+                    new_change = module.params["change"]
+            else:
+                new_change = current_rule["change"]
+            if module.params["principal"]:
+                new_principal = module.params["principal"]
+            else:
+                new_principal = current_rule["principal"]
+            new_rule = {
+                "principal": new_principal,
+                "read": new_read,
+                "change": new_change,
+                "full_control": new_full_control,
+            }
+            if current_rule != new_rule:
+                changed = True
+                if not module.check_mode:
+                    rule = SmbSharePolicyRule(
+                        principal=module.params["principal"],
+                        change=module.params["change"],
+                        read=module.params["read"],
+                        full_control=module.params["full_control"],
+                    )
+                    res = blade.patch_smb_share_policies_rules(
+                        names=[
+                            module.params["name"] + "." + str(old_policy_rule.index)
+                        ],
+                        rule=rule,
+                    )
+                    if res.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to update SMB share rule {0}. Error: {1}".format(
+                                module.params["name"]
+                                + "."
+                                + str(old_policy_rule.index),
+                                res.errors[0].message,
+                            )
+                        )
+            if (
+                module.params["before_rule"]
+                and module.params["before_rule"] != old_policy_rule.index
+            ):
+                changed = True
+                if not module.check_mode:
+                    before_name = (
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    )
+                    res = blade.patch_smb_share_policies_rules(
+                        names=[
+                            module.params["name"] + "." + str(old_policy_rule.index)
+                        ],
+                        rule=SmbSharePolicyRule(),
+                        before_rule_name=before_name,
+                    )
+                    if res.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to move SMB share rule {0}. Error: {1}".format(
+                                module.params["name"]
+                                + "."
+                                + str(old_policy_rule.index),
+                                res.errors[0].message,
+                            )
+                        )
+    current_policy = list(
+        blade.get_smb_share_policies(names=[module.params["name"]]).items
+    )[0]
+    if current_policy.enabled != module.params["enabled"]:
+        changed = True
+        if not module.check_mode:
+            res = blade.patch_smb_share_policies(
+                policy=SmbSharePolicy(enabled=module.params["enabled"]),
+                names=[module.params["name"]],
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to change state of SMB share policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def delete_smb_client_policy(module, blade):
+    """Delete SMB CLient Policy, or Rule
+
+    If client is provided then delete the client rule if it exists.
+    """
+
+    changed = False
+    policy_delete = True
+    if module.params["client"]:
+        policy_delete = False
+        res = blade.get_smb_client_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="client='" + module.params["client"] + "'",
+        )
+        if res.status_code == 200:
+            if res.total_item_count == 0:
+                pass
+            elif res.total_item_count == 1:
+                rule = list(res.items)[0]
+                if module.params["client"] == rule.client:
+                    changed = True
+                    if not module.check_mode:
+                        res = blade.delete_smb_client_policies_rules(names=[rule.name])
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to delete rule for client {0} in policy {1}. "
+                                "Error: {2}".format(
+                                    module.params["client"],
+                                    module.params["name"],
+                                    res.errors[0].message,
+                                )
+                            )
+            else:
+                rules = list(res.items)
+                for cli in range(0, len(rules)):
+                    if rules[cli].client == "*":
+                        changed = True
+                        if not module.check_mode:
+                            res = blade.delete_smb_client_policies_rules(
+                                names=[rules[cli].name]
+                            )
+                            if res.status_code != 200:
+                                module.fail_json(
+                                    msg="Failed to delete rule for client {0} in policy {1}. "
+                                    "Error: {2}".format(
+                                        module.params["client"],
+                                        module.params["name"],
+                                        res.errors[0].message,
+                                    )
+                                )
+    if policy_delete:
+        changed = True
+        if not module.check_mode:
+            res = blade.delete_smb_client_policies(names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to delete SMB client policy {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def rename_smb_client_policy(module, blade):
+    """Rename SMB Client Policy"""
+
+    changed = True
+    if not module.check_mode:
+        res = blade.patch_smb_client_policies(
+            names=[module.params["name"]],
+            policy=SmbClientPolicy(name=module.params["rename"]),
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to rename SMB client policy {0} to {1}. Error: {2}".format(
+                    module.params["name"],
+                    module.params["rename"],
+                    res.errors[0].message,
+                )
+            )
+    module.exit_json(changed=changed)
+
+
+def create_smb_client_policy(module, blade):
+    """Create SMB Client Policy"""
+    changed = True
+    if not module.check_mode:
+        res = blade.post_smb_client_policies(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create SMB client policy {0}.Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+        if not module.params["enabled"]:
+            res = blade.patch_smb_client_policies(
+                policy=SmbClientPolicy(enabled=False), names=[module.params["name"]]
+            )
+            if res.status_code != 200:
+                blade.delete_smb_client_policies(names=[module.params["name"]])
+                module.fail_json(
+                    msg="Failed to create SMB client policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+        if not module.params["client"]:
+            module.fail_json(msg="client is required to create a new rule")
+        else:
+            rule = SmbClientPolicyRule(
+                client=module.params["client"],
+                permission=module.params["permission"],
+            )
+            res = blade.post_smb_client_policies_rules(
+                policy_names=[module.params["name"]],
+                rule=rule,
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to rule for policy {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def update_smb_client_policy(module, blade):
+    """Update SMB Client Policy Rule"""
+
+    changed = False
+    if module.params["client"]:
+        current_policy_rule = blade.get_smb_client_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="client='" + module.params["client"] + "'",
+        )
+        if (
+            current_policy_rule.status_code == 200
+            and current_policy_rule.total_item_count == 0
+        ):
+            rule = SmbClientPolicyRule(
+                client=module.params["client"],
+                permission=module.params["permission"],
+                access=module.params["access"],
+            )
+            changed = True
+            if not module.check_mode:
+                if module.params["before_rule"]:
+                    before_name = (
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    )
+                    res = blade.post_smb_client_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                        before_rule_name=before_name,
+                    )
+                else:
+                    res = blade.post_smb_client_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                    )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to create rule for client {0} "
+                        "in policy {1}. Error: {2}".format(
+                            module.params["client"],
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+        else:
+            rules = list(current_policy_rule.items)
+            cli_count = None
+            done = False
+            if module.params["client"] == "*":
+                for cli in range(0, len(rules)):
+                    if rules[cli].client == "*":
+                        cli_count = cli
+                if not cli_count:
+                    rule = SmbClientPolicyRule(
+                        client=module.params["client"],
+                        permission=module.params["permission"],
+                        access=module.params["access"],
+                    )
+                    done = True
+                    changed = True
+                    if not module.check_mode:
+                        if module.params["before_rule"]:
+                            res = blade.post_smb_client_policies_rules(
+                                policy_names=[module.params["name"]],
+                                rule=rule,
+                                before_rule_name=(
+                                    module.params["name"]
+                                    + "."
+                                    + str(module.params["before_rule"]),
+                                ),
+                            )
+                        else:
+                            res = blade.post_smb_client_policies_rules(
+                                policy_names=[module.params["name"]],
+                                rule=rule,
+                            )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to create rule for "
+                                "client {0} in policy {1}. Error: {2}".format(
+                                    module.params["client"],
+                                    module.params["name"],
+                                    res.errors[0].message,
+                                )
+                            )
+            if not done:
+                old_policy_rule = rules[0]
+                current_rule = {
+                    "client": sorted(old_policy_rule.client),
+                    "permission": sorted(old_policy_rule.permission),
+                }
+                if module.params["permission"]:
+                    new_permission = sorted(module.params["permission"])
+                else:
+                    new_permission = sorted(current_rule["permission"])
+                if module.params["client"]:
+                    new_client = sorted(module.params["client"])
+                else:
+                    new_client = sorted(current_rule["client"])
+                new_rule = {
+                    "client": new_client,
+                    "permission": new_permission,
+                }
+                if current_rule != new_rule:
+                    changed = True
+                    if not module.check_mode:
+                        rule = SmbClientPolicyRule(
+                            client=module.params["client"],
+                            permission=module.params["permission"],
+                        )
+                        res = blade.patch_smb_client_policies_rules(
+                            names=[
+                                module.params["name"] + "." + str(old_policy_rule.index)
+                            ],
+                            rule=rule,
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to update SMB client rule {0}. Error: {1}".format(
+                                    module.params["name"]
+                                    + "."
+                                    + str(old_policy_rule.index),
+                                    res.errors[0].message,
+                                )
+                            )
+                if (
+                    module.params["before_rule"]
+                    and module.params["before_rule"] != old_policy_rule.index
+                ):
+                    changed = True
+                    if not module.check_mode:
+                        before_name = (
+                            module.params["name"]
+                            + "."
+                            + str(module.params["before_rule"])
+                        )
+                        res = blade.patch_smb_client_policies_rules(
+                            names=[
+                                module.params["name"] + "." + str(old_policy_rule.index)
+                            ],
+                            rule=SmbClientPolicyRule(),
+                            before_rule_name=before_name,
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to move SMB client rule {0}. Error: {1}".format(
+                                    module.params["name"]
+                                    + "."
+                                    + str(old_policy_rule.index),
+                                    res.errors[0].message,
+                                )
+                            )
+    current_policy = list(
+        blade.get_smb_client_policies(names=[module.params["name"]]).items
+    )[0]
+    if current_policy.enabled != module.params["enabled"]:
+        changed = True
+        if not module.check_mode:
+            res = blade.patch_smb_client_policies(
+                policy=SmbClientPolicy(enabled=module.params["enabled"]),
+                names=[module.params["name"]],
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to change state of SMB client policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
 
 
 def delete_nfs_policy(module, blade):
@@ -1842,7 +2442,9 @@ def main():
                 type="str", default="present", choices=["absent", "present", "copy"]
             ),
             policy_type=dict(
-                type="str", default="snapshot", choices=["snapshot", "access", "nfs"]
+                type="str",
+                default="snapshot",
+                choices=["snapshot", "access", "nfs", "smb_share", "smb_client"],
             ),
             enabled=dict(type="bool", default=True),
             timezone=dict(type="str"),
@@ -1913,6 +2515,10 @@ def main():
                 default=["sys"],
             ),
             before_rule=dict(type="int"),
+            principal=dict(type="str"),
+            change=dict(type="str", choices=["deny", "allow", ""]),
+            read=dict(type="str", choices=["deny", "allow", ""]),
+            full_control=dict(type="str", choices=["deny", "allow", ""]),
         )
     )
 
@@ -1920,6 +2526,8 @@ def main():
     required_if = [
         ["policy_type", "access", ["account", "name"]],
         ["policy_type", "nfs", ["name"]],
+        ["policy_type", "smb_client", ["name"]],
+        ["policy_type", "smb_share", ["name"]],
     ]
 
     module = AnsibleModule(
@@ -2037,6 +2645,102 @@ def main():
             create_nfs_policy(module, blade)
         elif state == "absent" and policy:
             delete_nfs_policy(module, blade)
+    elif module.params["policy_type"] == "smb_client":
+        if SMB_POLICY_API_VERSION not in versions:
+            module.fail_json(
+                msg=(
+                    "Minimum FlashBlade REST version required: {0}".format(
+                        SMB_POLICY_API_VERSION
+                    )
+                )
+            )
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required for this module")
+        blade = get_system(module)
+        try:
+            policy = list(
+                blade.get_smb_client_policies(names=[module.params["name"]]).items
+            )[0]
+        except AttributeError:
+            policy = None
+        if module.params["rename"]:
+            try:
+                new_policy = list(
+                    blade.get_smb_client_policies(names=[module.params["rename"]]).items
+                )[0]
+            except AttributeError:
+                new_policy = None
+        if policy and state == "present" and not module.params["rename"]:
+            if module.params["before_rule"]:
+                res = blade.get_smb_client_policies_rules(
+                    policy_names=[module.params["name"]],
+                    names=[
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    ],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Rule index {0} does not exist.".format(
+                            module.params["before_rule"]
+                        )
+                    )
+            update_smb_client_policy(module, blade)
+        elif (
+            state == "present" and module.params["rename"] and policy and not new_policy
+        ):
+            rename_smb_client_policy(module, blade)
+        elif state == "present" and not policy and not module.params["rename"]:
+            create_smb_client_policy(module, blade)
+        elif state == "absent" and policy:
+            delete_smb_client_policy(module, blade)
+    elif module.params["policy_type"] == "smb_share":
+        if SMB_POLICY_API_VERSION not in versions:
+            module.fail_json(
+                msg=(
+                    "Minimum FlashBlade REST version required: {0}".format(
+                        SMB_POLICY_API_VERSION
+                    )
+                )
+            )
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required for this module")
+        blade = get_system(module)
+        try:
+            policy = list(
+                blade.get_smb_share_policies(names=[module.params["name"]]).items
+            )[0]
+        except AttributeError:
+            policy = None
+        if module.params["rename"]:
+            try:
+                new_policy = list(
+                    blade.get_smb_share_policies(names=[module.params["rename"]]).items
+                )[0]
+            except AttributeError:
+                new_policy = None
+        if policy and state == "present" and not module.params["rename"]:
+            if module.params["before_rule"]:
+                res = blade.get_smb_share_policies_rules(
+                    policy_names=[module.params["name"]],
+                    names=[
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    ],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Rule index {0} does not exist.".format(
+                            module.params["before_rule"]
+                        )
+                    )
+            update_smb_share_policy(module, blade)
+        elif (
+            state == "present" and module.params["rename"] and policy and not new_policy
+        ):
+            rename_smb_share_policy(module, blade)
+        elif state == "present" and not policy and not module.params["rename"]:
+            create_smb_share_policy(module, blade)
+        elif state == "absent" and policy:
+            delete_smb_share_policy(module, blade)
     elif SNAPSHOT_POLICY_API_VERSION in versions:
         if not HAS_PYPURECLIENT:
             module.fail_json(msg="py-pure-client sdk is required for this module")

@@ -179,6 +179,20 @@ options:
     - Only valid for Purity//FB 3.3.0 or higher
     type: str
     version_added: "1.9.0"
+  share_policy:
+    description:
+    - Name of SMB share policy to assign to filesystem
+    - Only valid with REST 2.10 or higher
+    - Remove policy with empty string
+    type: str
+    version_added: "1.12.0"
+  client_policy:
+    description:
+    - Name of SMB client policy to assign to filesystem
+    - Only valid with REST 2.10 or higher
+    - Remove policy with empty string
+    type: str
+    version_added: "1.12.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -267,6 +281,7 @@ try:
         FileSystemPatch,
         NfsPatch,
         Reference,
+        Smb,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -290,6 +305,7 @@ NFSV4_API_VERSION = "1.6"
 REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
 EXPORT_POLICY_API_VERSION = "2.3"
+SMB_POLICY_API_VERSION = "2.10"
 
 
 def get_fs(module, blade):
@@ -488,6 +504,43 @@ def create_fs(module, blade):
                         res.errors[0].message,
                     )
                 )
+        if SMB_POLICY_API_VERSION in api_version:
+            if module.params["client_policy"]:
+                system = get_system(module)
+                export_attr = FileSystemPatch(
+                    smb=Smb(
+                        client_policy=Reference(name=module.params["client_policy"])
+                    )
+                )
+                res = system.patch_file_systems(
+                    names=[module.params["name"]], file_system=export_attr
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Filesystem {0} created, but failed to assign client "
+                        "policy {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["client_policy"],
+                            res.errors[0].message,
+                        )
+                    )
+            if module.params["share_policy"]:
+                system = get_system(module)
+                export_attr = FileSystemPatch(
+                    smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
+                )
+                res = system.patch_file_systems(
+                    names=[module.params["name"]], file_system=export_attr
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Filesystem {0} created, but failed to assign share "
+                        "policy {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["share_policy"],
+                            res.errors[0].message,
+                        )
+                    )
     module.exit_json(changed=changed)
 
 
@@ -752,6 +805,64 @@ def modify_fs(module, blade):
                         res.errors[0].message,
                     )
                 )
+    if SMB_POLICY_API_VERSION in api_version and module.params["client_policy"]:
+        system = get_system(module)
+        change_client = False
+        current_fs = list(
+            system.get_file_systems(filter="name='" + module.params["name"] + "'").items
+        )[0]
+        if (
+            current_fs.smb.client_policy.name
+            and current_fs.smb.client_policy.name != module.params["client_policy"]
+        ):
+            change_client = True
+        if not current_fs.smb.client_policy.name and module.params["client_policy"]:
+            change_client = True
+        if change_client and not module.check_mode:
+            client_attr = FileSystemPatch(
+                smb=Smb(client_policy=Reference(name=module.params["client_policy"]))
+            )
+            res = system.patch_file_systems(
+                names=[module.params["name"]], file_system=client_attr
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to modify client policy {1} for "
+                    "filesystem {0}. Error: {2}".format(
+                        module.params["name"],
+                        module.params["client_policy"],
+                        res.errors[0].message,
+                    )
+                )
+    if SMB_POLICY_API_VERSION in api_version and module.params["share__policy"]:
+        system = get_system(module)
+        change_share = False
+        current_fs = list(
+            system.get_file_systems(filter="name='" + module.params["name"] + "'").items
+        )[0]
+        if (
+            current_fs.smb.share_policy.name
+            and current_fs.smb.share_policy.name != module.params["share_policy"]
+        ):
+            change_share = True
+        if not current_fs.smb.share_policy.name and module.params["share_policy"]:
+            change_share = True
+        if change_share and not module.check_mode:
+            share_attr = FileSystemPatch(
+                smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
+            )
+            res = system.patch_file_systems(
+                names=[module.params["name"]], file_system=share_attr
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to modify share policy {1} for "
+                    "filesystem {0}. Error: {2}".format(
+                        module.params["name"],
+                        module.params["share_policy"],
+                        res.errors[0].message,
+                    )
+                )
 
     module.exit_json(changed=changed)
 
@@ -910,6 +1021,8 @@ def main():
             ),
             size=dict(type="str"),
             export_policy=dict(type="str"),
+            share_policy=dict(type="str"),
+            client_policy=dict(type="str"),
         )
     )
 

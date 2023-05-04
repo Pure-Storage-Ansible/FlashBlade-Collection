@@ -458,6 +458,7 @@ VSO_VERSION = "2.4"
 DRIVES_API_VERSION = "2.5"
 SECURITY_API_VERSION = "2.7"
 BUCKET_API_VERSION = "2.8"
+SMB_CLIENT_API_VERSION = "2.10"
 
 
 def _millisecs_to_time(millisecs):
@@ -1247,6 +1248,30 @@ def generate_nfs_export_policies_dict(blade):
     return policies_info
 
 
+def generate_smb_client_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_smb_client_policies().items)
+    for policy in range(0, len(policies)):
+        policy_name = policies[policy].name
+        policies_info[policy_name] = {
+            "local": policies[policy].is_local,
+            "enabled": policies[policy].enabled,
+            "version": policies[policy].version,
+            "rules": [],
+        }
+        for rule in range(0, len(policies[policy].rules)):
+            policies_info[policy_name]["rules"].append(
+                {
+                    "name": policies[policy].rules[rule].name,
+                    "change": policies[policy].rules[rule].change,
+                    "full_control": policies[policy].rules[rule].full_control,
+                    "principal": policies[policy].rules[rule].principal,
+                    "read": policies[policy].rules[rule].read,
+                }
+            )
+    return policies_info
+
+
 def generate_object_store_accounts_dict(blade):
     account_info = {}
     accounts = list(blade.get_object_store_accounts().items)
@@ -1540,6 +1565,8 @@ def main():
                 )
             if NFS_POLICY_API_VERSION in api_version:
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
+            if SMB_CLIENT_API_VERSION in api_version:
+                info["share_policies"] = generate_smb_client_policies_dict(blade)
         if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_version:
             info["drives"] = generate_drives_dict(blade)
     module.exit_json(changed=False, purefb_info=info)
