@@ -64,6 +64,56 @@ options:
     type: str
     choices: [ "classic", "multi-site-writable" ]
     version_added: '1.10.0'
+    default: classic
+  quota:
+    description:
+      - User quota in M, G, T or P units. This cannot be 0.
+      - This value will override the object store account's default bucket quota.
+    type: str
+    version_added: '1.12.0'
+  hard_limit:
+    description:
+     - Whether the I(quota) value is enforced or not
+    type: bool
+    version_added: '1.12.0'
+  retention_lock:
+    description:
+     - Set retention lock level for the bucket
+     - Once set to I(ratcheted) can only be lowered by Pure Technical Services
+    type: str
+    choices: [ "ratcheted", "unlocked" ]
+    default: unlocked
+    version_added: '1.12.0'
+  retention_mode:
+    description:
+     - The retention mode used to apply locks on new objects if none is specified by the S3 client
+     - Use "" to clear
+     - Once set to I(compliance) this can only be changed by contacting Pure Technical Services
+    type: str
+    choices: [ "compliance", "governance", "" ]
+    version_added: '1.12.0'
+  object_lock_enabled:
+    description:
+     - If set to true, then S3 APIs relating to object lock may be used
+    type: bool
+    default: false
+    version_added: '1.12.0'
+  freeze_locked_objects:
+    description:
+     - If set to true, a locked object will be read-only and no new versions of
+       the object may be created due to modifications
+     - After enabling, can be disabled only by contacting Pure Technical Services
+    type: bool
+    default: false
+    version_added: '1.12.0'
+  default_retention:
+    description:
+     - The retention period, in days, used to apply locks on new objects if
+       none is specified by the S3 client
+     - Valid values between 1 and 365000
+     - Use "" to clear
+    type: str
+    version_added: '1.12.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -125,7 +175,7 @@ try:
 except ImportError:
     HAS_PYPURECLIENT = False
 
-from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
     get_system,
@@ -136,6 +186,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 MIN_REQUIRED_API_VERSION = "1.5"
 VERSIONING_VERSION = "1.9"
 VSO_VERSION = "2.4"
+QUOTA_VERSION = "2.8"
 
 
 def get_s3acc(module, blade):
@@ -164,15 +215,56 @@ def create_bucket(module, blade):
     if not module.check_mode:
         try:
             api_version = blade.api_version.list_versions().versions
-            if VSO_VERSION in api_version and module.params["mode"]:
+            if VSO_VERSION in api_version:
                 bladev2 = get_system(module)
-                res = bladev2.post_buckets(
-                    names=[module.params["name"]],
-                    bucket=flashblade.BucketPost(
+                account_defaults = list(
+                    bladev2.get_object_store_accounts(
+                        names=[module.params["account"]]
+                    ).items
+                )[0]
+                if QUOTA_VERSION in api_version:
+                    if not module.params["hard_limit"]:
+                        module.params[
+                            "hard_limit"
+                        ] = account_defaults.hard_limit_enabled
+                    if module.params["quota"]:
+                        quota = str(human_to_bytes(module.params["quota"]))
+                    else:
+                        quota = account_defaults.quota_limit
+                    if not module.params["retention_mode"]:
+                        module.params["retention_mode"] = ""
+                    if not module.params["default_retention"]:
+                        module.params["default_retention"] = ""
+                    if module.params["object_lock_enabled"]:
+                        bucket = flashblade.BucketPost(
+                            account=flashblade.Reference(name=module.params["account"]),
+                            bucket_type=module.params["mode"],
+                            hard_limit_enabled=module.params["hard_limit"],
+                            quota_limit=quota,
+                            retention_lock=module.params["retention_lock"],
+                            object_lock_config=flashblade.ObjectLockRequestBody(
+                                default_retention_mode=module.params["retention_mode"],
+                                enabled=module.params["object_lock_enabled"],
+                                freeze_locked_objects=module.params[
+                                    "freeze_locked_objects"
+                                ],
+                                default_retention=module.params["default_retention"],
+                            ),
+                        )
+                    else:
+                        bucket = flashblade.BucketPost(
+                            account=flashblade.Reference(name=module.params["account"]),
+                            bucket_type=module.params["mode"],
+                            hard_limit_enabled=module.params["hard_limit"],
+                            quota_limit=quota,
+                            retention_lock=module.params["retention_lock"],
+                        )
+                else:
+                    bucket = flashblade.BucketPost(
                         account=flashblade.Reference(name=module.params["account"]),
                         bucket_type=module.params["mode"],
-                    ),
-                )
+                    )
+                res = bladev2.post_buckets(names=[module.params["name"]], bucket=bucket)
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Object Store Bucket {0} creation failed. Error: {1}".format(
@@ -274,11 +366,41 @@ def update_bucket(module, blade, bucket):
     changed = False
     api_version = blade.api_version.list_versions().versions
     if VSO_VERSION in api_version:
-        if module.params["mode"]:
-            bladev2 = get_system(module)
-            bucket_detail = bladev2.get_buckets(names=[module.params["name"]])
-            if list(bucket_detail.items)[0].bucket_type != module.params["mode"]:
-                module.warn("Changing bucket type is not permitted.")
+        bladev2 = get_system(module)
+        bucket_detail = list(bladev2.get_buckets(names=[module.params["name"]]).items)[
+            0
+        ]
+        if module.params["mode"] and bucket_detail.bucket_type != module.params["mode"]:
+            module.warn("Changing bucket type is not permitted.")
+        if QUOTA_VERSION in api_version:
+            if (
+                bucket_detail.retention_lock == "ratcheted"
+                and getattr(
+                    bucket_detail.object_lock_config, "default_retention_mode", None
+                )
+                == "compliance"
+                and module.params["retention_mode"] != "compliance"
+            ):
+                module.warn(
+                    "Changing retention_mode can onlt be performed by Pure Technical Support."
+                )
+        if not module.params["object_lock_enabled"] and getattr(
+            bucket_detail.object_lock_config, "enabled", False
+        ):
+            module.warn("Object lock cannot be disabled.")
+        if not module.params["freeze_locked_objects"] and getattr(
+            bucket_detail.object_lock_config, "freeze_locked_objects", False
+        ):
+            module.warn("Freeze locked onjects cannot be disabled.")
+        if getattr(bucket_detail.object_lock_config, "default_retention", 0) > 1:
+            if (
+                bucket_detail.object_lock_config.default_retention / 86400000
+                > int(module.params["default_retention"])
+                and bucket_detail.retention_lock == "ratcheted"
+            ):
+                module.warn(
+                    "Default retention can only be reduced by Pure Technical Support."
+                )
 
     if VERSIONING_VERSION in api_version:
         if bucket.versioning != "none":
@@ -341,7 +463,20 @@ def main():
             name=dict(required=True),
             account=dict(required=True),
             eradicate=dict(default="false", type="bool"),
-            mode=dict(type="str", choices=["classic", "multi-site-writable"]),
+            mode=dict(
+                type="str",
+                default="classic",
+                choices=["classic", "multi-site-writable"],
+            ),
+            retention_mode=dict(type="str", choices=["compliance", "governance", ""]),
+            default_retention=dict(type="str"),
+            retention_lock=dict(
+                type="str", choices=["ratcheted", "unlocked"], default="unlocked"
+            ),
+            hard_limit=dict(type="bool"),
+            object_lock_enabled=dict(type="bool", default=False),
+            freeze_locked_objects=dict(type="bool", default=False),
+            quota=dict(type="str"),
             versioning=dict(
                 default="absent", choices=["enabled", "suspended", "absent"]
             ),
