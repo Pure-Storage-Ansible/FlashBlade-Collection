@@ -690,7 +690,7 @@ def modify_fs(module, blade):
                             module.params["name"]
                         )
                     )
-                attr["requested_promotion_state"] = module.params["promote"]
+                attr["requested_promotion_state"] = "demoted"
                 mod_fs = True
     if mod_fs:
         changed = True
