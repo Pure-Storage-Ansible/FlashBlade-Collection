@@ -547,6 +547,7 @@ def create_fs(module, blade):
 def modify_fs(module, blade):
     """Modify Filesystem"""
     changed = False
+    change_export = False
     mod_fs = False
     attr = {}
     if module.params["policy"] and module.params["policy_state"] == "present":
@@ -742,7 +743,7 @@ def modify_fs(module, blade):
                             module.params["name"]
                         )
                     )
-                attr["requested_promotion_state"] = module.params["promote"]
+                attr["requested_promotion_state"] = "demoted"
                 mod_fs = True
     if mod_fs:
         changed = True
@@ -864,7 +865,7 @@ def modify_fs(module, blade):
                     )
                 )
 
-    module.exit_json(changed=changed)
+    module.exit_json(changed=(changed or change_export))
 
 
 def _delete_fs(module, blade):

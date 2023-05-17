@@ -241,7 +241,6 @@ options:
     - Accepted notation is a single IP address, subnet in CIDR notation, netgroup, or
       anonymous (*).
     type: str
-    default: "*"
     version_added: "1.9.0"
   fileid_32bit:
     description:
@@ -1526,9 +1525,7 @@ def create_nfs_policy(module, blade):
                         module.params["name"], res.errors[0].message
                     )
                 )
-        if not module.params["client"]:
-            module.fail_json(msg="client is required to create a new rule")
-        else:
+        if module.params["client"]:
             rule = NfsExportPolicyRule(
                 client=module.params["client"],
                 permission=module.params["permission"],
@@ -2503,7 +2500,7 @@ def main():
             anonuid=dict(type="str"),
             anongid=dict(type="str"),
             atime=dict(type="bool", default=True),
-            client=dict(type="str", default="*"),
+            client=dict(type="str"),
             fileid_32bit=dict(type="bool", default=False),
             permission=dict(type="str", choices=["rw", "ro"], default="ro"),
             secure=dict(type="bool", default=False),

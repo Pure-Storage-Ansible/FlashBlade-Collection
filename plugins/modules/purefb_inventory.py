@@ -47,65 +47,7 @@ RETURN = r"""
 purefb_inventory:
   description: Returns the inventory information for the FlashBlade
   returned: always
-  type: complex
-  sample: {
-        "blades": {
-            "CH1.FB1": {
-                "model": "FB-17TB",
-                "serial": "PPCXA1942AFF5",
-                "slot": 1,
-                "status": "healthy"
-            }
-        },
-        "chassis": {
-            "CH1": {
-                "index": 1,
-                "model": null,
-                "serial": "PMPAM163402AE",
-                "slot": null,
-                "status": "healthy"
-            }
-        },
-        "controllers": {},
-        "ethernet": {
-            "CH1.FM1.ETH1": {
-                "model": "624410002",
-                "serial": "APF16360021PRV",
-                "slot": 1,
-                "speed": 40000000000,
-                "status": "healthy"
-            }
-        },
-        "fans": {
-            "CH1.FM1.FAN1": {
-                "slot": 1,
-                "status": "healthy"
-            }
-        },
-        "modules": {
-            "CH1.FM1": {
-                "model": "EFM-110",
-                "serial": "PSUFS1640002C",
-                "slot": 1,
-                "status": "healthy"
-            },
-            "CH1.FM2": {
-                "model": "EFM-110",
-                "serial": "PSUFS1640004A",
-                "slot": 2,
-                "status": "healthy"
-            }
-        },
-        "power": {
-            "CH1.PWR1": {
-                "model": "DS1600SPE-3",
-                "serial": "M0500E00D8AJZ",
-                "slot": 1,
-                "status": "healthy"
-            }
-        },
-        "switch": {}
-    }
+  type: dict
 """
 
 

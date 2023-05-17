@@ -38,6 +38,7 @@ options:
   quota:
     description:
     - The effective quota limit to be applied against the size of the account in bytes.
+    - Values can be entered as K, M, T or P
     - If set to '' (empty string), the account is unlimited in size.
     version_added: 1.11.0
     type: str
@@ -53,6 +54,7 @@ options:
     description:
     - The value of this field will be used to configure the I(quota_limit) field of newly created buckets
       associated with this object store account, if the bucket creation does not specify its own value.
+    - Values can be entered as K, M, T or P
     - If set to '' (empty string), the bucket default is unlimited in size.
     version_added: 1.11.0
     type: str
@@ -68,7 +70,7 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Crrate object store account foo (with no quotas)
+- name: Create object store account foo (with no quotas)
   purestorage.flashblade.purefb_s3acc:
     name: foo
     fb_url: 10.10.10.2
@@ -101,7 +103,7 @@ try:
 except ImportError:
     HAS_PURESTORAGE = False
 
-from ansible.module_utils.basic import AnsibleModule
+from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
     get_system,
@@ -144,11 +146,21 @@ def update_s3acc(module):
         module.params["quota"] = current_account["quota"]
     if module.params["default_quota"] is None:
         module.params["default_quota"] = current_account["default_quota"]
+    if not module.params["default_quota"]:
+        module.params["default_quota"] = ""
+    if not module.params["quota"]:
+        quota = ""
+    else:
+        quota = str(human_to_bytes(module.params["quota"]))
+    if not module.params["default_quota"]:
+        default_quota = ""
+    else:
+        default_quota = str(human_to_bytes(module.params["default_quota"]))
     new_account = {
         "hard_limit": module.params["hard_limit"],
         "default_hard_limit": module.params["default_hard_limit"],
-        "quota": module.params["quota"],
-        "default_quota": module.params["default_quota"],
+        "quota": quota,
+        "default_quota": default_quota,
     }
     if new_account != current_account:
         changed = True
@@ -188,27 +200,22 @@ def create_s3acc(module, blade):
             )
         if module.params["quota"] or module.params["default_quota"]:
             blade2 = get_system(module)
-            if module.params["quota"] and not module.params["default_quota"]:
-                osa = ObjectStoreAccountPatch(
-                    hard_limit_enabled=module.params["hard_limit"],
-                    quota_limit=module.params["quota"],
-                )
-            if not module.params["quota"] and module.params["default_quota"]:
-                osa = ObjectStoreAccountPatch(
-                    bucket_defaults=BucketDefaults(
-                        hard_limit_enabled=module.params["default_hard_limit"],
-                        quota_limit=module.params["default_quota"],
-                    )
-                )
+            if not module.params["default_quota"]:
+                default_quota = ""
             else:
-                osa = ObjectStoreAccountPatch(
-                    hard_limit_enabled=module.params["hard_limit"],
-                    quota_limit=module.params["quota"],
-                    bucket_defaults=BucketDefaults(
-                        hard_limit_enabled=module.params["default_hard_limit"],
-                        quota_limit=module.params["default_quota"],
-                    ),
-                )
+                default_quota = str(human_to_bytes(module.params["default_quota"]))
+            if not module.params["quota"]:
+                quota = ""
+            else:
+                quota = str(human_to_bytes(module.params["quota"]))
+            osa = ObjectStoreAccountPatch(
+                hard_limit_enabled=module.params["hard_limit"],
+                quota_limit=quota,
+                bucket_defaults=BucketDefaults(
+                    hard_limit_enabled=module.params["default_hard_limit"],
+                    quota_limit=default_quota,
+                ),
+            )
             res = blade2.patch_object_store_accounts(
                 object_store_account=osa, names=[module.params["name"]]
             )
