@@ -322,10 +322,10 @@ options:
   smb_encryption:
     description:
      - The status of SMB encryption in a client policy rule
-     type: str
-     choices: [ disabled, optional, required ]
-     default: optional
-     version_added: '1.12.0'
+    type: str
+    choices: [ disabled, optional, required ]
+    default: optional
+    version_added: '1.12.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
