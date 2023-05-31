@@ -319,6 +319,13 @@ options:
     type: str
     choices: [ allow, deny, "" ]
     version_added: '1.12.0'
+  smb_encryption:
+    description:
+     - The status of SMB encryption in a client policy rule
+     type: str
+     choices: [ disabled, optional, required ]
+     default: optional
+     version_added: '1.12.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -547,6 +554,7 @@ ACCESS_POLICY_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 NFS_RENAME_API_VERSION = "2.4"
 SMB_POLICY_API_VERSION = "2.10"
+SMB_ENCRYPT_API_VERSION = "2.11"
 
 
 def _convert_to_millisecs(hour):
@@ -985,6 +993,7 @@ def rename_smb_client_policy(module, blade):
 def create_smb_client_policy(module, blade):
     """Create SMB Client Policy"""
     changed = True
+    versions = blade.api_version.list_versions().versions
     if not module.check_mode:
         res = blade.post_smb_client_policies(names=[module.params["name"]])
         if res.status_code != 200:
@@ -1007,10 +1016,19 @@ def create_smb_client_policy(module, blade):
         if not module.params["client"]:
             module.fail_json(msg="client is required to create a new rule")
         else:
-            rule = SmbClientPolicyRule(
-                client=module.params["client"],
-                permission=module.params["permission"],
-            )
+            if SMB_ENCRYPT_API_VERSION in versions:
+                rule = SmbClientPolicyRule(
+                    client=module.params["client"],
+                    permission=module.params["permission"],
+                    access=module.params["access"],
+                    encryption=module.params["smb_encryption"],
+                )
+            else:
+                rule = SmbClientPolicyRule(
+                    client=module.params["client"],
+                    access=module.params["access"],
+                    permission=module.params["permission"],
+                )
             res = blade.post_smb_client_policies_rules(
                 policy_names=[module.params["name"]],
                 rule=rule,
@@ -1029,6 +1047,7 @@ def update_smb_client_policy(module, blade):
     """Update SMB Client Policy Rule"""
 
     changed = False
+    versions = blade.api_version.list_versions().versions
     if module.params["client"]:
         current_policy_rule = blade.get_smb_client_policies_rules(
             policy_names=[module.params["name"]],
@@ -1038,11 +1057,19 @@ def update_smb_client_policy(module, blade):
             current_policy_rule.status_code == 200
             and current_policy_rule.total_item_count == 0
         ):
-            rule = SmbClientPolicyRule(
-                client=module.params["client"],
-                permission=module.params["permission"],
-                access=module.params["access"],
-            )
+            if SMB_ENCRYPT_API_VERSION in versions:
+                rule = SmbClientPolicyRule(
+                    client=module.params["client"],
+                    permission=module.params["permission"],
+                    access=module.params["access"],
+                    encryption=module.params["smb_encryption"],
+                )
+            else:
+                rule = SmbClientPolicyRule(
+                    client=module.params["client"],
+                    permission=module.params["permission"],
+                    access=module.params["access"],
+                )
             changed = True
             if not module.check_mode:
                 if module.params["before_rule"]:
@@ -1077,11 +1104,19 @@ def update_smb_client_policy(module, blade):
                     if rules[cli].client == "*":
                         cli_count = cli
                 if not cli_count:
-                    rule = SmbClientPolicyRule(
-                        client=module.params["client"],
-                        permission=module.params["permission"],
-                        access=module.params["access"],
-                    )
+                    if SMB_ENCRYPT_API_VERSION in versions:
+                        rule = SmbClientPolicyRule(
+                            client=module.params["client"],
+                            permission=module.params["permission"],
+                            access=module.params["access"],
+                            encryption=module.params["smb_encryption"],
+                        )
+                    else:
+                        rule = SmbClientPolicyRule(
+                            client=module.params["client"],
+                            permission=module.params["permission"],
+                            access=module.params["access"],
+                        )
                     done = True
                     changed = True
                     if not module.check_mode:
@@ -1111,10 +1146,22 @@ def update_smb_client_policy(module, blade):
                             )
             if not done:
                 old_policy_rule = rules[0]
-                current_rule = {
-                    "client": sorted(old_policy_rule.client),
-                    "permission": sorted(old_policy_rule.permission),
-                }
+                if SMB_ENCRYPT_API_VERSION in versions:
+                    current_rule = {
+                        "client": sorted(old_policy_rule.client),
+                        "permission": sorted(old_policy_rule.permission),
+                        "encryption": old_policy_rule.encryption,
+                    }
+                else:
+                    current_rule = {
+                        "client": sorted(old_policy_rule.client),
+                        "permission": sorted(old_policy_rule.permission),
+                    }
+                if SMB_ENCRYPT_API_VERSION in versions:
+                    if module.params["smb_encryption"]:
+                        new_encryption = module.params["smb_encryption"]
+                    else:
+                        new_encryption = current_rule["encryption"]
                 if module.params["permission"]:
                     new_permission = sorted(module.params["permission"])
                 else:
@@ -1123,17 +1170,31 @@ def update_smb_client_policy(module, blade):
                     new_client = sorted(module.params["client"])
                 else:
                     new_client = sorted(current_rule["client"])
-                new_rule = {
-                    "client": new_client,
-                    "permission": new_permission,
-                }
+                if SMB_ENCRYPT_API_VERSION in versions:
+                    new_rule = {
+                        "client": new_client,
+                        "permission": new_permission,
+                        "encryption": new_encryption,
+                    }
+                else:
+                    new_rule = {
+                        "client": new_client,
+                        "permission": new_permission,
+                    }
                 if current_rule != new_rule:
                     changed = True
                     if not module.check_mode:
-                        rule = SmbClientPolicyRule(
-                            client=module.params["client"],
-                            permission=module.params["permission"],
-                        )
+                        if SMB_ENCRYPT_API_VERSION in versions:
+                            rule = SmbClientPolicyRule(
+                                client=module.params["client"],
+                                permission=module.params["permission"],
+                                encryption=module.params["smb_encryption"],
+                            )
+                        else:
+                            rule = SmbClientPolicyRule(
+                                client=module.params["client"],
+                                permission=module.params["permission"],
+                            )
                         res = blade.patch_smb_client_policies_rules(
                             names=[
                                 module.params["name"] + "." + str(old_policy_rule.index)
@@ -2516,6 +2577,11 @@ def main():
             change=dict(type="str", choices=["deny", "allow", ""]),
             read=dict(type="str", choices=["deny", "allow", ""]),
             full_control=dict(type="str", choices=["deny", "allow", ""]),
+            smb_encryption=dict(
+                type="str",
+                default="optional",
+                choices=["disabled", "optional", "required"],
+            ),
         )
     )
 
