@@ -48,6 +48,11 @@ options:
     - If enabled this will override I(imported_key)
     type: bool
     default: false
+  multiple_keys:
+    description:
+    - Allow multiple access keys to be created for the user.
+    type: bool
+    default: false
   remove_key:
     description:
     - Access key to be removed from user
@@ -189,7 +194,7 @@ def update_s3user(module, blade):
                             and module.params["imported_key"]
                         ):
                             module.warn("'access_key: true' overrides imported keys")
-                        if module.params["access_key"]:
+                        if module.params["access_key"] and module.params['multiple_keys']:
                             result = blade.object_store_access_keys.create_object_store_access_keys(
                                 object_store_access_key=ObjectStoreAccessKey(
                                     user={"name": user}
@@ -370,6 +375,7 @@ def main():
             name=dict(required=True, type="str"),
             account=dict(required=True, type="str"),
             access_key=dict(default="false", type="bool"),
+            multiple_keys=dict(default="false", type="bool"),
             imported_key=dict(type="str", no_log=False),
             remove_key=dict(type="str", no_log=False),
             imported_secret=dict(type="str", no_log=True),
