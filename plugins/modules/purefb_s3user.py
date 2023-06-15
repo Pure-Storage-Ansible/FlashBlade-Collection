@@ -53,6 +53,7 @@ options:
     - Allow multiple access keys to be created for the user.
     type: bool
     default: false
+    version_added: "1.12.0"
   remove_key:
     description:
     - Access key to be removed from user
@@ -194,7 +195,10 @@ def update_s3user(module, blade):
                             and module.params["imported_key"]
                         ):
                             module.warn("'access_key: true' overrides imported keys")
-                        if module.params["access_key"] and module.params['multiple_keys']:
+                        if (
+                            module.params["access_key"]
+                            and module.params["multiple_keys"]
+                        ):
                             result = blade.object_store_access_keys.create_object_store_access_keys(
                                 object_store_access_key=ObjectStoreAccessKey(
                                     user={"name": user}
