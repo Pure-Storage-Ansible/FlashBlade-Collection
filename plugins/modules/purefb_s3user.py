@@ -195,20 +195,20 @@ def update_s3user(module, blade):
                             and module.params["imported_key"]
                         ):
                             module.warn("'access_key: true' overrides imported keys")
-                        if (
-                            module.params["access_key"]
-                            and module.params["multiple_keys"]
-                        ):
-                            result = blade.object_store_access_keys.create_object_store_access_keys(
-                                object_store_access_key=ObjectStoreAccessKey(
-                                    user={"name": user}
+                        if module.params["access_key"]:
+                            if key_count == 0 or (
+                                key_count >= 1 and module.params["multiple_keys"]
+                            ):
+                                result = blade.object_store_access_keys.create_object_store_access_keys(
+                                    object_store_access_key=ObjectStoreAccessKey(
+                                        user={"name": user}
+                                    )
                                 )
-                            )
-                            s3user_facts["fb_s3user"] = {
-                                "user": user,
-                                "access_key": result.items[0].secret_access_key,
-                                "access_id": result.items[0].name,
-                            }
+                                s3user_facts["fb_s3user"] = {
+                                    "user": user,
+                                    "access_key": result.items[0].secret_access_key,
+                                    "access_id": result.items[0].name,
+                                }
                         else:
                             if IMPORT_KEY_API_VERSION in versions:
                                 blade.object_store_access_keys.create_object_store_access_keys(
