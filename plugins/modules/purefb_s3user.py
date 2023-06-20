@@ -188,10 +188,7 @@ def update_s3user(module, blade):
         if not exists:
             if key_count < 2:
                 try:
-                    if (
-                        module.params["access_key"]
-                        and module.params["imported_key"]
-                    ):
+                    if module.params["access_key"] and module.params["imported_key"]:
                         module.warn("'access_key: true' overrides imported keys")
                     if module.params["access_key"]:
                         if key_count == 0 or (
