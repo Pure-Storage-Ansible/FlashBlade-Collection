@@ -212,7 +212,7 @@ def update_s3user(module, blade):
                     else:
                         if IMPORT_KEY_API_VERSION in versions:
                             changed = True
-                            if no module.check_mode:
+                            if not module.check_mode:
                                 blade.object_store_access_keys.create_object_store_access_keys(
                                     names=[module.params["imported_key"]],
                                     object_store_access_key=ObjectStoreAccessKeyPost(
