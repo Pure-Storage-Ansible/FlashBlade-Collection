@@ -117,7 +117,9 @@ RETURN = r"""
 
 HAS_PURITYFB = True
 try:
-    from purity_fb import PurityFb, ArrayConnection, ArrayConnectionPost
+    from purity_fb import PurityFb
+    from purity_fb import ArrayConnection as ArrayConnectionv1
+    from purity_fb import ArrayConnectionPost as ArrayConnectionPostv1
 except ImportError:
     HAS_PURITYFB = False
 
@@ -224,7 +226,7 @@ def create_connection(module, blade):
                 .items[0]
                 .connection_key
             )
-            connection_info = ArrayConnectionPost(
+            connection_info = ArrayConnectionPostv1(
                 management_address=module.params["target_url"],
                 encrypted=module.params["encrypted"],
                 connection_key=connection_key,
@@ -346,7 +348,7 @@ def update_connection(module, blade, target_blade):
             module.fail_json(
                 msg="Cannot turn array connection encryption on if file system replica links exist"
             )
-        new_attr = ArrayConnection(encrypted=module.params["encrypted"])
+        new_attr = ArrayConnectionv1(encrypted=module.params["encrypted"])
         changed = True
         if not module.check_mode:
             try:
