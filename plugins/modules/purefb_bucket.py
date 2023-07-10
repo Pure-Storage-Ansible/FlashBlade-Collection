@@ -235,6 +235,11 @@ def create_bucket(module, blade):
                         module.params["retention_mode"] = ""
                     if not module.params["default_retention"]:
                         module.params["default_retention"] = ""
+                    else:
+                        module.params["default_retention"] = str(
+                            int(module.params["default_retention"]) *
+                            86400000
+                        )
                     if module.params["object_lock_enabled"]:
                         bucket = flashblade.BucketPost(
                             account=flashblade.Reference(name=module.params["account"]),
@@ -242,7 +247,7 @@ def create_bucket(module, blade):
                             hard_limit_enabled=module.params["hard_limit"],
                             quota_limit=quota,
                             retention_lock=module.params["retention_lock"],
-                            object_lock_config=flashblade.ObjectLockRequestBody(
+                            object_lock_config=flashblade.ObjectLockConfigRequestBody(
                                 default_retention_mode=module.params["retention_mode"],
                                 enabled=module.params["object_lock_enabled"],
                                 freeze_locked_objects=module.params[
