@@ -835,7 +835,7 @@ def modify_fs(module, blade):
                         res.errors[0].message,
                     )
                 )
-    if SMB_POLICY_API_VERSION in api_version and module.params["share__policy"]:
+    if SMB_POLICY_API_VERSION in api_version and module.params["share_policy"]:
         system = get_system(module)
         change_share = False
         current_fs = list(
