@@ -237,8 +237,7 @@ def create_bucket(module, blade):
                         module.params["default_retention"] = ""
                     else:
                         module.params["default_retention"] = str(
-                            int(module.params["default_retention"]) *
-                            86400000
+                            int(module.params["default_retention"]) * 86400000
                         )
                     if module.params["object_lock_enabled"]:
                         bucket = flashblade.BucketPost(
