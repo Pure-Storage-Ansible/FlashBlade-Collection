@@ -5,6 +5,26 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.12.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_fs - Added support for SMB client and share policies
+- purefb_fs_replica - Added support to delete filesystem replica links from REST 2.10
+- purefb_info - Add drive type in drives subset for //S and //E platforms. Only available from REST 2.9.
+- purefb_info - Added support for SMB client and share policies
+- purefb_policy - Added support for SMB client and share policies
+- purefb_s3acc - Allow human readable quota sizes; eg. 1T, 230K, etc
+- purefb_s3user - Add new boolean parameter I(multiple_keys) to limit access keys for a user to a single key.
+
+Bugfixes
+--------
+
+- purefb_bucket - Fixed bucket type mode name typo
+- purefb_fs - Fixed issue with incorrect promotion state setting
+
 v1.11.0
 =======
 

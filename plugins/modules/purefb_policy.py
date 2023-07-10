@@ -506,7 +506,9 @@ RETURN = r"""
 
 HAS_PURITYFB = True
 try:
-    from purity_fb import Policy, PolicyRule, PolicyPatch
+    from purity_fb import Policy as Policyv1
+    from purity_fb import PolicyRule as PolicyRulev1
+    from purity_fb import PolicyPatch as PolicyPatchv1
 except ImportError:
     HAS_PURITYFB = False
 
@@ -519,6 +521,7 @@ try:
         NfsExportPolicy,
         NfsExportPolicyRule,
         Policy,
+        PolicyPatch,
         PolicyRule,
         SmbSharePolicyRule,
         SmbSharePolicy,
@@ -2158,10 +2161,10 @@ def create_policy(module, blade):
                         msg="every parameter is out of range (300 to 34560000)"
                     )
                 if module.params["at"]:
-                    attr = Policy(
+                    attr = Policyv1(
                         enabled=module.params["enabled"],
                         rules=[
-                            PolicyRule(
+                            PolicyRulev1(
                                 keep_for=module.params["keep_for"] * 1000,
                                 every=module.params["every"] * 1000,
                                 at=_convert_to_millisecs(module.params["at"]),
@@ -2170,17 +2173,17 @@ def create_policy(module, blade):
                         ],
                     )
                 else:
-                    attr = Policy(
+                    attr = Policyv1(
                         enabled=module.params["enabled"],
                         rules=[
-                            PolicyRule(
+                            PolicyRulev1(
                                 keep_for=module.params["keep_for"] * 1000,
                                 every=module.params["every"] * 1000,
                             )
                         ],
                     )
             else:
-                attr = Policy(enabled=module.params["enabled"])
+                attr = Policyv1(enabled=module.params["enabled"])
             blade.policies.create_policies(names=[module.params["name"]], policy=attr)
         except Exception:
             module.fail_json(
@@ -2456,11 +2459,11 @@ def update_policy(module, blade, policy):
         changed = True
         if not module.check_mode:
             try:
-                attr = PolicyPatch()
+                attr = PolicyPatchv1()
                 attr.enabled = module.params["enabled"]
                 if at_time:
                     attr.add_rules = [
-                        PolicyRule(
+                        PolicyRulev1(
                             keep_for=module.params["keep_for"] * 1000,
                             every=module.params["every"] * 1000,
                             at=at_time,
@@ -2469,13 +2472,13 @@ def update_policy(module, blade, policy):
                     ]
                 else:
                     attr.add_rules = [
-                        PolicyRule(
+                        PolicyRulev1(
                             keep_for=module.params["keep_for"] * 1000,
                             every=module.params["every"] * 1000,
                         )
                     ]
                 attr.remove_rules = [
-                    PolicyRule(
+                    PolicyRulev1(
                         keep_for=current_policy["keep_for"] * 1000,
                         every=current_policy["every"] * 1000,
                         at=current_policy["at"],
