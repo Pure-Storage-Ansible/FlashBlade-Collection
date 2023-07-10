@@ -48,6 +48,12 @@ options:
     - If enabled this will override I(imported_key)
     type: bool
     default: false
+  multiple_keys:
+    description:
+    - Allow multiple access keys to be created for the user.
+    type: bool
+    default: false
+    version_added: "1.12.0"
   remove_key:
     description:
     - Access key to be removed from user
@@ -181,27 +187,29 @@ def update_s3user(module, blade):
                 key_count += 1
         if not exists:
             if key_count < 2:
-                changed = True
-                if not module.check_mode:
-                    try:
-                        if (
-                            module.params["access_key"]
-                            and module.params["imported_key"]
+                try:
+                    if module.params["access_key"] and module.params["imported_key"]:
+                        module.warn("'access_key: true' overrides imported keys")
+                    if module.params["access_key"]:
+                        if key_count == 0 or (
+                            key_count >= 1 and module.params["multiple_keys"]
                         ):
-                            module.warn("'access_key: true' overrides imported keys")
-                        if module.params["access_key"]:
-                            result = blade.object_store_access_keys.create_object_store_access_keys(
-                                object_store_access_key=ObjectStoreAccessKey(
-                                    user={"name": user}
+                            changed = True
+                            if not module.check_mode:
+                                result = blade.object_store_access_keys.create_object_store_access_keys(
+                                    object_store_access_key=ObjectStoreAccessKey(
+                                        user={"name": user}
+                                    )
                                 )
-                            )
-                            s3user_facts["fb_s3user"] = {
-                                "user": user,
-                                "access_key": result.items[0].secret_access_key,
-                                "access_id": result.items[0].name,
-                            }
-                        else:
-                            if IMPORT_KEY_API_VERSION in versions:
+                                s3user_facts["fb_s3user"] = {
+                                    "user": user,
+                                    "access_key": result.items[0].secret_access_key,
+                                    "access_id": result.items[0].name,
+                                }
+                    else:
+                        if IMPORT_KEY_API_VERSION in versions:
+                            changed = True
+                            if not module.check_mode:
                                 blade.object_store_access_keys.create_object_store_access_keys(
                                     names=[module.params["imported_key"]],
                                     object_store_access_key=ObjectStoreAccessKeyPost(
@@ -211,19 +219,19 @@ def update_s3user(module, blade):
                                         ],
                                     ),
                                 )
-                    except Exception:
-                        if module.params["imported_key"]:
-                            module.fail_json(
-                                msg="Object Store User {0}: Access Key import failed".format(
-                                    user
-                                )
+                except Exception:
+                    if module.params["imported_key"]:
+                        module.fail_json(
+                            msg="Object Store User {0}: Access Key import failed".format(
+                                user
                             )
-                        else:
-                            module.fail_json(
-                                msg="Object Store User {0}: Access Key creation failed".format(
-                                    user
-                                )
+                        )
+                    else:
+                        module.fail_json(
+                            msg="Object Store User {0}: Access Key creation failed".format(
+                                user
                             )
+                        )
             else:
                 module.warn(
                     "Object Store User {0}: Maximum Access Key count reached".format(
@@ -370,6 +378,7 @@ def main():
             name=dict(required=True, type="str"),
             account=dict(required=True, type="str"),
             access_key=dict(default="false", type="bool"),
+            multiple_keys=dict(default="false", type="bool"),
             imported_key=dict(type="str", no_log=False),
             remove_key=dict(type="str", no_log=False),
             imported_secret=dict(type="str", no_log=True),
