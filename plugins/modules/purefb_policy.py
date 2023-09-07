@@ -83,7 +83,7 @@ options:
     choices:
       - s3:*
       - s3:AbortMultipartUpload
-      - s3:CompleteMultipartUpload
+      - s3:BypassGovernanceRetention
       - s3:CreateBucket
       - s3:DeleteBucket
       - s3:DeleteObject
@@ -95,13 +95,12 @@ options:
       - s3:GetLifecycleConfiguration
       - s3:GetObject
       - s3:GetObjectAcl
-      - s3:GetObjectVersion
       - s3:GetObjectLegalHold
       - s3:GetObjectLockConfiguration
       - s3:GetObjectRetention
       - s3:GetObjectTagging
+      - s3:GetObjectVersion
       - s3:GetObjectVersionTagging
-      - s3:InitiateMultipartUpload
       - s3:ListAllMyBuckets
       - s3:ListBucket
       - s3:ListBucketMultipartUploads
@@ -113,6 +112,7 @@ options:
       - s3:PutObjectLegalHold
       - s3:PutObjectLockConfiguration
       - s3:PutObjectRetention
+      - s3:ResolveSafemodeConflicts
     version_added: "1.9.0"
   object_resources:
     description:
@@ -2538,7 +2538,7 @@ def main():
                 choices=[
                     "s3:*",
                     "s3:AbortMultipartUpload",
-                    "s3:CompleteMultipartUpload",
+                    "s3:BypassGovernanceRetention",
                     "s3:CreateBucket",
                     "s3:DeleteBucket",
                     "s3:DeleteObject",
@@ -2550,11 +2550,11 @@ def main():
                     "s3:GetLifecycleConfiguration",
                     "s3:GetObject",
                     "s3:GetObjectAcl",
-                    "s3:GetObjectVersion",
                     "s3:GetObjectLegalHold",
                     "s3:GetObjectLockConfiguration",
                     "s3:GetObjectRetention",
                     "s3:GetObjectTagging",
+                    "s3:GetObjectVersion",
                     "s3:GetObjectVersionTagging",
                     "s3:InitiateMultipartUpload",
                     "s3:ListAllMyBuckets",
@@ -2568,6 +2568,7 @@ def main():
                     "s3:PutObjectLegalHold",
                     "s3:PutObjectLockConfiguration",
                     "s3:PutObjectRetention",
+                    "s3:ResolveSafemodeConflicts",
                 ],
             ),
             object_resources=dict(type="list", elements="str"),
