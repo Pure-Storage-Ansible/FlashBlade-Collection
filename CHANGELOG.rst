@@ -5,6 +5,9 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.13.0
+=======
+
 v1.12.0
 =======
 

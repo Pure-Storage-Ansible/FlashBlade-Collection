@@ -94,6 +94,8 @@ releases:
     - 230_prom_fix.yaml
     - 232_multiple_keys.yaml
     release_date: '2023-07-10'
+  1.13.0:
+    release_date: '2023-09-07'
   1.3.0:
     changes:
       bugfixes:
