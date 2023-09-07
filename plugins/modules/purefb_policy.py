@@ -83,6 +83,7 @@ options:
     choices:
       - s3:*
       - s3:AbortMultipartUpload
+      - s3:BypassGovernanceRetention
       - s3:CreateBucket
       - s3:DeleteBucket
       - s3:DeleteObject
@@ -94,7 +95,12 @@ options:
       - s3:GetLifecycleConfiguration
       - s3:GetObject
       - s3:GetObjectAcl
+      - s3:GetObjectLegalHold
+      - s3:GetObjectLockConfiguration
+      - s3:GetObjectRetention
+      - s3:GetObjectTagging
       - s3:GetObjectVersion
+      - s3:GetObjectVersionTagging
       - s3:ListAllMyBuckets
       - s3:ListBucket
       - s3:ListBucketMultipartUploads
@@ -103,6 +109,10 @@ options:
       - s3:PutBucketVersioning
       - s3:PutLifecycleConfiguration
       - s3:PutObject
+      - s3:PutObjectLegalHold
+      - s3:PutObjectLockConfiguration
+      - s3:PutObjectRetention
+      - s3:ResolveSafemodeConflicts
     version_added: "1.9.0"
   object_resources:
     description:
@@ -1779,22 +1789,30 @@ def update_os_policy(module, blade):
             policy_names=[policy_name], names=[module.params["rule"]]
         )
         if current_policy_rule.status_code != 200:
-            conditions = PolicyRuleObjectAccessCondition(
-                source_ips=module.params["source_ips"],
-                s3_delimiters=module.params["s3_delimiters"],
-                s3_prefixes=module.params["s3_prefixes"],
-            )
-            rule = PolicyRuleObjectAccessPost(
-                actions=module.params["actions"],
-                resources=module.params["object_resources"],
-                conditions=conditions,
-            )
-            res = blade.post_object_store_access_policies_rules(
-                policy_names=policy_name,
-                names=[module.params["rule"]],
-                enforce_action_restrictions=module.params["ignore_enforcement"],
-                rule=rule,
-            )
+            changed = True
+            if not module.check_mode:
+                conditions = PolicyRuleObjectAccessCondition(
+                    source_ips=module.params["source_ips"],
+                    s3_delimiters=module.params["s3_delimiters"],
+                    s3_prefixes=module.params["s3_prefixes"],
+                )
+                rule = PolicyRuleObjectAccessPost(
+                    actions=module.params["actions"],
+                    resources=module.params["object_resources"],
+                    conditions=conditions,
+                )
+                res = blade.post_object_store_access_policies_rules(
+                    policy_names=policy_name,
+                    names=[module.params["rule"]],
+                    enforce_action_restrictions=module.params["ignore_enforcement"],
+                    rule=rule,
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to create rule {0} in policy {1}. Error: {2}".format(
+                            module.params["rule"], policy_name, res.errors[0].message
+                        )
+                    )
         else:
             old_policy_rule = list(current_policy_rule.items)[0]
             current_rule = {
@@ -2528,6 +2546,7 @@ def main():
                 choices=[
                     "s3:*",
                     "s3:AbortMultipartUpload",
+                    "s3:BypassGovernanceRetention",
                     "s3:CreateBucket",
                     "s3:DeleteBucket",
                     "s3:DeleteObject",
@@ -2539,7 +2558,12 @@ def main():
                     "s3:GetLifecycleConfiguration",
                     "s3:GetObject",
                     "s3:GetObjectAcl",
+                    "s3:GetObjectLegalHold",
+                    "s3:GetObjectLockConfiguration",
+                    "s3:GetObjectRetention",
+                    "s3:GetObjectTagging",
                     "s3:GetObjectVersion",
+                    "s3:GetObjectVersionTagging",
                     "s3:ListAllMyBuckets",
                     "s3:ListBucket",
                     "s3:ListBucketMultipartUploads",
@@ -2548,6 +2572,10 @@ def main():
                     "s3:PutBucketVersioning",
                     "s3:PutLifecycleConfiguration",
                     "s3:PutObject",
+                    "s3:PutObjectLegalHold",
+                    "s3:PutObjectLockConfiguration",
+                    "s3:PutObjectRetention",
+                    "s3:ResolveSafemodeConflicts",
                 ],
             ),
             object_resources=dict(type="list", elements="str"),
