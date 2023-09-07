@@ -5,6 +5,19 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.13.1
+=======
+
+Minor Changes
+-------------
+
+- purefb_policy - Add new and updated policy access rights
+
+Bugfixes
+--------
+
+- purefb_info - Fixed missing atributes for SMB client policy rules
+
 v1.13.0
 =======
 
