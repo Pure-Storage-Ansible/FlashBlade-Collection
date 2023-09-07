@@ -2556,7 +2556,6 @@ def main():
                     "s3:GetObjectTagging",
                     "s3:GetObjectVersion",
                     "s3:GetObjectVersionTagging",
-                    "s3:InitiateMultipartUpload",
                     "s3:ListAllMyBuckets",
                     "s3:ListBucket",
                     "s3:ListBucketMultipartUploads",
