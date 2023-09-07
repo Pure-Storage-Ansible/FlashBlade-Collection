@@ -96,6 +96,16 @@ releases:
     release_date: '2023-07-10'
   1.13.0:
     release_date: '2023-09-07'
+  1.13.1:
+    changes:
+      bugfixes:
+      - purefb_info - Fixed missing atributes for SMB client policy rules
+      minor_changes:
+      - purefb_policy - Add new and updated policy access rights
+    fragments:
+    - 237_info_policy.yaml
+    - 239_access_rights.yaml
+    release_date: '2023-09-07'
   1.3.0:
     changes:
       bugfixes:
