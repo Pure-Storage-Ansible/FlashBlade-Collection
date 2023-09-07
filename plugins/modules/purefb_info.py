@@ -913,10 +913,19 @@ def generate_smb_client_policies_dict(blade):
             policies_info[policy_name]["rules"].append(
                 {
                     "name": policies[policy].rules[rule].name,
-                    "change": policies[policy].rules[rule].change,
-                    "full_control": policies[policy].rules[rule].full_control,
-                    "principal": policies[policy].rules[rule].principal,
-                    "read": policies[policy].rules[rule].read,
+                    "change": getattr(policies[policy].rules[rule], "change", None),
+                    "full_control": getattr(
+                        policies[policy].rules[rule], "full_control", None
+                    ),
+                    "principal": getattr(
+                        policies[policy].rules[rule], "principal", None
+                    ),
+                    "read": getattr(policies[policy].rules[rule], "read", None),
+                    "client": getattr(policies[policy].rules[rule], "client", None),
+                    "index": getattr(policies[policy].rules[rule], "index", None),
+                    "permission": getattr(
+                        policies[policy].rules[rule], "permission", None
+                    ),
                 }
             )
     return policies_info
