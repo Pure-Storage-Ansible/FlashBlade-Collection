@@ -58,6 +58,14 @@ options:
       - Name of remote credential name to use.
     required: false
     type: str
+  cascading:
+    description:
+      - Objects replicated to this bucket via a replica link from
+        another array will also be replicated by this link to the
+        remote bucket
+    type: bool
+    default: false
+    version_added: "1.14.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -96,11 +104,19 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
+HAS_PYPURECLIENT = True
+try:
+    from pypureclient import flashblade
+except ImportError:
+    HAS_PYPURECLIENT = False
+
 MIN_REQUIRED_API_VERSION = "1.9"
+CASCADE_API_VERSION = "2.2"
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
@@ -167,24 +183,46 @@ def get_connected(module, blade):
 def create_rl(module, blade, remote_cred):
     """Create Bucket Replica Link"""
     changed = True
+    api_version = blade.api_version.list_versions().versions
     if not module.check_mode:
-        try:
-            if not module.params["target_bucket"]:
-                module.params["target_bucket"] = module.params["name"]
-            else:
-                module.params["target_bucket"] = module.params["target_bucket"].lower()
-            blade.bucket_replica_links.create_bucket_replica_links(
+        if not module.params["target_bucket"]:
+            module.params["target_bucket"] = module.params["name"]
+        else:
+            module.params["target_bucket"] = module.params["target_bucket"].lower()
+        if CASCADE_API_VERSION in api_version:
+            bladev2 = get_system(module)
+            new_rl = flashblade.BucketReplicaLinkPost(
+                cascading_enabled=module.params["cascading"],
+                paused=module.params["paused"],
+            )
+            res = bladev2.post_bucket_replica_links(
                 local_bucket_names=[module.params["name"]],
                 remote_bucket_names=[module.params["target_bucket"]],
                 remote_credentials_names=[remote_cred.name],
-                bucket_replica_link=BucketReplicaLink(paused=module.params["paused"]),
+                bucket_replica_link=new_rl,
             )
-        except Exception:
-            module.fail_json(
-                msg="Failed to create bucket replica link {0}.".format(
-                    module.params["name"]
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to create bucket replica link {0}.".format(
+                        module.params["name"]
+                    )
                 )
-            )
+        else:
+            try:
+                blade.bucket_replica_links.create_bucket_replica_links(
+                    local_bucket_names=[module.params["name"]],
+                    remote_bucket_names=[module.params["target_bucket"]],
+                    remote_credentials_names=[remote_cred.name],
+                    bucket_replica_link=BucketReplicaLink(
+                        paused=module.params["paused"]
+                    ),
+                )
+            except Exception:
+                module.fail_json(
+                    msg="Failed to create bucket replica link {0}.".format(
+                        module.params["name"]
+                    )
+                )
     module.exit_json(changed=changed)
 
 
@@ -245,6 +283,7 @@ def main():
             target=dict(type="str"),
             target_bucket=dict(type="str"),
             paused=dict(type="bool", default=False),
+            cascading=dict(type="bool", default=False),
             credential=dict(type="str"),
             state=dict(default="present", choices=["present", "absent"]),
         )
