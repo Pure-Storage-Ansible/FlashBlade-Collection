@@ -336,6 +336,14 @@ options:
     choices: [ disabled, optional, required ]
     default: optional
     version_added: '1.12.0'
+  desc:
+    description:
+    - A description of an object store policy,
+      optionally specified when the policy is created.
+    - Cannot be modified for an existing policy.
+    type: str
+    default: ""
+    version_added: '1.14.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -537,6 +545,7 @@ try:
         SmbSharePolicy,
         SmbClientPolicyRule,
         SmbClientPolicy,
+        ObjectStoreAccessPolicyPost,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -1733,7 +1742,10 @@ def create_os_policy(module, blade):
     changed = True
     policy_name = module.params["account"] + "/" + module.params["name"]
     if not module.check_mode:
-        res = blade.post_object_store_access_policies(names=[policy_name])
+        res = blade.post_object_store_access_policies(
+            names=[policy_name],
+            policy=ObjectStoreAccessPolicyPost(description=module.params["desc"]),
+        )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create access policy {0}.".format(policy_name)
@@ -2613,6 +2625,7 @@ def main():
                 default="optional",
                 choices=["disabled", "optional", "required"],
             ),
+            desc=dict(type="str", default=""),
         )
     )
 
