@@ -72,7 +72,7 @@ options:
       Rules are additive.
     type: str
     default: allow
-    choices: [ allow ]
+    choices: [ allow, deny ]
     version_added: "1.9.0"
   actions:
     description:
@@ -1741,6 +1741,7 @@ def create_os_policy(module, blade):
     """Create Object Store Access Policy"""
     changed = True
     policy_name = module.params["account"] + "/" + module.params["name"]
+    versions = list(blade.get_versions().items)
     if not module.check_mode:
         res = blade.post_object_store_access_policies(
             names=[policy_name],
@@ -1761,11 +1762,19 @@ def create_os_policy(module, blade):
                 s3_delimiters=module.params["s3_delimiters"],
                 s3_prefixes=module.params["s3_prefixes"],
             )
-            rule = PolicyRuleObjectAccessPost(
-                actions=module.params["actions"],
-                resources=module.params["object_resources"],
-                conditions=conditions,
-            )
+            if SMB_ENCRYPT_API_VERSION in versions:
+                rule = PolicyRuleObjectAccessPost(
+                    actions=module.params["actions"],
+                    resources=module.params["object_resources"],
+                    conditions=conditions,
+                    effect=module.params["effect"],
+                )
+            else:
+                rule = PolicyRuleObjectAccessPost(
+                    actions=module.params["actions"],
+                    resources=module.params["object_resources"],
+                    conditions=conditions,
+                )
             res = blade.post_object_store_access_policies_rules(
                 policy_names=policy_name,
                 names=[module.params["rule"]],
@@ -2551,7 +2560,7 @@ def main():
             rename=dict(type="str"),
             rule=dict(type="str"),
             user=dict(type="str"),
-            effect=dict(type="str", default="allow", choices=["allow"]),
+            effect=dict(type="str", default="allow", choices=["allow", "deny"]),
             actions=dict(
                 type="list",
                 elements="str",
