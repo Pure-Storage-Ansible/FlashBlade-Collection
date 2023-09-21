@@ -761,6 +761,19 @@ def generate_bucket_dict(module, blade):
             "total_physical_space": buckets.items[bckt].space.total_physical,
             "unique_space": buckets.items[bckt].space.unique,
             "virtual_space": buckets.items[bckt].space.virtual,
+            "total_provisioned_space": getattr(
+                buckets.items[bckt].space, "total_provisioned", None
+            ),
+            "available_provisioned_space": getattr(
+                buckets.items[bckt].space, "available_provisioned", None
+            ),
+            "available_ratio": getattr(
+                buckets.items[bckt].space, "available_ratio", None
+            ),
+            "destroyed_space": getattr(buckets.items[bckt].space, "destroyed", None),
+            "destroyed_virtual_space": getattr(
+                buckets.items[bckt].space, "destroyed_virtual", None
+            ),
             "created": buckets.items[bckt].created,
             "destroyed": buckets.items[bckt].destroyed,
             "time_remaining": buckets.items[bckt].time_remaining,
@@ -994,6 +1007,19 @@ def generate_object_store_accounts_dict(blade):
             "total_physical_space": accounts[account].space.total_physical,
             "unique_space": accounts[account].space.unique,
             "virtual_space": accounts[account].space.virtual,
+            "total_provisioned_space": getattr(
+                accounts[account].space, "total_provisioned", None
+            ),
+            "available_provisioned_space": getattr(
+                accounts[account].space, "available_provisioned", None
+            ),
+            "available_ratio": getattr(
+                accounts[account].space, "available_ratio", None
+            ),
+            "destroyed_space": getattr(accounts[account].space, "destroyed", None),
+            "destroyed_virtual_space": getattr(
+                accounts[account].space, "destroyed_virtual", None
+            ),
             "quota_limit": getattr(accounts[account], "quota_limit", None),
             "hard_limit_enabled": getattr(
                 accounts[account], "hard_limit_enabled", None
