@@ -249,6 +249,7 @@ def main():
             names=[module.params["account"] + "/" + module.params["name"]]
         ).status_code
         != 200
+        and state != "show"
     ):
         module.fail_json(
             msg="Account User {0}/{1} does not exist".format(
