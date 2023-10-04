@@ -968,6 +968,12 @@ def generate_smb_client_policies_dict(blade):
                     "read": getattr(policies[policy].rules[rule], "read", None),
                     "client": getattr(policies[policy].rules[rule], "client", None),
                     "index": getattr(policies[policy].rules[rule], "index", None),
+                    "policy_version": getattr(
+                        policies[policy].rules[rule], "policy_version", None
+                    ),
+                    "encryption": getattr(
+                        policies[policy].rules[rule], "encryption", None
+                    ),
                     "permission": getattr(
                         policies[policy].rules[rule], "permission", None
                     ),
