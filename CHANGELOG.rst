@@ -5,6 +5,24 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.14.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_bucket_replica - Added support for cascading replica links
+- purefb_info - New fields to display free space (remaining quota) for Accounts and Buckets. Space used by destroyed buckets is split out from virtual field to new destroyed_virtual field
+- purefb_info - Report encryption state in SMB client policy rules
+- purefb_info - Report more detailed space data from Purity//FB 4.3.0
+- purefb_policy - Add deny effect for object store policy rules. Requires Purity//FB 4.3.0+
+- purefb_policy - Added parameter to define object store policy description
+
+Bugfixes
+--------
+
+- purefb_userpolicy - Fixed `show` state for all user policies
+
 v1.13.1
 =======
 
