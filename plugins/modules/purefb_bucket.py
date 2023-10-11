@@ -185,7 +185,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 MIN_REQUIRED_API_VERSION = "1.5"
 VERSIONING_VERSION = "1.9"
-VSO_VERSION = "2.4"
+VSO_VERSION = "2.5"
 QUOTA_VERSION = "2.8"
 
 
