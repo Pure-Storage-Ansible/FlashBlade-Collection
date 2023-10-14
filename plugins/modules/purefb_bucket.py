@@ -501,8 +501,6 @@ def main():
     api_version = blade.api_version.list_versions().versions
     if MIN_REQUIRED_API_VERSION not in api_version:
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
-    if module.params["mode"] and VSO_VERSION not in api_version:
-        module.fail_json(msg="VSO mode requires Purity//FB 3.3.3 or higher.")
 
     bucket = get_bucket(module, blade)
     if not get_s3acc(module, blade):
