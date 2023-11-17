@@ -848,6 +848,19 @@ def generate_bucket_dict(module, blade):
                             bucket
                         ].object_lock_config.freeze_locked_objects,
                     }
+                    if buckets[bucket].object_lock_config.enabled:
+                        bucket_info[buckets[bucket].name]["object_lock_config"][
+                            "default_retention"
+                        ] = getattr(
+                            buckets[bucket].object_lock_config, "default_retention", ""
+                        )
+                        bucket_info[buckets[bucket].name]["object_lock_config"][
+                            "default_retention_mode"
+                        ] = getattr(
+                            buckets[bucket].object_lock_config,
+                            "default_retention_mode",
+                            "",
+                        )
                     bucket_info[buckets[bucket].name]["eradication_config"] = {
                         "eradication_delay": buckets[
                             bucket
