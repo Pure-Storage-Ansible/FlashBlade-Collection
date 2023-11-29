@@ -38,7 +38,7 @@ options:
     - If the component specified is a connector, set the configured speed
       of each lane in the connector in gigabits-per-second
     type: int
-    choices: [ 10, 40 ]
+    choices: [ 10, 25, 40 ]
   ports:
     description:
     - If the component specificed is a connector, the number of configured
@@ -99,7 +99,7 @@ def main():
             name=dict(type="str", required=True),
             speed=dict(
                 type="int",
-                choices=[10, 40],
+                choices=[10, 25, 40],
             ),
             ports=dict(
                 type="int",
