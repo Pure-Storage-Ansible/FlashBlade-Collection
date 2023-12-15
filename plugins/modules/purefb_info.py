@@ -110,6 +110,7 @@ SECURITY_API_VERSION = "2.7"
 BUCKET_API_VERSION = "2.8"
 SMB_CLIENT_API_VERSION = "2.10"
 SPACE_API_VERSION = "2.11"
+PUBLIC_API_VERSION = "2.12"
 
 
 def _millisecs_to_time(millisecs):
@@ -669,6 +670,17 @@ def generate_snap_dict(blade):
             snap_info[snapshot]["source_location"] = snaps.items[
                 snap
             ].source_location.name
+            snap_info[snapshot]["policies"] = []
+            if PUBLIC_API_VERSION in api_version:
+                for policy in range(0, len(snaps.items[snap].policies)):
+                    snap_info[snapshot]["policies"].append(
+                        {
+                            "name": snaps.items[snap].policies[policy].name,
+                            "location": snaps.items[snap]
+                            .policies[policy]
+                            .location.name,
+                        }
+                    )
     return snap_info
 
 
@@ -869,6 +881,19 @@ def generate_bucket_dict(module, blade):
                             bucket
                         ].eradication_config.manual_eradication,
                     }
+                    if PUBLIC_API_VERSION in api_version:
+                        bucket_info[buckets[bucket].name]["public_status"] = buckets[
+                            bucket
+                        ].public_status
+                        bucket_info[buckets[bucket].name]["public_access_config"] = {
+                            "block_new_public_policies": buckets[
+                                bucket
+                            ].public_access_config.block_new_public_policies,
+                            "block_public_access": buckets[
+                                bucket
+                            ].public_access_config.block_public_access,
+                        }
+
     return bucket_info
 
 
@@ -903,8 +928,48 @@ def generate_ad_dict(blade):
             "service_principals": ad_account.service_principal_names,
             "join_ou": ad_account.join_ou,
             "encryption_types": ad_account.encryption_types,
+            "global_catalog_servers": getattr(
+                ad_account, "global_catalog_servers", None
+            ),
         }
     return ad_info
+
+
+def generate_bucket_access_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_buckets_bucket_access_policies().items)
+    for policy in range(0, len(policies)):
+        policy_name = policies[policy].name
+        policies_info[policy_name] = {
+            "description": policies[policy].description,
+            "enabled": policies[policy].enabled,
+            "local": policies[policy].is_local,
+            "rules": [],
+        }
+        for rule in range(0, len(policies[policy].rules)):
+            policies_info[policy_name]["rules"].append(
+                {
+                    "actions": policies[policy].rules[rule].actions,
+                    "resources": policies[policy].rules[rule].resources,
+                    "all_principals": policies[policy].rules[rule].principals.all,
+                    "effect": policies[policy].rules[rule].effect,
+                    "name": policies[policy].rules[rule].name,
+                }
+            )
+    return policies_info
+
+
+def generate_bucket_cross_object_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_buckets_cross_origin_resource_sharing_policies().items)
+    for policy in range(0, len(policies)):
+        policy_name = policies[policy].name
+        policies_info[policy_name] = {
+            "allowed_headers": policies[policy].allowed_headers,
+            "allowed_methods": policies[policy].allowed_methods,
+            "allowed_origins": policies[policy].allowed_origins,
+        }
+    return policies_info
 
 
 def generate_object_store_access_policies_dict(blade):
@@ -1051,6 +1116,17 @@ def generate_object_store_accounts_dict(blade):
             }
         except AttributeError:
             pass
+        try:
+            account_info[acc_name]["public_access_config"] = {
+                "block_new_public_policies": accounts[
+                    account
+                ].public_access_config.block_new_public_policies,
+                "block_public_access": accounts[
+                    account
+                ].public_access_config.block_public_access,
+            }
+        except AttributeError:
+            pass
         acc_users = list(
             blade.get_object_store_users(filter='name="' + acc_name + '/*"').items
         )
@@ -1187,6 +1263,24 @@ def generate_fs_dict(module, blade):
                                 "quota": fs_user_quotas[user_quota].quota,
                                 "usage": fs_user_quotas[user_quota].usage,
                             }
+            if PUBLIC_API_VERSION in api_version:
+                for v2fs in range(0, len(fsys_v2)):
+                    if fsys_v2[v2fs].name == share:
+                        fs_info[share]["smb_client_policy"] = getattr(
+                            fsys_v2[v2fs].smb.client_policy, "name", None
+                        )
+                        fs_info[share]["smb_share_policy"] = getattr(
+                            fsys_v2[v2fs].smb.share_policy, "name", None
+                        )
+                        fs_info[share]["smb_continuous_availability_enabled"] = fsys_v2[
+                            v2fs
+                        ].smb.continuous_availability_enabled
+                        fs_info[share]["multi_protocol_access_control_style"] = getattr(
+                            fsys_v2[v2fs].multi_protocol, "access_control_style", None
+                        )
+                        fs_info[share]["multi_protocol_safeguard_acls"] = fsys_v2[
+                            v2fs
+                        ].multi_protocol.safeguard_acls
 
     return fs_info
 
@@ -1312,6 +1406,13 @@ def main():
                 info["access_policies"] = generate_object_store_access_policies_dict(
                     blade
                 )
+            if PUBLIC_API_VERSION in api_version:
+                info["bucket_access_policies"] = generate_bucket_access_policies_dict(
+                    blade
+                )
+                info[
+                    "bucket_cross_origin_policies"
+                ] = generate_bucket_cross_object_policies_dict(blade)
             if NFS_POLICY_API_VERSION in api_version:
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
             if SMB_CLIENT_API_VERSION in api_version:
