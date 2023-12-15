@@ -64,7 +64,6 @@ options:
     type: str
     choices: [ "classic", "multi-site-writable" ]
     version_added: '1.10.0'
-    default: classic
   quota:
     description:
       - User quota in M, G, T or P units. This cannot be 0.
@@ -187,6 +186,7 @@ MIN_REQUIRED_API_VERSION = "1.5"
 VERSIONING_VERSION = "1.9"
 VSO_VERSION = "2.5"
 QUOTA_VERSION = "2.8"
+MODE_VERSION = "2.12"
 
 
 def get_s3acc(module, blade):
@@ -469,7 +469,6 @@ def main():
             eradicate=dict(default="false", type="bool"),
             mode=dict(
                 type="str",
-                default="classic",
                 choices=["classic", "multi-site-writable"],
             ),
             retention_mode=dict(type="str", choices=["compliance", "governance", ""]),
@@ -502,6 +501,11 @@ def main():
     if MIN_REQUIRED_API_VERSION not in api_version:
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
 
+    # From REST 2.12 classic is no longer the default mode
+    if MODE_VERSION in api_version and not module.params["mode"]:
+        module.params["mode"] = "multi-site-writable"
+    else:
+        module.params["mode"] = "classic"
     bucket = get_bucket(module, blade)
     if not get_s3acc(module, blade):
         module.fail_json(
