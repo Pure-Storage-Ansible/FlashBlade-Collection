@@ -193,6 +193,13 @@ options:
     - Remove policy with empty string
     type: str
     version_added: "1.12.0"
+  continuous_availability:
+    description:
+    - Deifines if the file system will be continuously available during
+      disruptive scenarios such as network disruption, blades failover, etc
+    type: bool
+    default: true
+    version_added: "1.15.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -306,6 +313,7 @@ REPLICATION_API_VERSION = "1.9"
 MULTIPROTOCOL_API_VERSION = "1.11"
 EXPORT_POLICY_API_VERSION = "2.3"
 SMB_POLICY_API_VERSION = "2.10"
+CA_API_VERSION = "2.12"
 
 
 def get_fs(module, blade):
@@ -505,8 +513,8 @@ def create_fs(module, blade):
                     )
                 )
         if SMB_POLICY_API_VERSION in api_version:
+            system = get_system(module)
             if module.params["client_policy"]:
-                system = get_system(module)
                 export_attr = FileSystemPatch(
                     smb=Smb(
                         client_policy=Reference(name=module.params["client_policy"])
@@ -525,7 +533,6 @@ def create_fs(module, blade):
                         )
                     )
             if module.params["share_policy"]:
-                system = get_system(module)
                 export_attr = FileSystemPatch(
                     smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
                 )
@@ -541,6 +548,26 @@ def create_fs(module, blade):
                             res.errors[0].message,
                         )
                     )
+            if CA_API_VERSION in api_version:
+                ca_attr = FileSystemPatch(
+                    smb=Smb(
+                        continuous_availability_enabled=module.params[
+                            "continuous_availability"
+                        ]
+                    )
+                )
+                res = system.patch_file_systems(
+                    names=[module.params["name"]], file_system=ca_attr
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Filesystem {0} created, but failed to set continuous availability"
+                        "Error: {1}".format(
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+
     module.exit_json(changed=changed)
 
 
@@ -548,6 +575,8 @@ def modify_fs(module, blade):
     """Modify Filesystem"""
     changed = False
     change_export = False
+    change_share = False
+    change_ca = False
     mod_fs = False
     attr = {}
     if module.params["policy"] and module.params["policy_state"] == "present":
@@ -775,12 +804,12 @@ def modify_fs(module, blade):
                             module.params["name"], message
                         )
                     )
+    system = get_system(module)
+    current_fs = list(
+        system.get_file_systems(filter="name='" + module.params["name"] + "'").items
+    )[0]
     if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
-        system = get_system(module)
         change_export = False
-        current_fs = list(
-            system.get_file_systems(filter="name='" + module.params["name"] + "'").items
-        )[0]
         if (
             current_fs.nfs.export_policy.name
             and current_fs.nfs.export_policy.name != module.params["export_policy"]
@@ -807,11 +836,7 @@ def modify_fs(module, blade):
                     )
                 )
     if SMB_POLICY_API_VERSION in api_version and module.params["client_policy"]:
-        system = get_system(module)
         change_client = False
-        current_fs = list(
-            system.get_file_systems(filter="name='" + module.params["name"] + "'").items
-        )[0]
         if (
             current_fs.smb.client_policy.name
             and current_fs.smb.client_policy.name != module.params["client_policy"]
@@ -836,11 +861,7 @@ def modify_fs(module, blade):
                     )
                 )
     if SMB_POLICY_API_VERSION in api_version and module.params["share_policy"]:
-        system = get_system(module)
         change_share = False
-        current_fs = list(
-            system.get_file_systems(filter="name='" + module.params["name"] + "'").items
-        )[0]
         if (
             current_fs.smb.share_policy.name
             and current_fs.smb.share_policy.name != module.params["share_policy"]
@@ -864,8 +885,34 @@ def modify_fs(module, blade):
                         res.errors[0].message,
                     )
                 )
+    if CA_API_VERSION in api_version:
+        change_ca = False
+        if (
+            module.params["continuous_availability"]
+            != current_fs.continuous_availability_enabled
+        ):
+            change_ca = True
+            if not module.check_mode:
+                ca_attr = FileSystemPatch(
+                    smb=Smb(
+                        continuous_availability_enabled=module.params[
+                            "continuous_availability"
+                        ]
+                    )
+                )
+                res = system.patch_file_systems(
+                    names=[module.params["name"]], file_system=ca_attr
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to modify continuous availability for "
+                        "filesystem {0}. Error: {1}".format(
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
 
-    module.exit_json(changed=(changed or change_export))
+    module.exit_json(changed=(changed or change_export or change_share or change_ca))
 
 
 def _delete_fs(module, blade):
@@ -1024,6 +1071,7 @@ def main():
             export_policy=dict(type="str"),
             share_policy=dict(type="str"),
             client_policy=dict(type="str"),
+            continuous_availability=dict(type="bool", default="true"),
         )
     )
 
