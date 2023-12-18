@@ -49,7 +49,6 @@ options:
       will still be sent if the account has a value set for I(quota_limit).
     version_added: 1.11.0
     type: bool
-    default: false
   default_quota:
     description:
     - The value of this field will be used to configure the I(quota_limit) field of newly created buckets
@@ -64,7 +63,17 @@ options:
       associated with this object store account, if the bucket creation does not specify its own value.
     version_added: 1.11.0
     type: bool
-    default: false
+  block_new_public_policies:
+    description:
+    - If set to true, adding bucket policies that grant public access to a bucket is not allowed.
+    type: bool
+    version_added: 1.15.0
+  block_public_access:
+    description:
+    - If set to true, access to a bucket with a public policy is restricted to only authenticated
+      users within the account that bucket belongs to.
+    type: bool
+    version_added: 1.15.0
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -99,7 +108,11 @@ RETURN = r"""
 
 HAS_PURESTORAGE = True
 try:
-    from pypureclient.flashblade import ObjectStoreAccountPatch, BucketDefaults
+    from pypureclient.flashblade import (
+        ObjectStoreAccountPatch,
+        BucketDefaults,
+        PublicAccessConfig,
+    )
 except ImportError:
     HAS_PURESTORAGE = False
 
@@ -113,6 +126,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 MIN_REQUIRED_API_VERSION = "1.3"
 QUOTA_API_VERSION = "2.1"
+PUBLIC_API_VERSION = "2.12"
 
 
 def get_s3acc(module, blade):
@@ -128,16 +142,28 @@ def get_s3acc(module, blade):
 def update_s3acc(module):
     """Update Object Store Account"""
     changed = False
+    public = False
     blade = get_system(module)
     acc_settings = list(
         blade.get_object_store_accounts(names=[module.params["name"]]).items
     )[0]
-    current_account = {
-        "hard_limit": acc_settings.hard_limit_enabled,
-        "default_hard_limit": acc_settings.bucket_defaults.hard_limit_enabled,
-        "quota": str(acc_settings.quota_limit),
-        "default_quota": str(acc_settings.bucket_defaults.quota_limit),
-    }
+    if getattr(acc_settings, "public_access_config", None):
+        public = True
+        current_account = {
+            "hard_limit": acc_settings.hard_limit_enabled,
+            "default_hard_limit": acc_settings.bucket_defaults.hard_limit_enabled,
+            "quota": str(acc_settings.quota_limit),
+            "default_quota": str(acc_settings.bucket_defaults.quota_limit),
+            "block_new_public_policies": acc_settings.public_access_config.block_new_public_policies,
+            "block_public_access": acc_settings.public_access_config.block_public_access,
+        }
+    else:
+        current_account = {
+            "hard_limit": acc_settings.hard_limit_enabled,
+            "default_hard_limit": acc_settings.bucket_defaults.hard_limit_enabled,
+            "quota": str(acc_settings.quota_limit),
+            "default_quota": str(acc_settings.bucket_defaults.quota_limit),
+        }
     if current_account["quota"] == "None":
         current_account["quota"] = ""
     if current_account["default_quota"] == "None":
@@ -156,12 +182,38 @@ def update_s3acc(module):
         default_quota = ""
     else:
         default_quota = str(human_to_bytes(module.params["default_quota"]))
-    new_account = {
-        "hard_limit": module.params["hard_limit"],
-        "default_hard_limit": module.params["default_hard_limit"],
-        "quota": quota,
-        "default_quota": default_quota,
-    }
+    if module.params["hard_limit"] is None:
+        hard_limit = current_account["hard_limit"]
+    else:
+        hard_limit = module.params["hard_limit"]
+    if module.params["default_hard_limit"] is None:
+        default_hard_limit = current_account["default_hard_limit"]
+    else:
+        default_hard_limit = module.params["default_hard_limit"]
+    if public:
+        if module.params["block_new_public_policies"] is None:
+            new_public_policies = current_account["block_new_public_policies"]
+        else:
+            new_public_policies = module.params["block_new_public_policies"]
+        if module.params["block_public_access"] is None:
+            public_access = current_account["block_public_access"]
+        else:
+            public_access = module.params["block_public_access"]
+        new_account = {
+            "hard_limit": hard_limit,
+            "default_hard_limit": default_hard_limit,
+            "quota": quota,
+            "default_quota": default_quota,
+            "block_new_public_policies": new_public_policies,
+            "block_public_access": public_access,
+        }
+    else:
+        new_account = {
+            "hard_limit": module.params["hard_limit"],
+            "default_hard_limit": module.params["default_hard_limit"],
+            "quota": quota,
+            "default_quota": default_quota,
+        }
     if new_account != current_account:
         changed = True
         if not module.check_mode:
@@ -181,12 +233,14 @@ def update_s3acc(module):
                     msg="Failed to update account {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
+
     module.exit_json(changed=changed)
 
 
 def create_s3acc(module, blade):
     """Create Object Store Account"""
     changed = True
+    versions = blade.api_version.list_versions().versions
     if not module.check_mode:
         try:
             blade.object_store_accounts.create_object_store_accounts(
@@ -208,6 +262,10 @@ def create_s3acc(module, blade):
                 quota = ""
             else:
                 quota = str(human_to_bytes(module.params["quota"]))
+            if not module.params["hard_limit"]:
+                module.params["hard_limit"] = False
+            if not module.params["default_hard_limit"]:
+                module.params["default_hard_limit"] = False
             osa = ObjectStoreAccountPatch(
                 hard_limit_enabled=module.params["hard_limit"],
                 quota_limit=quota,
@@ -227,6 +285,28 @@ def create_s3acc(module, blade):
                     msg="Failed to set quotas correctly for account {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
+        if PUBLIC_API_VERSION in versions:
+            if not module.params["block_new_public_policies"]:
+                module.params["block_new_public_policies"] = False
+            if not module.params["block_public_access"]:
+                module.params["block_public_access"] = False
+            osa = ObjectStoreAccountPatch(
+                public_access_config=PublicAccessConfig(
+                    block_new_public_policies=module.params[
+                        "block_new_public_policies"
+                    ],
+                    block_public_access=module.params["block_public_access"],
+                )
+            )
+            res = blade2.patch_object_store_accounts(
+                object_store_account=osa, names=[module.params["name"]]
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to Public Access config correctly for account {0}. "
+                    "Error: {1}".format(module.params["name"], res.errors[0].message)
+                )
+
     module.exit_json(changed=changed)
 
 
@@ -265,8 +345,10 @@ def main():
     argument_spec.update(
         dict(
             name=dict(required=True, type="str"),
-            hard_limit=dict(type="bool", default=False),
-            default_hard_limit=dict(type="bool", default=False),
+            hard_limit=dict(type="bool"),
+            default_hard_limit=dict(type="bool"),
+            block_new_public_policies=dict(type="bool"),
+            block_public_access=dict(type="bool"),
             quota=dict(type="str"),
             default_quota=dict(type="str"),
             state=dict(default="present", choices=["present", "absent"]),
