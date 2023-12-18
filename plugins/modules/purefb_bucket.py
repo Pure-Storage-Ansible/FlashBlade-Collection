@@ -72,7 +72,8 @@ options:
     version_added: '1.12.0'
   hard_limit:
     description:
-     - Whether the I(quota) value is enforced or not
+     - Whether the I(quota) value is enforced or not.
+     - If not provided the object store account default value will be used.
     type: bool
     version_added: '1.12.0'
   retention_lock:
@@ -113,6 +114,17 @@ options:
      - Use "" to clear
     type: str
     version_added: '1.12.0'
+  block_new_public_policies:
+    description:
+    - If set to true, adding bucket policies that grant public access to a bucket is not allowed.
+    type: bool
+    version_added: 1.15.0
+  block_public_access:
+    description:
+    - If set to true, access to a bucket with a public policy is restricted to only authenticated
+      users within the account that bucket belongs to.
+    type: bool
+    version_added: 1.15.0
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -212,11 +224,11 @@ def get_bucket(module, blade):
 def create_bucket(module, blade):
     """Create bucket"""
     changed = True
+    bladev2 = get_system(module)
     if not module.check_mode:
         try:
             api_version = blade.api_version.list_versions().versions
             if VSO_VERSION in api_version:
-                bladev2 = get_system(module)
                 account_defaults = list(
                     bladev2.get_object_store_accounts(
                         names=[module.params["account"]]
@@ -307,6 +319,25 @@ def create_bucket(module, blade):
                     module.params["name"]
                 )
             )
+        if MODE_VERSION in api_version:
+            if not module.params["block_new_public_policies"]:
+                module.params["block_new_public_policies"] = False
+            if not module.params["block_public_access"]:
+                module.params["block_public_access"] = False
+            pac = BucketPatch(
+                public_access_config=flashblade.PublicAccessConfig(
+                    block_new_public_policies=module.params[
+                        "block_new_public_policies"
+                    ],
+                    block_public_access=module.params["block_public_access"],
+                )
+            )
+            res = bladev2.patch_buckets(bucket=pac, names=[module.params["name"]])
+            if res.status_code != 200:
+                module.warn(
+                    msg="Failed to set Public Access config correctly for bucket {0}. "
+                    "Error: {1}".format(module.params["name"], res.errors[0].message)
+                )
     module.exit_json(changed=changed)
 
 
@@ -368,12 +399,10 @@ def recover_bucket(module, blade):
 def update_bucket(module, blade, bucket):
     """Update Bucket"""
     changed = False
+    bladev2 = get_system(module)
+    bucket_detail = list(bladev2.get_buckets(names=[module.params["name"]]).items)[0]
     api_version = blade.api_version.list_versions().versions
     if VSO_VERSION in api_version:
-        bladev2 = get_system(module)
-        bucket_detail = list(bladev2.get_buckets(names=[module.params["name"]]).items)[
-            0
-        ]
         if module.params["mode"] and bucket_detail.bucket_type != module.params["mode"]:
             module.warn("Changing bucket type is not permitted.")
         if QUOTA_VERSION in api_version:
@@ -442,7 +471,40 @@ def update_bucket(module, blade, bucket):
                             module.params["name"]
                         )
                     )
-    module.exit_json(changed=changed)
+    if MODE_VERSION in api_version:
+        change_pac = False
+        current_pac = {
+            "block_new_public_policies": bucket_detail.public_access_config.block_new_public_policies,
+            "block_public_access": bucket_detail.public_access_config.block_public_access,
+        }
+        if module.params["block_new_public_policies"] is None:
+            new_public_policies = current_pac["block_new_public_policies"]
+        else:
+            new_public_policies = module.params["block_new_public_policies"]
+        if module.params["block_public_access"] is None:
+            new_public_access = current_pac["block_public_access"]
+        else:
+            new_public_access = module.params["block_public_access"]
+        new_pac = {
+            "block_new_public_policies": new_public_policies,
+            "block_public_access": new_public_access,
+        }
+        if current_pac != new_pac:
+            change_pac = True
+            pac = BucketPatch(
+                public_access_config=flashblade.PublicAccessConfig(
+                    block_new_public_policies=new_pac.block_new_public_policies,
+                    block_public_access=new_pac.block_public_access,
+                )
+            )
+        if change_pac and not module.check_mode:
+            res = bladev2.patch_buckets(bucket=pac, names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update Public Access config correctly for bucket {0}. "
+                    "Error: {1}".format(module.params["name"], res.errors[0].message)
+                )
+    module.exit_json(changed=(changed or change_pac))
 
 
 def eradicate_bucket(module, blade):
@@ -477,6 +539,8 @@ def main():
                 type="str", choices=["ratcheted", "unlocked"], default="unlocked"
             ),
             hard_limit=dict(type="bool"),
+            block_new_public_policies=dict(type="bool"),
+            block_public_access=dict(type="bool"),
             object_lock_enabled=dict(type="bool", default=False),
             freeze_locked_objects=dict(type="bool", default=False),
             quota=dict(type="str"),
