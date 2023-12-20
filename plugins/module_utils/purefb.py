@@ -32,6 +32,12 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+HAS_DISTRO = True
+try:
+    import distro
+except ImportError:
+    HAS_DISTRO = False
+
 HAS_PURITY_FB = True
 try:
     from purity_fb import PurityFb
@@ -47,19 +53,27 @@ except ImportError:
 from os import environ
 import platform
 
-VERSION = "1.4"
+VERSION = "1.5"
 USER_AGENT_BASE = "Ansible"
 API_AGENT_VERSION = "1.5"
 
 
 def get_blade(module):
     """Return System Object or Fail"""
-    user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
-        "base": USER_AGENT_BASE,
-        "class": __name__,
-        "version": VERSION,
-        "platform": platform.platform(),
-    }
+    if HAS_DISTRO:
+        user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
+            "base": USER_AGENT_BASE,
+            "class": __name__,
+            "version": VERSION,
+            "platform": distro.name(pretty=True),
+        }
+    else:
+        user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
+            "base": USER_AGENT_BASE,
+            "class": __name__,
+            "version": VERSION,
+            "platform": platform.platform(),
+        }
     blade_name = module.params["fb_url"]
     api = module.params["api_token"]
 
@@ -100,12 +114,20 @@ def get_blade(module):
 
 def get_system(module):
     """Return System Object or Fail"""
-    user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
-        "base": USER_AGENT_BASE,
-        "class": __name__,
-        "version": VERSION,
-        "platform": platform.platform(),
-    }
+    if HAS_DISTRO:
+        user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
+            "base": USER_AGENT_BASE,
+            "class": __name__,
+            "version": VERSION,
+            "platform": distro.name(pretty=True),
+        }
+    else:
+        user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
+            "base": USER_AGENT_BASE,
+            "class": __name__,
+            "version": VERSION,
+            "platform": platform.platform(),
+        }
     blade_name = module.params["fb_url"]
     api = module.params["api_token"]
 

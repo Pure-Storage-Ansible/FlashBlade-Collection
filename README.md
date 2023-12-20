@@ -24,6 +24,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - netaddr
 - datetime
 - pytz
+- distro
 
 ## Idempotency
 
