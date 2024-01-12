@@ -5,6 +5,29 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.15.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_bucket - Add support for public buckets
+- purefb_bucket - From REST 2.12 the `mode` parameter default changes to `multi-site-writable`.
+- purefb_fs - Added SMB Continuous Availability parameter. Requires REST 2.12 or higher.
+- purefb_info - Added enhanced information for buckets, filesystems and snapshots, based on new features in REST 2.12
+- purefb_s3acc - Add support for public buckets
+- purefb_s3acc - Remove default requirements for ``hard_limit`` and ``default_hard_limit``
+
+Bugfixes
+--------
+
+- purefb_info - Added missing object lock retention details if enabledd
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_hardware - Manage FlashBlade Hardware
+
 v1.14.0
 =======
 

@@ -129,6 +129,30 @@ releases:
     - 246_smb_encrypt.yaml
     - 247_space_consistency.yaml
     release_date: '2023-10-04'
+  1.15.0:
+    changes:
+      bugfixes:
+      - purefb_info - Added missing object lock retention details if enabledd
+      minor_changes:
+      - purefb_bucket - Add support for public buckets
+      - purefb_bucket - From REST 2.12 the `mode` parameter default changes to `multi-site-writable`.
+      - purefb_fs - Added SMB Continuous Availability parameter. Requires REST 2.12
+        or higher.
+      - purefb_info - Added enhanced information for buckets, filesystems and snapshots,
+        based on new features in REST 2.12
+      - purefb_s3acc - Add support for public buckets
+      - purefb_s3acc - Remove default requirements for ``hard_limit`` and ``default_hard_limit``
+    fragments:
+    - 252_object_lock_info.yaml
+    - 254_update_212_info.yaml
+    - 255_smb_ca.yaml
+    - 257_mode_change.yaml
+    - 258_add_public_buckets.yaml
+    modules:
+    - description: Manage FlashBlade Hardware
+      name: purefb_hardware
+      namespace: ''
+    release_date: '2024-01-12'
   1.3.0:
     changes:
       bugfixes:

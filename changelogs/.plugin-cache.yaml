@@ -101,6 +101,11 @@ plugins:
       name: purefb_groupquota
       namespace: ''
       version_added: 1.7.0
+    purefb_hardware:
+      description: Manage FlashBlade Hardware
+      name: purefb_hardware
+      namespace: ''
+      version_added: 1.15.0
     purefb_info:
       description: Collect information from Pure Storage FlashBlade
       name: purefb_info
@@ -251,4 +256,4 @@ plugins:
   strategy: {}
   test: {}
   vars: {}
-version: 1.14.0
+version: 1.15.0
