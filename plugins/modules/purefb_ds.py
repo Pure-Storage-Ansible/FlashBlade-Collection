@@ -407,7 +407,7 @@ def main():
             state=dict(type="str", default="present", choices=["absent", "present"]),
             enable=dict(type="bool", default=False),
             bind_password=dict(type="str", no_log=True),
-            force_bind_password=dict(type="boot", default=True),
+            force_bind_password=dict(type="bool", default=True),
             bind_user=dict(type="str"),
             base_dn=dict(type="str"),
             join_ou=dict(type="str"),
