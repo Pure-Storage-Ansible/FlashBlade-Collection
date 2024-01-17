@@ -266,6 +266,7 @@ def delete_ds(module, blade):
 def update_ds(module, blade):
     """Update Directory Service"""
     mod_ds = False
+    changed = False
     attr = {}
     try:
         ds_now = blade.directory_services.list_directory_services(
