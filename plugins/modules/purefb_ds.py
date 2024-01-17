@@ -267,6 +267,7 @@ def update_ds(module, blade):
     """Update Directory Service"""
     mod_ds = False
     changed = False
+    password_required = False
     attr = {}
     try:
         ds_now = blade.directory_services.list_directory_services(
@@ -288,22 +289,29 @@ def update_ds(module, blade):
                 if sorted(module.params["uri"][0:30]) != sorted(ds_now.uris):
                     attr["uris"] = module.params["uri"][0:30]
                     mod_ds = True
+                    password_required = True
             if module.params["base_dn"]:
                 if module.params["base_dn"] != ds_now.base_dn:
                     attr["base_dn"] = module.params["base_dn"]
                     mod_ds = True
             if module.params["bind_user"]:
                 if module.params["bind_user"] != ds_now.bind_user:
+                    password_required = True
                     attr["bind_user"] = module.params["bind_user"]
+                    mod_ds = True
+                elif module.params["force_bind_password"]:
+                    password_required = True
                     mod_ds = True
             if module.params["enable"]:
                 if module.params["enable"] != ds_now.enabled:
                     attr["enabled"] = module.params["enable"]
                     mod_ds = True
-            if module.params["bind_password"]:
-                if module.params["force_bind_password"]:
+            if password_required:
+                if module.params["bind_password"]:
                     attr["bind_password"] = module.params["bind_password"]
                     mod_ds = True
+                else:
+                    module.fail_json(msg="'bind_password' must be provided for this task")
             if module.params["dstype"] == "smb":
                 if module.params["join_ou"] != ds_now.smb.join_ou:
                     attr["smb"] = {"join_ou": module.params["join_ou"]}
