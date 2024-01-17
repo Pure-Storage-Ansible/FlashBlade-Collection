@@ -67,6 +67,15 @@ options:
     description:
     - Sets the password of the bind_user user name account.
     type: str
+  force_bind_password:
+    type: bool
+    default: true
+    description:
+    - Will force the bind password to be reset even if the bind user password
+      is unchanged.
+    - If set to I(false) and I(bind_user) is unchanged the password will not
+      be reset.
+    version_added: 1.16.0
   bind_user:
     description:
     - Sets the user name that can be used to bind to and query the directory.
@@ -291,8 +300,9 @@ def update_ds(module, blade):
                     attr["enabled"] = module.params["enable"]
                     mod_ds = True
             if module.params["bind_password"]:
-                attr["bind_password"] = module.params["bind_password"]
-                mod_ds = True
+                if module.params["force_bind_password"]:
+                    attr["bind_password"] = module.params["bind_password"]
+                    mod_ds = True
             if module.params["dstype"] == "smb":
                 if module.params["join_ou"] != ds_now.smb.join_ou:
                     attr["smb"] = {"join_ou": module.params["join_ou"]}
@@ -397,6 +407,7 @@ def main():
             state=dict(type="str", default="present", choices=["absent", "present"]),
             enable=dict(type="bool", default=False),
             bind_password=dict(type="str", no_log=True),
+            force_bind_password=dict(type="boot", default=True),
             bind_user=dict(type="str"),
             base_dn=dict(type="str"),
             join_ou=dict(type="str"),
