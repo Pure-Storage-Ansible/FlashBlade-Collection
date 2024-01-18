@@ -311,7 +311,9 @@ def update_ds(module, blade):
                     attr["bind_password"] = module.params["bind_password"]
                     mod_ds = True
                 else:
-                    module.fail_json(msg="'bind_password' must be provided for this task")
+                    module.fail_json(
+                        msg="'bind_password' must be provided for this task"
+                    )
             if module.params["dstype"] == "smb":
                 if module.params["join_ou"] != ds_now.smb.join_ou:
                     attr["smb"] = {"join_ou": module.params["join_ou"]}
