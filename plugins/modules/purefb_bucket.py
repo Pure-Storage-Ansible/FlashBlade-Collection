@@ -236,9 +236,9 @@ def create_bucket(module, blade):
                 )[0]
                 if QUOTA_VERSION in api_version:
                     if not module.params["hard_limit"]:
-                        module.params[
-                            "hard_limit"
-                        ] = account_defaults.hard_limit_enabled
+                        module.params["hard_limit"] = (
+                            account_defaults.hard_limit_enabled
+                        )
                     if module.params["quota"]:
                         quota = str(human_to_bytes(module.params["quota"]))
                     else:

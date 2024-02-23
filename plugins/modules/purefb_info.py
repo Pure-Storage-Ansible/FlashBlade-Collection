@@ -364,12 +364,12 @@ def generate_config_dict(blade):
                 "engine_id": snmp_agents.items[agent].engine_id,
             }
             if config_info["snmp_agents"][agent_name]["version"] == "v3":
-                config_info["snmp_agents"][agent_name][
-                    "auth_protocol"
-                ] = snmp_agents.items[agent].v3.auth_protocol
-                config_info["snmp_agents"][agent_name][
-                    "privacy_protocol"
-                ] = snmp_agents.items[agent].v3.privacy_protocol
+                config_info["snmp_agents"][agent_name]["auth_protocol"] = (
+                    snmp_agents.items[agent].v3.auth_protocol
+                )
+                config_info["snmp_agents"][agent_name]["privacy_protocol"] = (
+                    snmp_agents.items[agent].v3.privacy_protocol
+                )
                 config_info["snmp_agents"][agent_name]["user"] = snmp_agents.items[
                     agent
                 ].v3.user
@@ -383,12 +383,12 @@ def generate_config_dict(blade):
                 "notification": snmp_managers.items[manager].notification,
             }
             if config_info["snmp_managers"][mgr_name]["version"] == "v3":
-                config_info["snmp_managers"][mgr_name][
-                    "auth_protocol"
-                ] = snmp_managers.items[manager].v3.auth_protocol
-                config_info["snmp_managers"][mgr_name][
-                    "privacy_protocol"
-                ] = snmp_managers.items[manager].v3.privacy_protocol
+                config_info["snmp_managers"][mgr_name]["auth_protocol"] = (
+                    snmp_managers.items[manager].v3.auth_protocol
+                )
+                config_info["snmp_managers"][mgr_name]["privacy_protocol"] = (
+                    snmp_managers.items[manager].v3.privacy_protocol
+                )
                 config_info["snmp_managers"][mgr_name]["user"] = snmp_managers.items[
                     manager
                 ].v3.user
@@ -1410,9 +1410,9 @@ def main():
                 info["bucket_access_policies"] = generate_bucket_access_policies_dict(
                     blade
                 )
-                info[
-                    "bucket_cross_origin_policies"
-                ] = generate_bucket_cross_object_policies_dict(blade)
+                info["bucket_cross_origin_policies"] = (
+                    generate_bucket_cross_object_policies_dict(blade)
+                )
             if NFS_POLICY_API_VERSION in api_version:
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
             if SMB_CLIENT_API_VERSION in api_version:
