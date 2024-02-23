@@ -163,16 +163,19 @@ def update_lag(module, blade):
                     )
     new_ports = []
     for port in range(0, len(module.params["ports"])):
-        new_ports.append(
-            module.params["ports"][port].split(".")[0].upper()
-            + ".FM1."
-            + module.params["ports"][port].split(".")[1].upper()
-        )
-        new_ports.append(
-            module.params["ports"][port].split(".")[0].upper()
-            + ".FM2."
-            + module.params["ports"][port].split(".")[1].upper()
-        )
+        if module.params["ports"][port].split(".")[0].upper()[0] != "X":
+            new_ports.append(
+                module.params["ports"][port].split(".")[0].upper()
+                + ".FM1."
+                + module.params["ports"][port].split(".")[1].upper()
+            )
+            new_ports.append(
+                module.params["ports"][port].split(".")[0].upper()
+                + ".FM2."
+                + module.params["ports"][port].split(".")[1].upper()
+            )
+        else:
+            new_ports.append(module.params["ports"][port].upper())
     ports = []
     for final_port in range(0, len(new_ports)):
         ports.append(flashblade.FixedReference(name=new_ports[final_port]))
