@@ -242,7 +242,10 @@ def create_bucket(module, blade):
                     if module.params["quota"]:
                         quota = str(human_to_bytes(module.params["quota"]))
                     else:
-                        quota = str(account_defaults.quota_limit)
+                        if not account_defaults.quota_limit:
+                            quota = ""
+                        else:
+                            quota = str(account_defaults.quota_limit)
                     if not module.params["retention_mode"]:
                         module.params["retention_mode"] = ""
                     if not module.params["default_retention"]:
