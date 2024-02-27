@@ -1,2 +1,2 @@
 minor_changes:
- - purefa_virtualhost - New module to manage API Clients
+ - purefb_virtualhost - New module to manage API Clients

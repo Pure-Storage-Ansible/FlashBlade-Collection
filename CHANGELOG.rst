@@ -5,6 +5,21 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.16.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_ds - Add `force_bind_password` parameter to allow module to be idempotent.
+
+Bugfixes
+--------
+
+- purefb_bucket - Changed logic to allow complex buckets to be created in a single call, rather than having to split into two tasks.
+- purefb_lag - Enable LAG port configuration with multi-chassis
+- purefb_timeout - Fixed arithmetic error that resulted in module incorrectly reporting changed when no change was required.
+
 v1.15.0
 =======
 
@@ -101,7 +116,7 @@ Minor Changes
 Bugfixes
 --------
 
-- purefa_info - Fixed issue when more than 10 buckets have lifecycle rules.
+- purefb_info - Fixed issue when more than 10 buckets have lifecycle rules.
 - purefb_s3user - Fix incorrect response when bad key/secret pair provided for new user
 
 New Modules
@@ -210,7 +225,7 @@ v1.6.0
 Minor Changes
 -------------
 
-- purefa_virtualhost - New module to manage API Clients
+- purefb_virtualhost - New module to manage API Clients
 - purefb_ad - New module to manage Active Directory Account
 - purefb_eula - New module to sign EULA
 - purefb_info - Add Active Directory, Kerberos and Object Store Account information
@@ -277,7 +292,7 @@ Minor Changes
 Bugfixes
 --------
 
-- purefa_policy - Resolve multiple issues related to incorrect use of timezones
+- purefb_policy - Resolve multiple issues related to incorrect use of timezones
 - purefb_connect - Ensure changing encryption status on array connection is performed correctly
 - purefb_connect - Fix breaking change created in purity_fb SDK 1.9.2 for deletion of array connections
 - purefb_connect - Hide target array API token
