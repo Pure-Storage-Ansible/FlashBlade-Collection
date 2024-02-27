@@ -242,7 +242,10 @@ def create_bucket(module, blade):
                     if module.params["quota"]:
                         quota = str(human_to_bytes(module.params["quota"]))
                     else:
-                        quota = account_defaults.quota_limit
+                        if not account_defaults.quota_limit:
+                            quota = ""
+                        else:
+                            quota = str(account_defaults.quota_limit)
                     if not module.params["retention_mode"]:
                         module.params["retention_mode"] = ""
                     if not module.params["default_retention"]:
@@ -257,15 +260,6 @@ def create_bucket(module, blade):
                             bucket_type=module.params["mode"],
                             hard_limit_enabled=module.params["hard_limit"],
                             quota_limit=quota,
-                            retention_lock=module.params["retention_lock"],
-                            object_lock_config=flashblade.ObjectLockConfigRequestBody(
-                                default_retention_mode=module.params["retention_mode"],
-                                enabled=module.params["object_lock_enabled"],
-                                freeze_locked_objects=module.params[
-                                    "freeze_locked_objects"
-                                ],
-                                default_retention=module.params["default_retention"],
-                            ),
                         )
                     else:
                         bucket = flashblade.BucketPost(
@@ -273,7 +267,6 @@ def create_bucket(module, blade):
                             bucket_type=module.params["mode"],
                             hard_limit_enabled=module.params["hard_limit"],
                             quota_limit=quota,
-                            retention_lock=module.params["retention_lock"],
                         )
                 else:
                     bucket = flashblade.BucketPost(
@@ -288,32 +281,55 @@ def create_bucket(module, blade):
                             res.errors[0].message,
                         )
                     )
-            elif VERSIONING_VERSION in api_version:
+                if QUOTA_VERSION in api_version:
+                    bucket = flashblade.BucketPatch(
+                        retention_lock=module.params["retention_lock"],
+                        object_lock_config=flashblade.ObjectLockConfigRequestBody(
+                            default_retention_mode=module.params["retention_mode"],
+                            enabled=module.params["object_lock_enabled"],
+                            freeze_locked_objects=module.params[
+                                "freeze_locked_objects"
+                            ],
+                            default_retention=module.params["default_retention"],
+                        ),
+                        versioning=module.params["versioning"],
+                    )
+                else:
+                    bucket = flashblade.BucketPatch(
+                        retention_lock=module.params["retention_lock"],
+                        versioning=module.params["versioning"],
+                    )
+                res = bladev2.patch_buckets(
+                    names=[module.params["name"]], bucket=bucket
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Object Store Bucket {0} creation update failed. Error: {1}".format(
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+            else:
                 attr = BucketPost()
                 attr.account = Reference(name=module.params["account"])
                 blade.buckets.create_buckets(names=[module.params["name"]], bucket=attr)
-            else:
-                attr = Bucket()
-                attr.account = Reference(name=module.params["account"])
-                blade.buckets.create_buckets(
-                    names=[module.params["name"]], account=attr
-                )
-            if (
-                module.params["versioning"] != "absent"
-                and VERSIONING_VERSION in api_version
-            ):
-                try:
-                    blade.buckets.update_buckets(
-                        names=[module.params["name"]],
-                        bucket=BucketPatch(versioning=module.params["versioning"]),
-                    )
-                except Exception:
-                    module.fail_json(
-                        msg="Object Store Bucket {0} Created but versioning state failed".format(
-                            module.params["name"]
+                if module.params["versioning"] != "absent":
+                    try:
+                        blade.buckets.update_buckets(
+                            names=[module.params["name"]],
+                            bucket=BucketPatch(versioning=module.params["versioning"]),
                         )
-                    )
+                    except Exception:
+                        module.fail_json(
+                            msg="Object Store Bucket {0} Created but versioning state failed".format(
+                                module.params["name"]
+                            )
+                        )
         except Exception:
+            blade.buckets.update_buckets(
+                names=[module.params["name"]], bucket=BucketPatch(destroyed=True)
+            )
+            blade.buckets.delete_buckets(names=[module.params["name"]])
             module.fail_json(
                 msg="Object Store Bucket {0}: Creation failed".format(
                     module.params["name"]
@@ -399,6 +415,7 @@ def recover_bucket(module, blade):
 def update_bucket(module, blade, bucket):
     """Update Bucket"""
     changed = False
+    change_pac = False
     bladev2 = get_system(module)
     bucket_detail = list(bladev2.get_buckets(names=[module.params["name"]]).items)[0]
     api_version = blade.api_version.list_versions().versions
@@ -472,7 +489,6 @@ def update_bucket(module, blade, bucket):
                         )
                     )
     if MODE_VERSION in api_version:
-        change_pac = False
         current_pac = {
             "block_new_public_policies": bucket_detail.public_access_config.block_new_public_policies,
             "block_public_access": bucket_detail.public_access_config.block_public_access,
@@ -566,9 +582,10 @@ def main():
         module.fail_json(msg="Purity//FB must be upgraded to support this module.")
 
     # From REST 2.12 classic is no longer the default mode
-    if MODE_VERSION in api_version and not module.params["mode"]:
-        module.params["mode"] = "multi-site-writable"
-    else:
+    if MODE_VERSION in api_version:
+        if not module.params["mode"]:
+            module.params["mode"] = "multi-site-writable"
+    elif not module.params["mode"]:
         module.params["mode"] = "classic"
     bucket = get_bucket(module, blade)
     if not get_s3acc(module, blade):
