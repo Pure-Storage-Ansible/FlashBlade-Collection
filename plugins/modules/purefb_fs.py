@@ -195,11 +195,17 @@ options:
     version_added: "1.12.0"
   continuous_availability:
     description:
-    - Deifines if the file system will be continuously available during
+    - Defines if the file system will be continuously available during
       disruptive scenarios such as network disruption, blades failover, etc
     type: bool
     default: true
     version_added: "1.15.0"
+  group_ownership:
+    description:
+    - The group ownership for new files and directories in a file system
+    type: str
+    choices: [ 'creator', 'parent-directory' ]
+    version_added: "1.17.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -314,6 +320,7 @@ MULTIPROTOCOL_API_VERSION = "1.11"
 EXPORT_POLICY_API_VERSION = "2.3"
 SMB_POLICY_API_VERSION = "2.10"
 CA_API_VERSION = "2.12"
+GOWNER_API_VERSION = "2.13"
 
 
 def get_fs(module, blade):
@@ -562,6 +569,21 @@ def create_fs(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Filesystem {0} created, but failed to set continuous availability"
+                        "Error: {1}".format(
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+            if GOWNER_API_VERSION in api_version and module.params["group_ownership"]:
+                go_attr = FileSystemPatch(
+                    group_ownership=module.params["group_ownership"]
+                )
+                res = system.patch_file_systems(
+                    names=[module.params["name"]], file_system=go_attr
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Filesystem {0} created, but failed to set group ownership"
                         "Error: {1}".format(
                             module.params["name"],
                             res.errors[0].message,
@@ -911,8 +933,29 @@ def modify_fs(module, blade):
                             res.errors[0].message,
                         )
                     )
+    if GOWNER_API_VERSION in api_version:
+        change_go = False
+        if module.params["group_ownership"] != current_fs.group_ownership:
+            change_go = True
+            if not module.check_mode:
+                go_attr = FileSystemPatch(
+                    group_ownership=module.params["group_ownership"]
+                )
+                res = system.patch_file_systems(
+                    names=[module.params["name"]], file_system=go_attr
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to modify group ownership for "
+                        "filesystem {0}. Error: {1}".format(
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
 
-    module.exit_json(changed=(changed or change_export or change_share or change_ca))
+    module.exit_json(
+        changed=(changed or change_export or change_share or change_ca or change_go)
+    )
 
 
 def _delete_fs(module, blade):
@@ -1057,6 +1100,7 @@ def main():
             smb_aclmode=dict(
                 type="str", default="shared", choices=["shared", "native"]
             ),
+            group_ownership=dict(choices=["creator", "parent-directory"]),
             policy_state=dict(default="present", choices=["present", "absent"]),
             state=dict(default="present", choices=["present", "absent"]),
             delete_link=dict(default=False, type="bool"),
