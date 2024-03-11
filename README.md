@@ -45,6 +45,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_dns - manage DNS settings on a FlashBlade
 - purefb_ds - manage Directory Services settings on a FlashBlade
 - purefb_dsrole - manage Directory Service Roles on a FlashBlade
+- purefb_eradication - configure array level eradication policy on a FlashBlade
 - purefb_eula - manage EULA on FlashBlade
 - purefb_fs - manage filesystems on a FlashBlade
 - purefb_fs_replica - manage filesystem replica links on a FlashBlade
