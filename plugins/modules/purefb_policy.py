@@ -52,7 +52,7 @@ options:
     - Type of policy
     default: snapshot
     type: str
-    choices: [ snapshot, access, nfs, smb_share, smb_client ]
+    choices: [ snapshot, access, nfs, smb_share, smb_client, network ]
     version_added: "1.9.0"
   account:
     description:
@@ -344,6 +344,14 @@ options:
     type: str
     default: ""
     version_added: '1.14.0'
+  interfaces:
+    description:
+    - Specifies which product interfaces the network access policy rule
+      applies to, whether it is permitting or denying access.
+    type: list
+    elements: str
+    choices: [ "management-ssh", "management-rest-api", "management-web-ui", "snmp", "local-network-superuser-password-access" ]
+    version_added: '1.17.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -546,6 +554,8 @@ try:
         SmbClientPolicyRule,
         SmbClientPolicy,
         ObjectStoreAccessPolicyPost,
+        NetworkAccessPolicy,
+        NetworkAccessPolicyRule,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -577,6 +587,7 @@ NFS_POLICY_API_VERSION = "2.3"
 NFS_RENAME_API_VERSION = "2.4"
 SMB_POLICY_API_VERSION = "2.10"
 SMB_ENCRYPT_API_VERSION = "2.11"
+NET_POLICY_API_VERSION = "2.13"
 
 
 def _convert_to_millisecs(hour):
@@ -1065,6 +1076,51 @@ def create_smb_client_policy(module, blade):
     module.exit_json(changed=changed)
 
 
+def create_network_access_policy(module, blade):
+    """Create Network Access Policy"""
+    changed = True
+    versions = blade.api_version.list_versions().versions
+    if not module.check_mode:
+        res = blade.post_network_access_policies(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create network access policy {0}.Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+        if not module.params["enabled"]:
+            res = blade.patch_network_access_policies(
+                policy=SmbClientPolicy(enabled=False), names=[module.params["name"]]
+            )
+            if res.status_code != 200:
+                blade.delete_network_access_policies(names=[module.params["name"]])
+                module.fail_json(
+                    msg="Failed to create network access policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+        if not module.params["client"]:
+            module.fail_json(msg="client is required to create a new rule")
+        else:
+            rule = NetworkAccessPolicyRule(
+                client=module.params["client"],
+                effect=module.params["effect"],
+                interfaces=module.params["interfaces"],
+            )
+            res = blade.post_network_access_policies_rules(
+                policy_names=[module.params["name"]],
+                rule=rule,
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to rule for policy {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
 def update_smb_client_policy(module, blade):
     """Update SMB Client Policy Rule"""
 
@@ -1339,6 +1395,268 @@ def delete_nfs_policy(module, blade):
                     )
                 )
     module.exit_json(changed=changed)
+
+
+def update_network_access_policy(module, blade):
+    """Update Networkk Access Policy Rule"""
+
+    changed = False
+    if module.params["client"]:
+        current_policy_rule = blade.get_network_access_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="client='" + module.params["client"] + "'",
+        )
+        if (
+            current_policy_rule.status_code == 200
+            and current_policy_rule.total_item_count == 0
+        ):
+            rule = NetworkAccessPolicyRule(
+                client=module.params["client"],
+                effect=module.params["effect"],
+                interfaces=module.params["interfaces"],
+            )
+            changed = True
+            if not module.check_mode:
+                if module.params["before_rule"]:
+                    before_name = (
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    )
+                    res = blade.post_network_access_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                        before_rule_name=before_name,
+                    )
+                else:
+                    res = blade.post_network_access_policies_rules(
+                        policy_names=[module.params["name"]],
+                        rule=rule,
+                    )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to create rule for client {0} "
+                        "in policy {1}. Error: {2}".format(
+                            module.params["client"],
+                            module.params["name"],
+                            res.errors[0].message,
+                        )
+                    )
+        else:
+            rules = list(current_policy_rule.items)
+            cli_count = None
+            done = False
+            if module.params["client"] == "*":
+                for cli in range(0, len(rules)):
+                    if rules[cli].client == "*":
+                        cli_count = cli
+                if not cli_count:
+                    rule = NetworkAccessPolicyRule(
+                        client=module.params["client"],
+                        effect=module.params["effect"],
+                        interfaces=module.params["interfaces"],
+                    )
+                    done = True
+                    changed = True
+                    if not module.check_mode:
+                        if module.params["before_rule"]:
+                            res = blade.post_network_access_policies_rules(
+                                policy_names=[module.params["name"]],
+                                rule=rule,
+                                before_rule_name=(
+                                    module.params["name"]
+                                    + "."
+                                    + str(module.params["before_rule"]),
+                                ),
+                            )
+                        else:
+                            res = blade.post_network_access_policies_rules(
+                                policy_names=[module.params["name"]],
+                                rule=rule,
+                            )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to create rule for "
+                                "client {0} in policy {1}. Error: {2}".format(
+                                    module.params["client"],
+                                    module.params["name"],
+                                    res.errors[0].message,
+                                )
+                            )
+            if not done:
+                old_policy_rule = rules[0]
+                current_rule = {
+                    "client": sorted(old_policy_rule.client),
+                    "effect": old_policy_rule.effect,
+                    "interfaces": old_policy_rule.interfaces,
+                }
+                if module.params["interfaces"]:
+                    new_interfaces = module.params["interfaces"]
+                else:
+                    new_interfaces = current_rule["interfaces"]
+                if module.params["effect"]:
+                    new_effect = module.params["effect"]
+                else:
+                    new_effect = current_rule["effect"]
+                if module.params["client"]:
+                    new_client = sorted(module.params["client"])
+                else:
+                    new_client = sorted(current_rule["client"])
+                new_rule = {
+                    "client": new_client,
+                    "effect": new_effect,
+                    "interfaces": new_interfaces,
+                }
+                if current_rule != new_rule:
+                    changed = True
+                    if not module.check_mode:
+                        rule = NetworkAccessPolicyRule(
+                            client=module.params["client"],
+                            effect=module.params["effect"],
+                            interfaces=module.params["interfaces"],
+                        )
+                        res = blade.patch_network_access_policies_rules(
+                            names=[
+                                module.params["name"] + "." + str(old_policy_rule.index)
+                            ],
+                            rule=rule,
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to update network access client rule {0}. Error: {1}".format(
+                                    module.params["name"]
+                                    + "."
+                                    + str(old_policy_rule.index),
+                                    res.errors[0].message,
+                                )
+                            )
+                if (
+                    module.params["before_rule"]
+                    and module.params["before_rule"] != old_policy_rule.index
+                ):
+                    changed = True
+                    if not module.check_mode:
+                        before_name = (
+                            module.params["name"]
+                            + "."
+                            + str(module.params["before_rule"])
+                        )
+                        res = blade.patch_network_access_policies_rules(
+                            names=[
+                                module.params["name"] + "." + str(old_policy_rule.index)
+                            ],
+                            rule=NetworkAccessPolicyRule(),
+                            before_rule_name=before_name,
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to move network access client rule {0}. Error: {1}".format(
+                                    module.params["name"]
+                                    + "."
+                                    + str(old_policy_rule.index),
+                                    res.errors[0].message,
+                                )
+                            )
+    current_policy = list(
+        blade.get_network_access_policies(names=[module.params["name"]]).items
+    )[0]
+    if current_policy.enabled != module.params["enabled"]:
+        changed = True
+        if not module.check_mode:
+            res = blade.patch_network_access_policies(
+                policy=NetworkAccessPolicy(enabled=module.params["enabled"]),
+                names=[module.params["name"]],
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to change state of network access policy {0}.Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def delete_network_access_policy(module, blade):
+    """Delete Network Access Policy, or Rule
+
+    If client is provided then delete the client rule if it exists.
+    """
+
+    changed = False
+    policy_delete = True
+    if module.params["client"]:
+        policy_delete = False
+        res = blade.get_network_access_policies_rules(
+            policy_names=[module.params["name"]],
+            filter="client='" + module.params["client"] + "'",
+        )
+        if res.status_code == 200:
+            if res.total_item_count == 0:
+                pass
+            elif res.total_item_count == 1:
+                rule = list(res.items)[0]
+                if module.params["client"] == rule.client:
+                    changed = True
+                    if not module.check_mode:
+                        res = blade.delete_network_access_policies_rules(
+                            names=[rule.name]
+                        )
+                        if res.status_code != 200:
+                            module.fail_json(
+                                msg="Failed to delete rule for client {0} in policy {1}. "
+                                "Error: {2}".format(
+                                    module.params["client"],
+                                    module.params["name"],
+                                    res.errors[0].message,
+                                )
+                            )
+            else:
+                rules = list(res.items)
+                for cli in range(0, len(rules)):
+                    if rules[cli].client == "*":
+                        changed = True
+                        if not module.check_mode:
+                            res = blade.delete_network_access_policies_rules(
+                                names=[rules[cli].name]
+                            )
+                            if res.status_code != 200:
+                                module.fail_json(
+                                    msg="Failed to delete rule for client {0} in policy {1}. "
+                                    "Error: {2}".format(
+                                        module.params["client"],
+                                        module.params["name"],
+                                        res.errors[0].message,
+                                    )
+                                )
+    if policy_delete:
+        changed = True
+        if not module.check_mode:
+            res = blade.delete_network_Access_policies(names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to delete network access policy {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
+    module.exit_json(changed=changed)
+
+
+def rename_network_access_policy(module, blade):
+    """Rename Network Access Policy"""
+
+    changed = True
+    if not module.check_mode:
+        res = blade.patch_network_access_policies(
+            names=[module.params["name"]],
+            policy=NfsExportPolicy(name=module.params["rename"]),
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to rename network access policy {0} to {1}. Error: {2}".format(
+                    module.params["name"],
+                    module.params["rename"],
+                    res.errors[0].message,
+                )
+            )
+        module.exit_json(changed=changed)
 
 
 def rename_nfs_policy(module, blade):
@@ -2544,7 +2862,14 @@ def main():
             policy_type=dict(
                 type="str",
                 default="snapshot",
-                choices=["snapshot", "access", "nfs", "smb_share", "smb_client"],
+                choices=[
+                    "snapshot",
+                    "access",
+                    "nfs",
+                    "smb_share",
+                    "smb_client",
+                    "network",
+                ],
             ),
             enabled=dict(type="bool", default=True),
             timezone=dict(type="str"),
@@ -2635,6 +2960,17 @@ def main():
                 choices=["disabled", "optional", "required"],
             ),
             desc=dict(type="str", default=""),
+            interfaces=dict(
+                type="list",
+                elements="str",
+                choices=[
+                    "management-ssh",
+                    "management-rest-api",
+                    "management-web-ui",
+                    "snmp",
+                    "local-network-superuser-password-access",
+                ],
+            ),
         )
     )
 
@@ -2644,6 +2980,7 @@ def main():
         ["policy_type", "nfs", ["name"]],
         ["policy_type", "smb_client", ["name"]],
         ["policy_type", "smb_share", ["name"]],
+        ["policy_type", "network", ["interfaces"]],
     ]
 
     module = AnsibleModule(
@@ -2857,6 +3194,56 @@ def main():
             create_smb_share_policy(module, blade)
         elif state == "absent" and policy:
             delete_smb_share_policy(module, blade)
+    elif module.params["policy_type"] == "network":
+        if NET_POLICY_API_VERSION not in versions:
+            module.fail_json(
+                msg=(
+                    "Minimum FlashBlade REST version required: {0}".format(
+                        NET_POLICY_API_VERSION
+                    )
+                )
+            )
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required for this module")
+        blade = get_system(module)
+        try:
+            policy = list(
+                blade.get_network_access_policies(names=[module.params["name"]]).items
+            )[0]
+        except AttributeError:
+            policy = None
+        if module.params["rename"]:
+            try:
+                new_policy = list(
+                    blade.get_network_access_policies(
+                        names=[module.params["rename"]]
+                    ).items
+                )[0]
+            except AttributeError:
+                new_policy = None
+        if policy and state == "present" and not module.params["rename"]:
+            if module.params["before_rule"]:
+                res = blade.get_network_access_policies_rules(
+                    policy_names=[module.params["name"]],
+                    names=[
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    ],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Rule index {0} does not exist.".format(
+                            module.params["before_rule"]
+                        )
+                    )
+            update_network_access_policy(module, blade)
+        elif (
+            state == "present" and module.params["rename"] and policy and not new_policy
+        ):
+            rename_network_access_policy(module, blade)
+        elif state == "present" and not policy and not module.params["rename"]:
+            create_network_access_policy(module, blade)
+        elif state == "absent" and policy:
+            delete_network_access_policy(module, blade)
     elif SNAPSHOT_POLICY_API_VERSION in versions:
         if not HAS_PYPURECLIENT:
             module.fail_json(msg="py-pure-client sdk is required for this module")
