@@ -138,8 +138,8 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
-FAN_IN_MAXIMUM = 1
-FAN_OUT_MAXIMUM = 3
+FAN_IN_MAXIMUM = 5
+FAN_OUT_MAXIMUM = 5
 MIN_REQUIRED_API_VERSION = "1.9"
 THROTTLE_API_VERSION = "2.3"
 
@@ -215,7 +215,7 @@ def create_connection(module, blade):
             remote_conn_cnt = (
                 remote_system.array_connections.list_array_connections().pagination_info.total_item_count
             )
-            if remote_conn_cnt == FAN_IN_MAXIMUM:
+            if remote_conn_cnt >= FAN_IN_MAXIMUM:
                 module.fail_json(
                     msg="Remote array {0} already connected to {1} other array. Fan-In not supported".format(
                         remote_array, remote_conn_cnt
@@ -244,7 +244,7 @@ def create_connection(module, blade):
 def create_v2_connection(module, blade):
     """Create connection between REST 2 capable arrays"""
     changed = True
-    if blade.get_array_connections().total_item_count == FAN_OUT_MAXIMUM:
+    if blade.get_array_connections().total_item_count >= FAN_OUT_MAXIMUM:
         module.fail_json(
             msg="FlashBlade fan-out maximum of {0} already reached".format(
                 FAN_OUT_MAXIMUM
@@ -262,7 +262,7 @@ def create_v2_connection(module, blade):
         )
     remote_array = list(remote_system.get_arrays().items)[0].name
     remote_conn_cnt = remote_system.get_array_connections().total_item_count
-    if remote_conn_cnt == FAN_IN_MAXIMUM:
+    if remote_conn_cnt >= FAN_IN_MAXIMUM:
         module.fail_json(
             msg="Remote array {0} already connected to {1} other array. Fan-In not supported".format(
                 remote_array, remote_conn_cnt
