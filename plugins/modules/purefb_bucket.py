@@ -118,13 +118,32 @@ options:
     description:
     - If set to true, adding bucket policies that grant public access to a bucket is not allowed.
     type: bool
-    version_added: 1.15.0
+    version_added: '1.15.0'
   block_public_access:
     description:
     - If set to true, access to a bucket with a public policy is restricted to only authenticated
       users within the account that bucket belongs to.
     type: bool
-    version_added: 1.15.0
+    version_added: '1.15.0'
+  eradication_mode:
+    description:
+    - The eradication mode of the bucket.
+    type: str
+    choices: [ "permission-based", "retention-based" ]
+    version_added: '1.17.0'
+  manual_eradication:
+    description:
+    - The manual eradication status of the bucket. If false, the bucket cannot be eradicated after
+      it has been destroyed, unless it is empty. If true, the bucket can be eradicated.
+    type: bool
+    version_added: '1.17.0'
+  eradication_delay:
+    description:
+    - Minimum eradication delay in days. Automatically eradicate destroyed buckets after
+      the delay time passes unless automatic eradication is delayed due to other configuration values.
+    - Valid values are integer days from 1 to 30. Default is 1.
+    type: int
+    version_added: '1.17.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -194,11 +213,13 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
+SEC_PER_DAY = 86400000
 MIN_REQUIRED_API_VERSION = "1.5"
 VERSIONING_VERSION = "1.9"
 VSO_VERSION = "2.5"
 QUOTA_VERSION = "2.8"
 MODE_VERSION = "2.12"
+WORM_VERSION = "2.13"
 
 
 def get_s3acc(module, blade):
@@ -354,6 +375,30 @@ def create_bucket(module, blade):
                     msg="Failed to set Public Access config correctly for bucket {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
+        if WORM_VERSION in api_version and module.params["eradication_mode"]:
+            if not module.params["eradication_delay"]:
+                module.params["eradication_delay"] = SEC_PER_DAY
+            else:
+                module.params["eradication_delay"] = (
+                    module.params["eradication_delay"] * SEC_PER_DAY
+                )
+            if not module.params["manual_eradication"]:
+                module.params["manual_eradication"] = "disabled"
+            else:
+                module.params["manual_eradication"] = "enabled"
+            worm = BucketPatch(
+                eradication_config=flashblade.BucketEradicationConfig(
+                    manual_eradication=module.params["manual_eradication"],
+                    eradication_mode=module.params["eradication_mode"],
+                    eradication_delay=module.params["eradication_delay"],
+                )
+            )
+            res = bladev2.patch_buckets(bucket=worm, names=[module.params["name"]])
+            if res.status_code != 200:
+                module.warn(
+                    msg="Failed to set Bucket Eradication config correctly for bucket {0}. "
+                    "Error: {1}".format(module.params["name"], res.errors[0].message)
+                )
     module.exit_json(changed=changed)
 
 
@@ -416,6 +461,7 @@ def update_bucket(module, blade, bucket):
     """Update Bucket"""
     changed = False
     change_pac = False
+    change_worm = False
     bladev2 = get_system(module)
     bucket_detail = list(bladev2.get_buckets(names=[module.params["name"]]).items)[0]
     api_version = blade.api_version.list_versions().versions
@@ -520,7 +566,52 @@ def update_bucket(module, blade, bucket):
                     msg="Failed to update Public Access config correctly for bucket {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
-    module.exit_json(changed=(changed or change_pac))
+    if WORM_VERSION in api_version:
+        current_worm = {
+            "eradication_delay": bucket_detail.eradication_config.eradication_delay,
+            "manual_eradication": bucket_detail.eradication_config.manual_eradication,
+            "eradication_mode": bucket_detail.eradication_config.eradication_mode,
+        }
+        if module.params["eradication_delay"] is None:
+            new_delay = current_worm["eradication_delay"]
+        else:
+            new_delay = module.params["eradication_delay"] * SEC_PER_DAY
+        if module.params["manual_eradication"] is None:
+            new_manual = current_worm["manual_eradication"]
+        else:
+            if module.params["manual_eradication"]:
+                new_manual = "enabled"
+            else:
+                new_manual = "disabled"
+        if (
+            module.params["eradication_mode"]
+            and module.params["eradication_mode"] != current_worm["eradication_mode"]
+        ):
+            new_mode = module.params["eradication_mode"]
+        else:
+            new_mode = current_worm["eradication_mode"]
+        new_worm = {
+            "eradication_delay": new_delay,
+            "manual_eradication": new_manual,
+            "eradication_mode": new_mode,
+        }
+        if current_worm != new_worm:
+            change_worm = True
+            worm = BucketPatch(
+                public_access_config=flashblade.BucketEradicationConfig(
+                    eradication_delay=new_worm.eradication_delay,
+                    manual_eradication=new_worm.manual_eradication,
+                    eradication_mode=new_worm.eradication_mode,
+                )
+            )
+        if change_worm and not module.check_mode:
+            res = bladev2.patch_buckets(bucket=worm, names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update Eradication config correctly for bucket {0}. "
+                    "Error: {1}".format(module.params["name"], res.errors[0].message)
+                )
+    module.exit_json(changed=(changed or change_pac or change_worm))
 
 
 def eradicate_bucket(module, blade):
@@ -564,6 +655,11 @@ def main():
                 default="absent", choices=["enabled", "suspended", "absent"]
             ),
             state=dict(default="present", choices=["present", "absent"]),
+            eradication_delay=dict(type="int"),
+            eradication_mode=dict(
+                type="str", choices=["permission-based", "retention-based"]
+            ),
+            manual_eradication=dict(type="bool"),
         )
     )
 
@@ -574,6 +670,12 @@ def main():
     if module.params["mode"]:
         if not HAS_PYPURECLIENT:
             module.fail_json(msg="py-pure-client sdk is required to support VSO mode")
+
+    if (
+        module.params["eradication_delay"]
+        and not 30 >= module.params["eradication_delay"] >= 1
+    ):
+        module.fail_json(msg="Eradication Delay must be between 1 and 30 days.")
 
     state = module.params["state"]
     blade = get_blade(module)
