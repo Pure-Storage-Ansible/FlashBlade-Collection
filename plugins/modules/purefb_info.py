@@ -111,6 +111,7 @@ BUCKET_API_VERSION = "2.8"
 SMB_CLIENT_API_VERSION = "2.10"
 SPACE_API_VERSION = "2.11"
 PUBLIC_API_VERSION = "2.12"
+NAP_API_VERSION = "2.13"
 
 
 def _millisecs_to_time(millisecs):
@@ -217,6 +218,10 @@ def generate_default_dict(module, blade):
                 default_info["support_keys"][keyname] = {keys[key].verification_key}
             default_info["security_update"] = getattr(
                 blade_info, "security_update", None
+            )
+        if NAP_API_VERSION in api_version:
+            default_info["network_access_protocol"] = getattr(
+                blade_info.network_access_policy, "name", "None"
             )
 
     return default_info
