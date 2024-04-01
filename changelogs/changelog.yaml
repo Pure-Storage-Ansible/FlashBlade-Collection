@@ -168,6 +168,20 @@ releases:
     - 266_bucket_fix.yaml
     - 268_multi-chassis-lag.yaml
     release_date: '2024-02-27'
+  1.17.0:
+    changes:
+      minor_changes:
+      - purefb_bucket - Add support for strict 17a-4 WORM compliance.
+      - purefb_connect - Increase Fan-In and Fan-Out maximums
+      - purefb_fs - Add ``group_ownership`` parameter from Purity//FB 4.4.0.
+      - purefb_info - Show array network access policy from Purity//FB 4.4.0
+      - purefb_policy - Add support for network access policies from Purity//FB 4.4.0
+    fragments:
+    - 270_add_go.yaml
+    - 271_add_worm.yaml
+    - 273_add_nap.yaml
+    - 274_fan_in.yaml
+    release_date: '2024-04-01'
   1.3.0:
     changes:
       bugfixes:
@@ -210,7 +224,6 @@ releases:
   1.4.0:
     changes:
       bugfixes:
-      - purefb_policy - Resolve multiple issues related to incorrect use of timezones
       - purefb_connect - Ensure changing encryption status on array connection is
         performed correctly
       - purefb_connect - Fix breaking change created in purity_fb SDK 1.9.2 for deletion
@@ -218,6 +231,7 @@ releases:
       - purefb_connect - Hide target array API token
       - purefb_ds - Ensure updating directory service configurations completes correctly
       - purefb_info - Fix issue getting array info when encrypted connection exists
+      - purefb_policy - Resolve multiple issues related to incorrect use of timezones
       minor_changes:
       - purefb_banner - Module to manage the GUI and SSH login message
       - purefb_certgrp - Module to manage FlashBlade Certificate Groups
@@ -300,7 +314,6 @@ releases:
   1.6.0:
     changes:
       minor_changes:
-      - purefb_virtualhost - New module to manage API Clients
       - purefb_ad - New module to manage Active Directory Account
       - purefb_eula - New module to sign EULA
       - purefb_info - Add Active Directory, Kerberos and Object Store Account information
@@ -309,6 +322,7 @@ releases:
       - purefb_s3user - Add access policy option to user creation
       - purefb_timeout - Add module to set GUI idle timeout
       - purefb_userpolicy - New module to manage object store user access policies
+      - purefb_virtualhost - New module to manage API Clients
       - purefb_virtualhost - New module to manage Object Store Virtual Hosts
     fragments:
     - 127_add_eula.yaml

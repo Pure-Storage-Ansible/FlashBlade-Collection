@@ -5,6 +5,18 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.17.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_bucket - Add support for strict 17a-4 WORM compliance.
+- purefb_connect - Increase Fan-In and Fan-Out maximums
+- purefb_fs - Add ``group_ownership`` parameter from Purity//FB 4.4.0.
+- purefb_info - Show array network access policy from Purity//FB 4.4.0
+- purefb_policy - Add support for network access policies from Purity//FB 4.4.0
+
 v1.16.0
 =======
 
@@ -225,7 +237,6 @@ v1.6.0
 Minor Changes
 -------------
 
-- purefb_virtualhost - New module to manage API Clients
 - purefb_ad - New module to manage Active Directory Account
 - purefb_eula - New module to sign EULA
 - purefb_info - Add Active Directory, Kerberos and Object Store Account information
@@ -234,6 +245,7 @@ Minor Changes
 - purefb_s3user - Add access policy option to user creation
 - purefb_timeout - Add module to set GUI idle timeout
 - purefb_userpolicy - New module to manage object store user access policies
+- purefb_virtualhost - New module to manage API Clients
 - purefb_virtualhost - New module to manage Object Store Virtual Hosts
 
 New Modules
@@ -292,12 +304,12 @@ Minor Changes
 Bugfixes
 --------
 
-- purefb_policy - Resolve multiple issues related to incorrect use of timezones
 - purefb_connect - Ensure changing encryption status on array connection is performed correctly
 - purefb_connect - Fix breaking change created in purity_fb SDK 1.9.2 for deletion of array connections
 - purefb_connect - Hide target array API token
 - purefb_ds - Ensure updating directory service configurations completes correctly
 - purefb_info - Fix issue getting array info when encrypted connection exists
+- purefb_policy - Resolve multiple issues related to incorrect use of timezones
 
 New Modules
 -----------
