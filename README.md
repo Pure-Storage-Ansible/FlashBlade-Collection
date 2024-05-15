@@ -6,14 +6,11 @@
     
 # Pure Storage FlashBlade Collection
 
+## Description
+
 The Pure Storage FlashBlade collection consists of the latest versions of the FlashBlade modules.
 
-## Supported Platforms
-
-- Pure Storage FlashBlade with Purity 2.1.2 or later
-- Certain modules and functionality require higher versions of Purity. Modules will inform you if your Purity version is not high enough to use a module.
-
-## Prerequisites
+## Requirements
 
 - Ansible 2.15 or later
 - Pure Storage FlashBlade system running Purity//FB 2.1.2 or later
@@ -26,11 +23,75 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - pytz
 - distro
 
-## Idempotency
+## Installation
+
+Before using this collection, you need to install it with the Ansible Galaxy command-line tool:
+
+```
+ansible-galaxy collection install purestorage.flashblade
+```
+
+You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
+
+```
+collections:
+  - name: purestorage.flashblade
+```
+
+Note that if you install the collection from Ansible Galaxy, it will not be upgraded automatically when you upgrade the Ansible package. 
+
+To upgrade the collection to the latest available version, run the following command:
+
+```
+ansible-galaxy collection install purestorage.flashblade --upgrade
+```
+
+You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax to install version 1.0.0:
+
+```
+ansible-galaxy collection install purestorage.flashblade:==1.0.0
+```
+
+See [using Ansible collections](https://docs.ansible.com/ansible/devel/user_guide/collections_using.html) for more details.
+
+## Use Cases
+
+This collection can be used to perform any task that you would normally perform using the command-line or GUI on a FlashBlade. This also includes using the collection in larger playbooks to perform actions with storage-related components, such as:
+* Infrastructure Drift Control
+* Database Cloning
+* Disaster Recovery
+
+## Contributing
+
+There are many ways in which you can participate in the project, for example:
+
+* Submit bugs and feature requests, and help us verify as they are checked in
+* Review source code changes
+* Review the documentation and make pull requests for anything from typos to new content
+* If you are interested in fixing issues and contributing directly to the code base, please see the details below:
+    1. Fork this project into your account if you are a first-time contributor.
+    2. Create a branch based on the latest `master` branch, commit your changes on this branch.
+    3. You may merge the Pull Request in once you have the sign-off of two other developers, or if you do not have permission to do that, you may request the second reviewer to merge it for you.
+ 
+## Support
+
+Only the latest release of this collection is supported.
+
+For support please raise a GitHub Issue on this repository.
+
+If you are a Pure Storage customer, you may log a support call with the Pure Storage Support team ([support\@purestorage.com](mailto:support@purestorage.com?subject=FlashBlade-Ansible-Collection))
+If you have a Red Hat Ansible support contract, as this is a Certified collection, you may log a support call with Red Hat directly.
+  
+## Release Notes
+
+Release notes for this collection can be found [here](https://github.com/Pure-Storage-Ansible/FlashBlade-Collection/releases)
+
+## Related Information
+### Idempotency
 
 All modules are idempotent with the exception of modules that change or set passwords. Due to security requirements exisitng passwords can be validated against and therefore will always be modified, even if there is no change.
 
-## Available Modules
+### Available Modules
 
 - purefb_ad - manage Active Directory account on FlashBlade
 - purefb_alert - manage alert email settings on a FlashBlade
@@ -79,20 +140,10 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_userquota - manage individual user quotas on FlashBlade filesystems
 - purefb_virtualhost - manage FlashBlade Object Store Virtual Hosts
 
-## Instructions
-
-Install the Pure Storage FlashBlade collection on your Ansible management host.
-
-- Using ansible-galaxy (Ansible 2.9 or later):
-```
-ansible-galaxy collection install purestorage.flashblade -p ~/.ansible/collections
-```
-
-All servers that execute the modules must have the appropriate Pure Storage Python SDK installed on the host.
-
-## License
+## License Information
 
 [BSD-2-Clause](https://directory.fsf.org/wiki?title=License:FreeBSD)
+
 [GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 ## Author
