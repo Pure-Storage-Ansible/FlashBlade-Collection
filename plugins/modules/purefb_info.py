@@ -112,6 +112,7 @@ SMB_CLIENT_API_VERSION = "2.10"
 SPACE_API_VERSION = "2.11"
 PUBLIC_API_VERSION = "2.12"
 NAP_API_VERSION = "2.13"
+RA_DURATION_API_VERSION = "2.14"
 
 
 def _millisecs_to_time(millisecs):
@@ -223,6 +224,28 @@ def generate_default_dict(module, blade):
             default_info["network_access_protocol"] = getattr(
                 blade_info.network_access_policy, "name", "None"
             )
+        ra_info = list(blade.get_support().items)[0]
+        if ra_info.remote_assist_active:
+            ra_expires = datetime.fromtimestamp(
+                int(ra_info.remote_assist_expires) / 1000
+            ).strftime("%Y-%m-%d %H:%M:%S")
+            ra_opened = datetime.fromtimestamp(
+                int(ra_info.remote_assist_opened) / 1000
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            ra_expires = ra_opened = None
+        default_info["remote_assist"] = {
+            "phonehome_enabled": ra_info.phonehome_enabled,
+            "proxy": ra_info.proxy,
+            "ra_active": ra_info.remote_assist_active,
+            "ra_expires": ra_expires,
+            "ra_opened": ra_opened,
+            "ra_status": ra_info.remote_assist_status,
+        }
+        if RA_DURATION_API_VERSION in api_version:
+            default_info["remote_assist"][
+                "ra_duration"
+            ] = ra_info.remote_assist_duration
 
     return default_info
 
