@@ -32,6 +32,14 @@ options:
     type: str
     default: present
     choices: [ present, absent ]
+  duration:
+    description:
+    - Specifies the duration of the remote-assist session in hours
+    - It determines the length of time the session will remain active after
+      it's initiated.
+    type: int
+    default: 24
+    version_added: '1.18.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -51,31 +59,40 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import Support
+    from pypureclient import Support
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
-MIN_REQUIRED_API_VERSION = "1.6"
+DURATION_API = "2.14"
 
 
 def enable_ra(module, blade):
     """Enable Remote Assist"""
     changed = True
     if not module.check_mode:
-        ra_settings = Support(remote_assist_active=True)
-        try:
-            blade.support.update_support(support=ra_settings)
-        except Exception:
-            module.fail_json(msg="Enabling Remote Assist failed")
+        if DURATION_API in list(blade.get_versions().items):
+            duration = module.params["duration"] * 3600000
+            ra_settings = Support(
+                remote_assist_active=True, remote_assist_duration=duration
+            )
+        else:
+            ra_settings = Support(remote_assist_active=True)
+        res = blade.patch_support(support=ra_settings)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Enabling Remote Assist failed. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -84,10 +101,13 @@ def disable_ra(module, blade):
     changed = True
     if not module.check_mode:
         ra_settings = Support(remote_assist_active=False)
-        try:
-            blade.support.update_support(support=ra_settings)
-        except Exception:
-            module.fail_json(msg="Disabling Remote Assist failed")
+        res = blade.patch_support(support=ra_settings)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Disabling Remote Assist failed. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -96,28 +116,20 @@ def main():
     argument_spec.update(
         dict(
             state=dict(type="str", default="present", choices=["present", "absent"]),
+            duration=dict(type="int", default=24),
         )
     )
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
+    blade = get_system(module)
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb SDK is required for this module")
-
-    if (
-        module.params["state"] == "present"
-        and not blade.support.list_support().items[0].remote_assist_active
-    ):
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="pypureclient SDK is required for this module")
+    active = list(blade.get_support().items)[0].remote_assist_active
+    if module.params["state"] == "present" and not active:
         enable_ra(module, blade)
-    elif (
-        module.params["state"] == "absent"
-        and blade.support.list_support().items[0].remote_assist_active
-    ):
+    elif module.params["state"] == "absent" and active:
         disable_ra(module, blade)
     module.exit_json(changed=False)
 
