@@ -22,6 +22,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - datetime
 - pytz
 - distro
+- pycountry
 
 ## Installation
 
