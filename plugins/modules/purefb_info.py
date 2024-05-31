@@ -909,6 +909,10 @@ def generate_bucket_dict(module, blade):
                             bucket
                         ].eradication_config.manual_eradication,
                     }
+                    if NAP_API_VERSION in api_version:
+                        bucket_info[buckets[bucket].name]["eradication_config"][
+                            "eradication_mode"
+                        ] = buckets[bucket].eradication_config.eradication_mode
                     if PUBLIC_API_VERSION in api_version:
                         bucket_info[buckets[bucket].name]["public_status"] = buckets[
                             bucket

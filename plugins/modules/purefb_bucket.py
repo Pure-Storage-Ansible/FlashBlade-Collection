@@ -87,10 +87,11 @@ options:
   retention_mode:
     description:
      - The retention mode used to apply locks on new objects if none is specified by the S3 client
+     - I(safemode) is available if global Per-Bucket Safemode config is enabled
      - Use "" to clear
      - Once set to I(compliance) this can only be changed by contacting Pure Technical Services
     type: str
-    choices: [ "compliance", "governance", "" ]
+    choices: [ "compliance", "governance", "safemode", "" ]
     version_added: '1.12.0'
   object_lock_enabled:
     description:
@@ -478,7 +479,7 @@ def update_bucket(module, blade, bucket):
                 and module.params["retention_mode"] != "compliance"
             ):
                 module.warn(
-                    "Changing retention_mode can onlt be performed by Pure Technical Support."
+                    "Changing retention_mode can only be performed by Pure Technical Support."
                 )
         if not module.params["object_lock_enabled"] and getattr(
             bucket_detail.object_lock_config, "enabled", False
@@ -640,7 +641,9 @@ def main():
                 type="str",
                 choices=["classic", "multi-site-writable"],
             ),
-            retention_mode=dict(type="str", choices=["compliance", "governance", ""]),
+            retention_mode=dict(
+                type="str", choices=["compliance", "governance", "safemode", ""]
+            ),
             default_retention=dict(type="str"),
             retention_lock=dict(
                 type="str", choices=["ratcheted", "unlocked"], default="unlocked"
