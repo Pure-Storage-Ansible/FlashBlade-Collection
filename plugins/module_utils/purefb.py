@@ -32,6 +32,12 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+HAS_URLLIB3 = True
+try:
+    import urllib3
+except ImportError:
+    HAS_URLLIB3 = False
+
 HAS_DISTRO = True
 try:
     import distro
@@ -60,6 +66,8 @@ API_AGENT_VERSION = "1.5"
 
 def get_blade(module):
     """Return System Object or Fail"""
+    if HAS_URLLIB3 and module.params["disable_warnings"]:
+        urllib3.disable_warnings()
     if HAS_DISTRO:
         user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
             "base": USER_AGENT_BASE,
@@ -114,6 +122,8 @@ def get_blade(module):
 
 def get_system(module):
     """Return System Object or Fail"""
+    if module.params["disable_warnings"]:
+        urllib3.disable_warnings()
     if HAS_DISTRO:
         user_agent = "%(base)s %(class)s/%(version)s (%(platform)s)" % {
             "base": USER_AGENT_BASE,
@@ -167,4 +177,5 @@ def purefb_argument_spec():
     return dict(
         fb_url=dict(),
         api_token=dict(no_log=True),
+        disable_warnings=dict(type="bool", default=False),
     )

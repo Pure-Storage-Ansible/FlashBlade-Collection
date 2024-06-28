@@ -30,6 +30,12 @@ options:
     description:
       - FlashBlade API token for admin privileged user.
     type: str
+  disable_warnings:
+    description:
+    - Disable insecure certificate warnings
+    type: bool
+    default: false
+    version_added: '1.18.0'
 notes:
   - This module requires the C(purity_fb) Python library
   - You must set C(PUREFB_URL) and C(PUREFB_API) environment variables
@@ -39,4 +45,5 @@ requirements:
   - purity_fb >= 1.9
   - netaddr
   - pytz
+  - urllib3
 """
