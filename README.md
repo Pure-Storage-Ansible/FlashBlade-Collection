@@ -23,6 +23,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 - pytz
 - distro
 - pycountry
+- urllib3
 
 ## Installation
 
