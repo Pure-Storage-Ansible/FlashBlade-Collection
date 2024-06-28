@@ -609,7 +609,7 @@ def generate_capacity_dict(module, blade):
         total_cap = list(blade2.get_arrays_space().items)[0]
         file_cap = list(blade2.get_arrays_space(type="file-system").items)[0]
         object_cap = list(blade2.get_arrays_space(type="object-store").items)[0]
-        capacity_info["total"] = total_cap.space.capacity
+        capacity_info["total"] = total_cap.capacity
         capacity_info["aggregate"] = {
             "data_reduction": total_cap.space.data_reduction,
             "snapshots": total_cap.space.snapshots,
