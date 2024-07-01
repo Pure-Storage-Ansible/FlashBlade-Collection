@@ -911,7 +911,7 @@ def modify_fs(module, blade):
         change_ca = False
         if (
             module.params["continuous_availability"]
-            != current_fs.continuous_availability_enabled
+            != current_fs.smb.continuous_availability_enabled
         ):
             change_ca = True
             if not module.check_mode:
