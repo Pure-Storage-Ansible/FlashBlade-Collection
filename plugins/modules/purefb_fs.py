@@ -377,10 +377,9 @@ def create_fs(module, blade):
                             if module.params["safeguard_acls"] and (
                                 module.params["access_control"]
                                 in ["mode-bits", "independent"]
-                                or module.params["smb"]
                             ):
                                 module.fail_json(
-                                    msg="ACL Safeguarding cannot be enabled with SMB or if access_control is mode-bits or independent."
+                                    msg="ACL Safeguarding cannot be enabled if access_control is mode-bits or independent."
                                 )
                             fs_obj = FileSystem(
                                 name=module.params["name"],
@@ -994,7 +993,7 @@ def _delete_fs(module, blade):
             ),
         )
 
-    blade.file_systems.delete_file_systems(module.params["name"])
+    blade.file_systems.delete_file_systems(name=module.params["name"])
 
 
 def delete_fs(module, blade):
