@@ -205,6 +205,7 @@ options:
     - The group ownership for new files and directories in a file system
     type: str
     choices: [ 'creator', 'parent-directory' ]
+    default: creator
     version_added: "1.17.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
@@ -913,44 +914,42 @@ def modify_fs(module, blade):
             != current_fs.smb.continuous_availability_enabled
         ):
             change_ca = True
-            if not module.check_mode:
-                ca_attr = FileSystemPatch(
-                    smb=Smb(
-                        continuous_availability_enabled=module.params[
-                            "continuous_availability"
-                        ]
+        if not module.check_mode and change_ca:
+            ca_attr = FileSystemPatch(
+                smb=Smb(
+                    continuous_availability_enabled=module.params[
+                        "continuous_availability"
+                    ]
+                )
+            )
+            res = system.patch_file_systems(
+                names=[module.params["name"]], file_system=ca_attr
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to modify continuous availability for "
+                    "filesystem {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
                     )
                 )
-                res = system.patch_file_systems(
-                    names=[module.params["name"]], file_system=ca_attr
-                )
-                if res.status_code != 200:
-                    module.fail_json(
-                        msg="Failed to modify continuous availability for "
-                        "filesystem {0}. Error: {1}".format(
-                            module.params["name"],
-                            res.errors[0].message,
-                        )
-                    )
     if GOWNER_API_VERSION in api_version:
         change_go = False
         if module.params["group_ownership"] != current_fs.group_ownership:
             change_go = True
-            if not module.check_mode:
-                go_attr = FileSystemPatch(
-                    group_ownership=module.params["group_ownership"]
-                )
-                res = system.patch_file_systems(
-                    names=[module.params["name"]], file_system=go_attr
-                )
-                if res.status_code != 200:
-                    module.fail_json(
-                        msg="Failed to modify group ownership for "
-                        "filesystem {0}. Error: {1}".format(
-                            module.params["name"],
-                            res.errors[0].message,
-                        )
+        if not module.check_mode and change_go:
+            go_attr = FileSystemPatch(group_ownership=module.params["group_ownership"])
+            res = system.patch_file_systems(
+                names=[module.params["name"]], file_system=go_attr
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to modify group ownership for "
+                    "filesystem {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
                     )
+                )
 
     module.exit_json(
         changed=(changed or change_export or change_share or change_ca or change_go)
@@ -1099,7 +1098,9 @@ def main():
             smb_aclmode=dict(
                 type="str", default="shared", choices=["shared", "native"]
             ),
-            group_ownership=dict(choices=["creator", "parent-directory"]),
+            group_ownership=dict(
+                choices=["creator", "parent-directory"], default="creator"
+            ),
             policy_state=dict(default="present", choices=["present", "absent"]),
             state=dict(default="present", choices=["present", "absent"]),
             delete_link=dict(default=False, type="bool"),
