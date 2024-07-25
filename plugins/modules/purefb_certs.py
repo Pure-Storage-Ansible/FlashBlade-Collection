@@ -330,22 +330,38 @@ def delete_cert(module, blade):
 def import_cert(module, blade, reimport=False):
     """Import a CA provided SSL certificate"""
     changed = True
-    certificate = flashblade.CertificatePost(
-        certificate=module.params["certificate"],
-        intermediate_certificate=module.params["intermeadiate_cert"],
-        key_size=module.params["key_size"],
-        passphrase=module.params["passphrase"],
-        status="imported",
-    )
     if not module.check_mode:
         if reimport:
+            certificate = flashblade.CertificatePatch(
+                certificate=module.params["certificate"],
+                intermediate_certificate=module.params["intermeadiate_cert"],
+                passphrase=module.params["passphrase"],
+                private_key=module.params["key"],
+            )
             res = blade.patch_certificates(
                 names=[module.params["name"]], certificate=certificate
             )
         else:
+            certificate = flashblade.CertificatePost(
+                certificate=module.params["certificate"],
+                intermediate_certificate=module.params["intermeadiate_cert"],
+                key_size=module.params["key_size"],
+                passphrase=module.params["passphrase"],
+                status="imported",
+            )
             res = blade.post_certificates(
                 names=[module.params["name"]], certificate=certificate
             )
+            certificate = flashblade.CertificatePatch(
+                certificate=module.params["certificate"],
+                intermediate_certificate=module.params["intermeadiate_cert"],
+                passphrase=module.params["passphrase"],
+                private_key=module.params["key"],
+            )
+            if res.status_code == 200:
+                res = blade.patch_certificates(
+                    names=[module.params["name"]], certificate=certificate
+                )
         if res.status_code != 200:
             module.fail_json(
                 msg="Importing Certificate failed. Error: {0}".format(
