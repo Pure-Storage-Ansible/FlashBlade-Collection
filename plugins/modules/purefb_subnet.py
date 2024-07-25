@@ -100,7 +100,8 @@ EXAMPLES = """
     name: foo
     state: absent
     fb_url: 10.10.10.2
-    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641"""
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+"""
 
 RETURN = """
 """

@@ -260,8 +260,8 @@ EXAMPLES = """
   purestorage.flashblade.purefb_fs:
     name: foo
     size: 2T
-    nfsv3 : false
-    nfsv4 : true
+    nfsv3: false
+    nfsv4: true
     user_quota: 10K
     group_quota: 25M
     nfs_rules: '10.21.200.0/24(ro)'
@@ -271,7 +271,8 @@ EXAMPLES = """
     smb: true
     state: present
     fb_url: 10.10.10.2
-    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641"""
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+"""
 
 RETURN = """
 """

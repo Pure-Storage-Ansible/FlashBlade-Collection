@@ -40,7 +40,6 @@ EXAMPLES = r"""
 - name: show default information
   debug:
     msg: "{{ blade_info['purefb_info'] }}"
-
 """
 
 RETURN = r"""
