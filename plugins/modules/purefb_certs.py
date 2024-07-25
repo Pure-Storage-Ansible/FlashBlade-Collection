@@ -333,7 +333,6 @@ def import_cert(module, blade, reimport=False):
     certificate = flashblade.CertificatePost(
         certificate=module.params["certificate"],
         intermediate_certificate=module.params["intermeadiate_cert"],
-        key=module.params["key"],
         key_size=module.params["key_size"],
         passphrase=module.params["passphrase"],
         status="imported",
@@ -499,7 +498,7 @@ def main():
     if not HAS_PYCOUNTRY:
         module.fail_json(msg="pycountry sdk is required for this module")
 
-    email_pattern = r"^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$"
+    email_pattern = r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,6}$"
     blade = get_system(module)
 
     if module.params["email"]:
