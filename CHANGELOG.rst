@@ -5,6 +5,26 @@ Purestorage.Flashblade Release Notes
 .. contents:: Topics
 
 
+v1.18.0
+=======
+
+Minor Changes
+-------------
+
+- all - add ``disable_warnings`` parameters
+- purefb_bucket - Add ``safemode`` option for ``retention_mode``
+- purefb_certs - Update module to use REST v2 code. This brings in new parameters for certificate management.
+- purefb_fs - Set default for group_ownership to be creator
+- purefb_ra - Add ``duration`` option from REST 2.14
+- purefb_ra - Update to REST2
+
+Bugfixes
+--------
+
+- purefb_fs - Fix conflict with SMB mode and ACL safeguarding
+- purefb_fs - Fix error checking for SMB parameter in non-SMB filesystem
+- purefb_info - Fix space reporting issue
+
 v1.17.0
 =======
 

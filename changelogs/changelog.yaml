@@ -182,6 +182,29 @@ releases:
     - 273_add_nap.yaml
     - 274_fan_in.yaml
     release_date: '2024-04-01'
+  1.18.0:
+    changes:
+      bugfixes:
+      - purefb_fs - Fix conflict with SMB mode and ACL safeguarding
+      - purefb_fs - Fix error checking for SMB parameter in non-SMB filesystem
+      - purefb_info - Fix space reporting issue
+      minor_changes:
+      - all - add ``disable_warnings`` parameters
+      - purefb_bucket - Add ``safemode`` option for ``retention_mode``
+      - purefb_certs - Update module to use REST v2 code. This brings in new parameters
+        for certificate management.
+      - purefb_fs - Set default for group_ownership to be creator
+      - purefb_ra - Add ``duration`` option from REST 2.14
+      - purefb_ra - Update to REST2
+    fragments:
+    - 279_update_certs_v2.yaml
+    - 281_update_ra.yaml
+    - 285_fix_capacity_bug.yaml
+    - 286_disable_warningns.yaml
+    - 287_safemode.yaml
+    - 289_fix_smb_ca.yaml
+    - 291_smb.yaml
+    release_date: '2024-07-25'
   1.3.0:
     changes:
       bugfixes:
