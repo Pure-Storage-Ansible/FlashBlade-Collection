@@ -518,7 +518,7 @@ EXAMPLES = r"""
     state: copy
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-- name:  Rename an NFS Export Policy
+- name: Rename an NFS Export Policy
   purestorage.flashblade.purefb_policy:
     name: old_name
     policy_type: nfs
