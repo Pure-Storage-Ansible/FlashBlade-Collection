@@ -212,6 +212,7 @@ def delete_ds(module, blade):
             names=[module.params["dstype"]]
         )
         try:
+            dir_service = DirectoryService()  # Initialize for pylint
             if module.params["dstype"] == "management":
                 if dirserv.items[0].uris:
                     dir_service = DirectoryService(
@@ -346,6 +347,7 @@ def create_ds(module, blade):
     changed = True
     if not module.check_mode:
         try:
+            dir_service = DirectoryService()  # Initialize for pylint
             if module.params["dstype"] == "management":
                 if module.params["uri"]:
                     dir_service = DirectoryService(
