@@ -3051,6 +3051,7 @@ def main():
                 )
             copy_os_policy_rule(module, blade)
     elif module.params["policy_type"] == "nfs":
+        new_policy = None
         if NFS_POLICY_API_VERSION not in versions:
             module.fail_json(
                 msg=(
