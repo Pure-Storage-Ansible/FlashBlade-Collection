@@ -61,7 +61,7 @@ RETURN = r"""
 
 HAS_PYPURECLIENT = True
 try:
-    from pypureclient import Support
+    from pypureclient.flashblade import Support
 except ImportError:
     HAS_PYPURECLIENT = False
 
