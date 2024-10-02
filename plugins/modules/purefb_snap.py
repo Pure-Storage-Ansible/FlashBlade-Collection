@@ -41,12 +41,12 @@ options:
     choices: [ absent, present, restore ]
     default: present
     type: str
-  targets:
+  target:
+    aliases: [ targets ]
     description:
     - Name of target to replicate snapshot to.
     - This is only applicable when I(now) is B(true)
-    type: list
-    elements: str
+    type: str
     version_added: "1.7.0"
   now:
     description:
@@ -77,8 +77,7 @@ EXAMPLES = r"""
     name: foo
     suffix: ansible
     now: true
-    targets:
-    - bar
+    target: bar
     fb_url: 10.10.10.2
     api_token: e31060a7-21fc-e277-6240-25983c6c4592
     state: present
@@ -122,6 +121,7 @@ RETURN = r"""
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
@@ -133,7 +133,13 @@ try:
 except ImportError:
     HAS_PURITY_FB = False
 
-SNAP_NOW_API = 1.10
+HAS_PYPURECLIENT = True
+try:
+    from pypureclient.flashblade import FileSystemSnapshotPost
+except ImportError:
+    HAS_PYPURECLIENT = False
+
+SNAP_NOW_API = "2.10"
 
 
 def get_fs(module, blade):
@@ -183,39 +189,45 @@ def create_snapshot(module, blade):
     """Create Snapshot"""
     changed = False
     source = []
+    # Special case as we have changed 'target' to be a string not a list of one string
+    # so this provides backwards compatability
+    target = module.params["target"].replace("[", "").replace("'", "").replace("]", "")
     source.append(module.params["name"])
-    try:
-        if module.params["now"]:
-            blade_exists = []
-            connected_blades = blade.array_connections.list_array_connections()
-            for target in range(0, len(module.params["targets"])):
-                blade_exists.append(False)
-                for blade in range(0, len(connected_blades)):
-                    if (
-                        target[target] == connected_blades.items[blade].name
-                        and connected_blades.items[blade].status == "connected"
-                    ):
-                        blade_exists[target] = True
-            if not blade_exists:
+    if module.params["now"]:
+        blade2 = get_system(module)
+        blade_exists = False
+        connected_blades = blade.array_connections.list_array_connections().items
+        for blade in range(0, len(connected_blades)):
+            if (
+                target == connected_blades[blade].remote.name
+                and connected_blades[blade].status == "connected"
+            ):
+                blade_exists = True
+                break
+        if not blade_exists:
+            module.fail_json(msg="Selected target is not a correctly connected system")
+        changed = True
+        if not module.check_mode:
+            res = blade2.post_file_system_snapshots(
+                source_names=source,
+                send=True,
+                targets=[target],
+                file_system_snapshot=FileSystemSnapshotPost(
+                    suffix=module.params["suffix"]
+                ),
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Not all selected targets are correctly connected blades"
+                    msg="Failed to create remote snapshot. Error: {0}".format(
+                        res.errors[0].message
+                    )
                 )
-            changed = True
-            if not module.check_mode:
-                blade.file_system_snapshots.create_file_system_snapshots(
-                    sources=source,
-                    send=True,
-                    targets=module.params["targets"],
-                    suffix=SnapshotSuffix(module.params["suffix"]),
-                )
-        else:
-            changed = True
-            if not module.check_mode:
-                blade.file_system_snapshots.create_file_system_snapshots(
-                    sources=source, suffix=SnapshotSuffix(module.params["suffix"])
-                )
-    except Exception:
-        changed = False
+    else:
+        changed = True
+        if not module.check_mode:
+            blade.file_system_snapshots.create_file_system_snapshots(
+                sources=source, suffix=SnapshotSuffix(module.params["suffix"])
+            )
     module.exit_json(changed=changed)
 
 
@@ -308,19 +320,21 @@ def main():
             name=dict(required=True),
             suffix=dict(type="str"),
             now=dict(type="bool", default=False),
-            targets=dict(type="list", elements="str"),
+            target=dict(type="str", aliases=["targets"]),
             eradicate=dict(default="false", type="bool"),
             state=dict(default="present", choices=["present", "absent", "restore"]),
         )
     )
 
-    required_if = [["now", True, ["targets"]]]
+    required_if = [["now", True, ["target"]]]
     module = AnsibleModule(
         argument_spec, required_if=required_if, supports_check_mode=True
     )
 
     if not HAS_PURITY_FB:
         module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     if module.params["suffix"] is None:
         suffix = "snap-" + str(
@@ -338,6 +352,8 @@ def main():
                 SNAP_NOW_API
             )
         )
+    if SNAP_NOW_API in versions and not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
     filesystem = get_fs(module, blade)
     snap = get_fssnapshot(module, blade)
 
