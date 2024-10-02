@@ -180,6 +180,7 @@ def generate_default_dict(module, blade):
     if MIN_32_API in api_version:
         blade = get_system(module)
         blade_info = list(blade.get_arrays().items)[0]
+        default_info["syslog_servers"] = len(blade.get_syslog_servers().items)
         default_info["object_store_virtual_hosts"] = len(
             blade.get_object_store_virtual_hosts().items
         )
@@ -337,7 +338,7 @@ def generate_perf_dict(blade):
     return perf_info
 
 
-def generate_config_dict(blade):
+def generate_config_dict(module, blade):
     config_info = {}
     config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
     config_info["smtp"] = blade.smtp.list_smtp().items[0].to_dict()
@@ -382,6 +383,16 @@ def generate_config_dict(blade):
             )
         except Exception:
             config_info["certificate_groups"] = ""
+    if RA_DURATION_API_VERSION in api_version:
+        config_info["syslog_servers"] = {}
+        bladev2 = get_system(module)
+        syslog_servers = list(bladev2.get_syslog_servers().items)
+        for server in range(0, len(syslog_servers)):
+            server_name = syslog_servers[server].name
+            config_info["syslog_servers"][server_name] = {
+                "uri": syslog_servers[server].uri,
+                "services": syslog_servers[server].services,
+            }
     if REPLICATION_API_VERSION in api_version:
         config_info["snmp_agents"] = {}
         snmp_agents = blade.snmp_agents.list_snmp_agents()
@@ -1397,7 +1408,7 @@ def main():
     if "performance" in subset or "all" in subset:
         info["performance"] = generate_perf_dict(blade)
     if "config" in subset or "all" in subset:
-        info["config"] = generate_config_dict(blade)
+        info["config"] = generate_config_dict(module, blade)
     if "capacity" in subset or "all" in subset:
         info["capacity"] = generate_capacity_dict(module, blade)
     if "lags" in subset or "all" in subset:
