@@ -202,6 +202,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
+CERT_TYPE_VERSION = "2.15"
+
+
 def update_cert(module, blade):
     """Update existing SSL Certificate"""
     changed = False
@@ -287,18 +290,33 @@ def update_cert(module, blade):
 
 def create_cert(module, blade):
     changed = True
-    certificate = flashblade.CertificatePost(
-        common_name=module.params["common_name"],
-        country=module.params["country"],
-        email=module.params["email"],
-        key_size=module.params["key_size"],
-        locality=module.params["locality"],
-        organization=module.params["organization"],
-        organizational_unit=module.params["org_unit"],
-        state=module.params["province"],
-        status="self-signed",
-        days=module.params["days"],
-    )
+    if CERT_TYPE_VERSION in list(blade.get_versions().items):
+        certificate = flashblade.CertificatePost(
+            certificate_type="array",
+            common_name=module.params["common_name"],
+            country=module.params["country"],
+            email=module.params["email"],
+            key_size=module.params["key_size"],
+            locality=module.params["locality"],
+            organization=module.params["organization"],
+            organizational_unit=module.params["org_unit"],
+            state=module.params["province"],
+            status="self-signed",
+            days=module.params["days"],
+        )
+    else:
+        certificate = flashblade.CertificatePost(
+            common_name=module.params["common_name"],
+            country=module.params["country"],
+            email=module.params["email"],
+            key_size=module.params["key_size"],
+            locality=module.params["locality"],
+            organization=module.params["organization"],
+            organizational_unit=module.params["org_unit"],
+            state=module.params["province"],
+            status="self-signed",
+            days=module.params["days"],
+        )
     if not module.check_mode:
         res = blade.post_certificates(
             names=[module.params["name"]], certificate=certificate
@@ -343,13 +361,23 @@ def import_cert(module, blade, reimport=False):
                 names=[module.params["name"]], certificate=certificate
             )
         else:
-            certificate = flashblade.CertificatePost(
-                certificate=module.params["certificate"],
-                intermediate_certificate=module.params["intermediate_cert"],
-                key_size=module.params["key_size"],
-                passphrase=module.params["passphrase"],
-                status="imported",
-            )
+            if CERT_TYPE_VERSION in list(blade.get_versions().items):
+                certificate = flashblade.CertificatePost(
+                    certificate_type="external",
+                    certificate=module.params["certificate"],
+                    intermediate_certificate=module.params["intermediate_cert"],
+                    key_size=module.params["key_size"],
+                    passphrase=module.params["passphrase"],
+                    status="imported",
+                )
+            else:
+                certificate = flashblade.CertificatePost(
+                    certificate=module.params["certificate"],
+                    intermediate_certificate=module.params["intermediate_cert"],
+                    key_size=module.params["key_size"],
+                    passphrase=module.params["passphrase"],
+                    status="imported",
+                )
             res = blade.post_certificates(
                 names=[module.params["name"]], certificate=certificate
             )
