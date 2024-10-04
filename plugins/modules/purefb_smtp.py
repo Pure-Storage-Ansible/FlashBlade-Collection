@@ -34,6 +34,13 @@ options:
     - Domain name for alert messages
     required: true
     type: str
+  encryption:
+    description:
+    - Enforces an encryption mode when sending alert email messages.
+    - Use "" to clear.
+    type: str
+    choices: [ "starttls", "" ]
+    version_added: 1.19.0
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -42,6 +49,7 @@ EXAMPLES = r"""
 - name: Configure SMTP settings
   purestorage.flashblade.purefb_smtp:
     host: hostname
+    encryption: starttls
     domain: xyz.com
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
@@ -50,50 +58,55 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import Smtp
+    from pypureclient.flashblade import SmtpServer
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
-MIN_REQUIRED_API_VERSION = "1.6"
+SMTP_ENCRYPT_API_VERSION = "2.15"
 
 
 def set_smtp(module, blade):
     """Configure SMTP settings"""
     changed = False
-    current_smtp = blade.smtp.list_smtp().items[0]
-    if module.params["host"] and module.params["host"] != current_smtp.relay_host:
-        smtp_settings = Smtp(relay_host=module.params["host"])
+    current_smtp = list(blade.get_smtp_servers(names=["management"]).items)[0]
+    relay_host = current_smtp.relay_host
+    domain = current_smtp.sender_domain
+    encrypt = current_smtp.encryption_mode
+    if encrypt is None:
+        encrypt = ""
+    if module.params["host"] and module.params["host"] != relay_host:
+        relay_host = module.params["host"]
         changed = True
-        if not module.check_mode:
-            try:
-                blade.smtp.update_smtp(smtp_settings=smtp_settings)
-            except Exception:
-                module.fail_json(msg="Configuring SMTP relay host failed")
-    elif current_smtp.relay_host and not module.params["host"]:
-        smtp_settings = Smtp(relay_host="")
+    if module.params["domain"] and module.params["domain"] != domain:
+        domain = module.params["domain"]
         changed = True
-        if not module.check_mode:
-            try:
-                blade.smtp.update_smtp(smtp_settings=smtp_settings)
-            except Exception:
-                module.fail_json(msg="Configuring SMTP relay host failed")
-    if module.params["domain"] != current_smtp.sender_domain:
-        smtp_settings = Smtp(sender_domain=module.params["domain"])
+    if (
+        module.params["encryption"] is not None
+        and module.params["encryption"] != encrypt
+    ):
+        encrypt = module.params["encryption"]
         changed = True
-        if not module.check_mode:
-            try:
-                blade.smtp.update_smtp(smtp_settings=smtp_settings)
-            except Exception:
-                module.fail_json(msg="Configuring SMTP sender domain failed")
+    if changed and not module.check_mode:
+        res = blade.patch_smtp_servers(
+            smtp=SmtpServer(
+                relay_host=relay_host, sender_domain=domain, encryption_mode=encrypt
+            )
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to set SMTP configuration. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -103,18 +116,18 @@ def main():
         dict(
             host=dict(type="str"),
             domain=dict(type="str", required=True),
+            encryption=dict(type="str", choices=["starttls", ""]),
         )
     )
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
-
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb SDK is required for this module")
+    blade = get_system(module)
+    api_version = list(blade.get_versions().items)
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client SDK is required for this module")
+    if SMTP_ENCRYPT_API_VERSION not in api_version and module.params["encryption_mode"]:
+        module.fail_json(msg="Purity//FB must be upgraded to support encryption_mode.")
 
     set_smtp(module, blade)
     module.exit_json(changed=False)

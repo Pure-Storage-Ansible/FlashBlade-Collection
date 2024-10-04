@@ -113,6 +113,7 @@ SPACE_API_VERSION = "2.11"
 PUBLIC_API_VERSION = "2.12"
 NAP_API_VERSION = "2.13"
 RA_DURATION_API_VERSION = "2.14"
+SMTP_ENCRYPT_API_VERSION = "2.15"
 
 
 def _millisecs_to_time(millisecs):
@@ -340,8 +341,13 @@ def generate_perf_dict(blade):
 
 def generate_config_dict(module, blade):
     config_info = {}
+    api_version = blade.api_version.list_versions().versions
     config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
-    config_info["smtp"] = blade.smtp.list_smtp().items[0].to_dict()
+    if SMTP_ENCRYPT_API_VERSION in api_version:
+        blade = get_system(module)
+        config_info["smtp"] = list(blade.smtp.get_smtp_servers().items)
+    else:
+        config_info["smtp"] = blade.smtp.list_smtp().items[0].to_dict()
     try:
         config_info["alert_watchers"] = (
             blade.alert_watchers.list_alert_watchers().items[0].to_dict()
