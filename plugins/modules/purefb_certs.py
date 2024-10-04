@@ -488,7 +488,7 @@ def main():
             key_size=dict(type="int", default=2048, choices=[1024, 2048, 4096]),
             certificate=dict(type="str", no_log=True, aliases=["contents"]),
             intermediate_cert=dict(
-                type="str", no_log=True, aliases=["intermediate_cert"]
+                type="str", no_log=True, aliases=["intermeadiate_cert"]
             ),
             key=dict(type="str", no_log=True, aliases=["private_key"]),
             export_file=dict(type="str"),
