@@ -102,7 +102,8 @@ options:
     - A valid signed certicate in PEM format (Base64 encoded)
     - Includes the "-----BEGIN CERTIFICATE-----" and "-----END CERTIFICATE-----" lines
     - Does not exceed 3000 characters in length
-  intermeadiate_cert:
+  intermediate_cert:
+    aliases: [ intermeadiate_cert ]
     type: str
     description:
     - Intermeadiate certificate provided by the CA
@@ -334,7 +335,7 @@ def import_cert(module, blade, reimport=False):
         if reimport:
             certificate = flashblade.CertificatePatch(
                 certificate=module.params["certificate"],
-                intermediate_certificate=module.params["intermeadiate_cert"],
+                intermediate_certificate=module.params["intermediate_cert"],
                 passphrase=module.params["passphrase"],
                 private_key=module.params["key"],
             )
@@ -344,7 +345,7 @@ def import_cert(module, blade, reimport=False):
         else:
             certificate = flashblade.CertificatePost(
                 certificate=module.params["certificate"],
-                intermediate_certificate=module.params["intermeadiate_cert"],
+                intermediate_certificate=module.params["intermediate_cert"],
                 key_size=module.params["key_size"],
                 passphrase=module.params["passphrase"],
                 status="imported",
@@ -354,7 +355,7 @@ def import_cert(module, blade, reimport=False):
             )
             certificate = flashblade.CertificatePatch(
                 certificate=module.params["certificate"],
-                intermediate_certificate=module.params["intermeadiate_cert"],
+                intermediate_certificate=module.params["intermediate_cert"],
                 passphrase=module.params["passphrase"],
                 private_key=module.params["key"],
             )
@@ -486,7 +487,7 @@ def main():
             email=dict(type="str"),
             key_size=dict(type="int", default=2048, choices=[1024, 2048, 4096]),
             certificate=dict(type="str", no_log=True, aliases=["contents"]),
-            intermeadiate_cert=dict(type="str", no_log=True),
+            intermediate_cert=dict(type="str", no_log=True, aliases=["intermediate_cert"]),
             key=dict(type="str", no_log=True, aliases=["private_key"]),
             export_file=dict(type="str"),
             passphrase=dict(type="str", no_log=True),
