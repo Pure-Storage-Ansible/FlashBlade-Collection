@@ -52,7 +52,7 @@ options:
     - Type of policy
     default: snapshot
     type: str
-    choices: [ snapshot, access, nfs, smb_share, smb_client, network ]
+    choices: [ snapshot, access, nfs, smb_share, smb_client, network, worm ]
     version_added: "1.9.0"
   account:
     description:
@@ -352,6 +352,40 @@ options:
     elements: str
     choices: [ "management-ssh", "management-rest-api", "management-web-ui", "snmp", "local-network-superuser-password-access" ]
     version_added: '1.17.0'
+  max_retention:
+    description:
+      - The maximum retention period of the WORM file system.
+      - Between 1 second and 100 years.
+      - Cannot be less than the I(min_retention).
+      - Valid values are weeks (w), days(d), hours(h), minutes(m) and seconds(s).
+    type: str
+    version_added: '1.19.0'
+  min_retention:
+    description:
+      - The minimum retention period of the WORM file system.
+      - Between 1 second and 100 years.
+      - Cannot be greater than the I(max_retention).
+      - Valid values are weeks (w), days(d), hours(h), minutes(m) and seconds(s).
+    type: str
+    version_added: '1.19.0'
+  default_retention:
+    description:
+      - The retention period used for committing files to WORM status.
+        Will be applied if no access time is provided, or the access time is less than the current server time.
+        Between I(min_retention) and I(max_retention) periods.
+      - Valid values are weeks (w), days(d), hours(h), minutes(m) and seconds(s).
+    type: str
+    version_added: '1.19.0'
+  retention_lock:
+    description:
+      - State of policy attributes after creation.
+      - If set to I(locked) then values of the policy attributes are not allowed to change.
+      - If set to I(locked) then values of the policy attributes can be changed.
+      - Changing from I(unlocked) to I(locked) is allowed, but to change from I(locked) to I(unlocked)
+        will require support from Pure Storage Technical Services.
+    type: str
+    choices: [ locked, unlocked ]
+    version_added: '1.19.0'
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -525,6 +559,15 @@ EXAMPLES = r"""
     rename: new_name
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Create a WORM Data Policy
+  purestorage.flashblade.purefb_policy:
+    name: worm1
+    policy_type: worm
+    default_retention: 5d
+    min_rentetion: 20h
+    max_retention: 1y
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 """
 
 RETURN = r"""
@@ -556,6 +599,7 @@ try:
         ObjectStoreAccessPolicyPost,
         NetworkAccessPolicy,
         NetworkAccessPolicyRule,
+        WormDataPolicy,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
@@ -578,7 +622,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
-
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    convert_time_to_millisecs,
+)
 
 MIN_REQUIRED_API_VERSION = "1.9"
 SNAPSHOT_POLICY_API_VERSION = "2.1"
@@ -588,6 +634,7 @@ NFS_RENAME_API_VERSION = "2.4"
 SMB_POLICY_API_VERSION = "2.10"
 SMB_ENCRYPT_API_VERSION = "2.11"
 NET_POLICY_API_VERSION = "2.13"
+WORM_POLICY_API_VERSION = "2.15"
 
 
 def _convert_to_millisecs(hour):
@@ -1121,6 +1168,36 @@ def create_network_access_policy(module, blade):
     module.exit_json(changed=changed)
 
 
+def create_worm_data_policy(module, blade):
+    """Create WORM Data Policy"""
+    changed = True
+    if not module.check_mode:
+        min_retention = convert_time_to_millisecs(module.params["min_retention"])
+        max_retention = convert_time_to_millisecs(module.params["max_retention"])
+        default_retention = convert_time_to_millisecs(
+            module.params["default_retention"]
+        )
+        res = blade.post_worm_data_policies(
+            policy=WormDataPolicy(
+                enabled=module.params["enabled"],
+                mode="compliance",
+                min_retention=min_retention,
+                max_retention=max_retention,
+                default_retention=default_retention,
+                retention_lock=module.params["retention_lock"],
+            ),
+            names=[module.params["name"]],
+        )
+        if res.status_code != 200:
+            blade.delete_worm_data_policies(names=[module.params["name"]])
+            module.fail_json(
+                msg="Failed to create WORM data policy {0}.Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+    module.exit_json(changed=changed)
+
+
 def update_smb_client_policy(module, blade):
     """Update SMB Client Policy Rule"""
 
@@ -1639,6 +1716,29 @@ def delete_network_access_policy(module, blade):
     module.exit_json(changed=changed)
 
 
+def delete_worm_data_policy(module, blade):
+    """Delete WORM data Policy"""
+
+    changed = True
+    if not module.check_mode:
+        res = blade.delete_worm_data_policies(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to delete WORM data policy {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+    module.exit_json(changed=changed)
+
+
+def rename_worm_data_policy(module, blade):
+    """Rename WORM Data Policy"""
+
+    changed = False
+    module.warn("Renaming of WORM Data policies is not supported")
+    module.exit_json(changed=changed)
+
+
 def rename_network_access_policy(module, blade):
     """Rename Network Access Policy"""
 
@@ -1656,7 +1756,7 @@ def rename_network_access_policy(module, blade):
                     res.errors[0].message,
                 )
             )
-        module.exit_json(changed=changed)
+    module.exit_json(changed=changed)
 
 
 def rename_nfs_policy(module, blade):
@@ -1676,7 +1776,82 @@ def rename_nfs_policy(module, blade):
                     res.errors[0].message,
                 )
             )
-        module.exit_json(changed=changed)
+    module.exit_json(changed=changed)
+
+
+def update_worm_data_policy(module, blade):
+    """Update WORM data policy"""
+
+    changed = False
+    current_policy_config = list(
+        blade.get_worm_data_policies(names=[module.params["name"]]).items
+    )[0]
+    current_policy = {
+        "default_retention": current_policy_config.default_retention,
+        "enabled": current_policy_config.enabled,
+        "max_retention": current_policy_config.max_retention,
+        "min_retention": current_policy_config.min_retention,
+        "retention_lock": current_policy_config.retention_lock,
+    }
+    new_policy = {
+        "default_retention": current_policy_config.default_retention,
+        "enabled": current_policy_config.enabled,
+        "max_retention": current_policy_config.max_retention,
+        "min_retention": current_policy_config.min_retention,
+        "retention_lock": current_policy_config.retention_lock,
+    }
+    if module.params["enabled"] != current_policy["enabled"]:
+        new_policy["enabled"] = module.params["enabled"]
+    if (
+        module.params["retention_lock"]
+        and module.params["retention_lock"] != current_policy["retention_lock"]
+    ):
+        new_policy["retention_lock"] = module.params["retention_lock"]
+    if (
+        module.params["default_retention"]
+        and convert_time_to_millisecs(module.params["default_retention"])
+        != current_policy["default_retention"]
+    ):
+        new_policy["default_retention"] = convert_time_to_millisecs(
+            module.params["default_retention"]
+        )
+    if (
+        module.params["max_retention"]
+        and convert_time_to_millisecs(module.params["max_retention"])
+        != current_policy["max_retention"]
+    ):
+        new_policy["max_retention"] = convert_time_to_millisecs(
+            module.params["max_retention"]
+        )
+    if (
+        module.params["min_retention"]
+        and convert_time_to_millisecs(module.params["min_retention"])
+        != current_policy["min_retention"]
+    ):
+        new_policy["min_retention"] = convert_time_to_millisecs(
+            module.params["min_retention"]
+        )
+    if new_policy != current_policy:
+        changed = True
+        if not module.check_mode:
+            worm_policy = WormDataPolicy(
+                enabled=new_policy["enabled"],
+                retention_lock=new_policy["retention_lock"],
+                min_retention=new_policy["min_retention"],
+                max_retention=new_policy["max_retention"],
+                default_retention=new_policy["default_retention"],
+            )
+            res = blade.patch_worm_data_policies(
+                names=[module.params["name"]], policy=worm_policy
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update WORM data policy {0}. Error: {1}".format(
+                        module.params["name"],
+                        res.errors[0].message,
+                    )
+                )
+    module.exit_json(changed=changed)
 
 
 def update_nfs_policy(module, blade):
@@ -2869,6 +3044,7 @@ def main():
                     "smb_share",
                     "smb_client",
                     "network",
+                    "worm",
                 ],
             ),
             enabled=dict(type="bool", default=True),
@@ -2971,6 +3147,10 @@ def main():
                     "local-network-superuser-password-access",
                 ],
             ),
+            default_retention=dict(type="str"),
+            min_retention=dict(type="str"),
+            max_retention=dict(type="str"),
+            retention_lock=dict(type="str", choices=["locked", "unlocked"]),
         )
     )
 
@@ -3245,6 +3425,54 @@ def main():
             create_network_access_policy(module, blade)
         elif state == "absent" and policy:
             delete_network_access_policy(module, blade)
+    elif module.params["policy_type"] == "worm":
+        if WORM_POLICY_API_VERSION not in versions:
+            module.fail_json(
+                msg=(
+                    "Minimum FlashBlade REST version required: {0}".format(
+                        WORM_POLICY_API_VERSION
+                    )
+                )
+            )
+        if not HAS_PYPURECLIENT:
+            module.fail_json(msg="py-pure-client sdk is required for this module")
+        blade = get_system(module)
+        try:
+            policy = list(
+                blade.get_worm_data_policies(names=[module.params["name"]]).items
+            )[0]
+        except AttributeError:
+            policy = None
+        if module.params["rename"]:
+            try:
+                new_policy = list(
+                    blade.get_worm_data_policies(names=[module.params["rename"]]).items
+                )[0]
+            except AttributeError:
+                new_policy = None
+        if policy and state == "present" and not module.params["rename"]:
+            if module.params["before_rule"]:
+                res = blade.get_worm_data_policies_rules(
+                    policy_names=[module.params["name"]],
+                    names=[
+                        module.params["name"] + "." + str(module.params["before_rule"])
+                    ],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Rule index {0} does not exist.".format(
+                            module.params["before_rule"]
+                        )
+                    )
+            update_worm_data_policy(module, blade)
+        elif (
+            state == "present" and module.params["rename"] and policy and not new_policy
+        ):
+            rename_worm_data_policy(module, blade)
+        elif state == "present" and not policy and not module.params["rename"]:
+            create_worm_data_policy(module, blade)
+        elif state == "absent" and policy:
+            delete_worm_data_policy(module, blade)
     elif SNAPSHOT_POLICY_API_VERSION in versions:
         if not HAS_PYPURECLIENT:
             module.fail_json(msg="py-pure-client sdk is required for this module")
