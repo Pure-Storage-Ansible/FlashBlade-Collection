@@ -248,7 +248,6 @@ def generate_default_dict(module, blade):
             default_info["remote_assist"][
                 "ra_duration"
             ] = ra_info.remote_assist_duration
-
     return default_info
 
 
@@ -341,11 +340,17 @@ def generate_perf_dict(blade):
 
 def generate_config_dict(module, blade):
     config_info = {}
+    bladev2 = get_system(module)
     api_version = blade.api_version.list_versions().versions
     config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
     if SMTP_ENCRYPT_API_VERSION in api_version:
-        blade = get_system(module)
-        config_info["smtp"] = list(blade.smtp.get_smtp_servers().items)
+        snmp_config = list(bladev2.get_smtp_servers().items)[0]
+        config_info["smtp"] = {
+            "relay_host": snmp_config.relay_host,
+            "sender_domain": snmp_config.sender_domain,
+            "encryption_mode": snmp_config.encryption_mode,
+            "name": snmp_config.name,
+        }
     else:
         config_info["smtp"] = blade.smtp.list_smtp().items[0].to_dict()
     try:
@@ -354,7 +359,6 @@ def generate_config_dict(module, blade):
         )
     except Exception:
         config_info["alert_watchers"] = ""
-    api_version = blade.api_version.list_versions().versions
     if HARD_LIMIT_API_VERSION in api_version:
         config_info["array_management"] = (
             blade.directory_services.list_directory_services(names=["management"])
@@ -381,7 +385,6 @@ def generate_config_dict(module, blade):
     )
     config_info["ntp"] = blade.arrays.list_arrays().items[0].ntp_servers
     config_info["ssl_certs"] = blade.certificates.list_certificates().items[0].to_dict()
-    api_version = blade.api_version.list_versions().versions
     if CERT_GROUPS_API_VERSION in api_version:
         try:
             config_info["certificate_groups"] = (
@@ -391,7 +394,6 @@ def generate_config_dict(module, blade):
             config_info["certificate_groups"] = ""
     if RA_DURATION_API_VERSION in api_version:
         config_info["syslog_servers"] = {}
-        bladev2 = get_system(module)
         syslog_servers = list(bladev2.get_syslog_servers().items)
         for server in range(0, len(syslog_servers)):
             server_name = syslog_servers[server].name
@@ -437,6 +439,27 @@ def generate_config_dict(module, blade):
                 config_info["snmp_managers"][mgr_name]["user"] = snmp_managers.items[
                     manager
                 ].v3.user
+    if SMTP_ENCRYPT_API_VERSION in api_version:
+        config_info["saml2sso"] = {}
+        saml2 = list(bladev2.get_sso_saml2_idps().items)
+        if saml2:
+            config_info["saml2sso"] = {
+                "enabled": saml2[0].enabled,
+                "array_url": saml2[0].array_url,
+                "name": saml2[0].name,
+                "idp": {
+                    "url": getattr(saml2[0].idp, "url", None),
+                    "encrypt_enabled": saml2[0].idp.encrypt_assertion_enabled,
+                    "sign_enabled": saml2[0].idp.sign_request_enabled,
+                    "metadata_url": saml2[0].idp.metadata_url,
+                },
+                "sp": {
+                    "decrypt_cred": getattr(
+                        saml2[0].sp.decryption_credential, "name", None
+                    ),
+                    "sign_cred": getattr(saml2[0].sp.signing_credential, "name", None),
+                },
+            }
     return config_info
 
 
