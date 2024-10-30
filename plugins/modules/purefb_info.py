@@ -638,6 +638,7 @@ def generate_capacity_dict(module, blade):
             "available_ratio": total_cap.space.available_ratio,
             "destroyed": total_cap.space.destroyed,
             "destroyed_virtual": total_cap.space.destroyed_virtual,
+            "shared": getattr(total_cap.space, "shared", None),
         }
         capacity_info["file-system"] = {
             "data_reduction": file_cap.space.data_reduction,
@@ -650,6 +651,7 @@ def generate_capacity_dict(module, blade):
             "available_ratio": total_cap.space.available_ratio,
             "destroyed": total_cap.space.destroyed,
             "destroyed_virtual": total_cap.space.destroyed_virtual,
+            "shared": getattr(total_cap.space, "shared", None),
         }
         capacity_info["object-store"] = {
             "data_reduction": object_cap.space.data_reduction,
@@ -662,6 +664,7 @@ def generate_capacity_dict(module, blade):
             "available_ratio": total_cap.space.available_ratio,
             "destroyed": total_cap.space.destroyed,
             "destroyed_virtual": total_cap.space.destroyed_virtual,
+            "shared": getattr(total_cap.space, "shared", None),
         }
     else:
         total_cap = blade.arrays.list_arrays_space()
