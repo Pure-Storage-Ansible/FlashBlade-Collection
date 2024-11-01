@@ -186,6 +186,11 @@ plugins:
       name: purefb_s3user
       namespace: ''
       version_added: 1.0.0
+    purefb_saml:
+      description: Manage FlashBlade SAML2 service and identity providers
+      name: purefb_saml
+      namespace: ''
+      version_added: 1.19.0
     purefb_smtp:
       description: Configure SMTP for Pure Storage FlashBlade
       name: purefb_smtp
@@ -256,4 +261,4 @@ plugins:
   strategy: {}
   test: {}
   vars: {}
-version: 1.18.0
+version: 1.19.0

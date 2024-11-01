@@ -205,6 +205,45 @@ releases:
     - 289_fix_smb_ca.yaml
     - 291_smb.yaml
     release_date: '2024-07-25'
+  1.19.0:
+    changes:
+      bugfixes:
+      - purefb_certs - Fix issue with importing certificates
+      - purefb_certs - Fix parameter mispelling of ``intermeadiate_cert`` to ``intermediate_cert``.
+        Keep original mispelling as an alias.
+      - purefb_ds - Initialize variable correctly
+      - purefb_policy - Initialize variable correctly
+      - purefb_ra - Fix incorrect import statement
+      - purefb_snap - Fix issue with immeadiate remote snapshots not executing
+      minor_changes:
+      - multiple - YAML lint fixes based on updated ``ansible-lint`` version
+      - purefb_info - Add ``time_remaining_status`` to bucket information from REST
+        2.14
+      - purefb_info - Expose SMTP encryption mode
+      - purefb_policy - Add new policy type of ``worm`` which is availble from Purity//FB
+        4.5.0
+      - purefb_smtp - Add encryption mode support from Purity//FB 4.5.0
+      - purefb_snap - Change ``targets`` to ``target` and from ``list`` to ``str``.
+        ``targets`` added as alias and code to ensure existing list in playbooks is
+        translated as a string.
+      - purefb_syslog - Enable ``services`` parameter and also the ability update
+        existing syslog servers from REST 2.14
+    fragments:
+    - 296_yaml_lint.yaml
+    - 297_import_cert.yaml
+    - 299_pylint.yaml
+    - 302_import_fix.yaml
+    - 304_immeadiate_snapshot.yaml
+    - 306_bucket_status.yaml
+    - 307_update_syslog.yaml
+    - 309_param_typo.yaml
+    - 314_worm_policies.yaml
+    - 315_smtp_update.yaml
+    modules:
+    - description: Manage FlashBlade SAML2 service and identity providers
+      name: purefb_saml
+      namespace: ''
+    release_date: '2024-11-01'
   1.3.0:
     changes:
       bugfixes:
