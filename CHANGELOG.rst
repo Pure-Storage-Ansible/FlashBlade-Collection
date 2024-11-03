@@ -4,6 +4,34 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.19.0
+=======
+
+Minor Changes
+-------------
+
+- multiple - YAML lint fixes based on updated ``ansible-lint`` version
+- purefb_info - Add ``time_remaining_status`` to bucket information from REST 2.14
+- purefb_info - Expose SMTP encryption mode
+- purefb_policy - Add new policy type of ``worm`` which is availble from Purity//FB 4.5.0
+- purefb_smtp - Add encryption mode support from Purity//FB 4.5.0
+- purefb_snap - Change ``targets`` to ``target` and from ``list`` to ``str``. ``targets`` added as alias and code to ensure existing list in playbooks is translated as a string.
+- purefb_syslog - Enable ``services`` parameter and also the ability update existing syslog servers from REST 2.14
+
+Bugfixes
+--------
+
+- purefb_certs - Fix issue with importing certificates
+- purefb_certs - Fix parameter mispelling of ``intermeadiate_cert`` to ``intermediate_cert``. Keep original mispelling as an alias.
+- purefb_ds - Initialize variable correctly
+- purefb_policy - Initialize variable correctly
+- purefb_ra - Fix incorrect import statement
+- purefb_snap - Fix issue with immeadiate remote snapshots not executing
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_saml - Manage FlashBlade SAML2 service and identity providers
 
 v1.18.0
 =======
@@ -348,7 +376,6 @@ Release Summary
 
 | Release Date: 2020-08-08
 | This changlelog describes all changes made to the modules and plugins included in this collection since Ansible 2.9.0
-
 
 Major Changes
 -------------
