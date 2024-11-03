@@ -66,8 +66,10 @@ options:
     version_added: '1.10.0'
   quota:
     description:
-      - User quota in M, G, T or P units. This cannot be 0.
-      - This value will override the object store account's default bucket quota.
+      - The effective quota limit applied against the size of the bucket.
+      - User byte quota in B, K, M, G, T or P units.
+      - Range must be between 1 byte and 9.22 exabytes.
+      - Setting to 0 will allow the bucket size to be unlimited.
     type: str
     version_added: '1.12.0'
   hard_limit:
@@ -153,6 +155,25 @@ EXAMPLES = """
 - name: Create new bucket named foo in account bar
   purestorage.flashblade.purefb_bucket:
     name: foo
+    quota: 10G
+    hard_limit: false
+    account: bar
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Update bucket foo in account bar with new quota
+  purestorage.flashblade.purefb_bucket:
+    name: foo
+    quota: 500B
+    hard_limit: true
+    account: bar
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Remove quota limits from bucket named foo in account bar
+  purestorage.flashblade.purefb_bucket:
+    name: foo
+    quota: 0
     account: bar
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
@@ -206,13 +227,15 @@ try:
 except ImportError:
     HAS_PYPURECLIENT = False
 
-from ansible.module_utils.basic import AnsibleModule, human_to_bytes
+from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_blade,
     get_system,
     purefb_argument_spec,
 )
-
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    human_to_bytes,
+)
 
 SEC_PER_DAY = 86400000
 MIN_REQUIRED_API_VERSION = "1.5"
@@ -362,7 +385,7 @@ def create_bucket(module, blade):
                 module.params["block_new_public_policies"] = False
             if not module.params["block_public_access"]:
                 module.params["block_public_access"] = False
-            pac = BucketPatch(
+            pac = flashblade.BucketPatch(
                 public_access_config=flashblade.PublicAccessConfig(
                     block_new_public_policies=module.params[
                         "block_new_public_policies"
@@ -387,7 +410,7 @@ def create_bucket(module, blade):
                 module.params["manual_eradication"] = "disabled"
             else:
                 module.params["manual_eradication"] = "enabled"
-            worm = BucketPatch(
+            worm = flashblade.BucketPatch(
                 eradication_config=flashblade.BucketEradicationConfig(
                     manual_eradication=module.params["manual_eradication"],
                     eradication_mode=module.params["eradication_mode"],
@@ -463,6 +486,7 @@ def update_bucket(module, blade, bucket):
     changed = False
     change_pac = False
     change_worm = False
+    change_quota = False
     bladev2 = get_system(module)
     bucket_detail = list(bladev2.get_buckets(names=[module.params["name"]]).items)[0]
     api_version = blade.api_version.list_versions().versions
@@ -535,6 +559,42 @@ def update_bucket(module, blade, bucket):
                             module.params["name"]
                         )
                     )
+    if QUOTA_VERSION in api_version:
+        current_quota = {
+            "quota": bucket_detail.quota_limit,
+            "hard": bucket_detail.hard_limit_enabled,
+        }
+        new_quota = {
+            "quota": bucket_detail.quota_limit,
+            "hard": bucket_detail.hard_limit_enabled,
+        }
+        if module.params["quota"]:
+            quota = human_to_bytes(module.params["quota"])
+            if module.params["quota"] == "0":
+                quota = None
+                module.params["hard_limit"] = False
+            if quota != current_quota["quota"]:
+                change_quota = True
+                new_quota["quota"] = human_to_bytes(module.params["quota"])
+        if module.params["hard_limit"] != current_quota["hard"]:
+            change_quota = True
+            new_quota["hard"] = module.params["hard_limit"]
+        if current_quota != new_quota and not module.check_mode:
+            if new_quota["quota"] is None:
+                bucket = flashblade.BucketPatch(
+                    quota_limit="",
+                )
+            else:
+                bucket = flashblade.BucketPatch(
+                    quota_limit=str(new_quota["quota"]),
+                    hard_limit_enabled=new_quota["hard"],
+                )
+            res = bladev2.patch_buckets(bucket=bucket, names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update quota settings correctly for bucket {0}. "
+                    "Error: {1}".format(module.params["name"], res.errors[0].message)
+                )
     if MODE_VERSION in api_version:
         current_pac = {
             "block_new_public_policies": bucket_detail.public_access_config.block_new_public_policies,
@@ -612,7 +672,7 @@ def update_bucket(module, blade, bucket):
                     msg="Failed to update Eradication config correctly for bucket {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
-    module.exit_json(changed=(changed or change_pac or change_worm))
+    module.exit_json(changed=(changed or change_pac or change_worm or change_quota))
 
 
 def eradicate_bucket(module, blade):
@@ -699,7 +759,11 @@ def main():
                 module.params["account"]
             )
         )
-
+    if (
+        module.params["quota"]
+        and human_to_bytes(module.params["quota"]) > 9223372036854775807
+    ):
+        module.fail_json(msg="Quota must not exceed 9.22 exabytes")
     if module.params["eradicate"] and state == "present":
         module.warn("Eradicate flag ignored without state=absent")
 

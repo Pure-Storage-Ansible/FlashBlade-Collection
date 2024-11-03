@@ -45,6 +45,8 @@ def human_to_bytes(size):
             bytes *= 1048576
         elif unit == "K":
             bytes *= 1024
+        elif unit == "B":
+            bytes *= 1
         else:
             bytes = 0
     else:
