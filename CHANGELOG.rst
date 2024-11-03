@@ -4,6 +4,14 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.19.1
+=======
+
+Minor Changes
+-------------
+
+- purefb_bucket - Allow bucket quotas to be modified.
+
 v1.19.0
 =======
 
