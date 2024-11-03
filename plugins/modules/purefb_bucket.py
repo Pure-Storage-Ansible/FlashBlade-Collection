@@ -385,7 +385,7 @@ def create_bucket(module, blade):
                 module.params["block_new_public_policies"] = False
             if not module.params["block_public_access"]:
                 module.params["block_public_access"] = False
-            pac = BucketPatch(
+            pac = flashblade.BucketPatch(
                 public_access_config=flashblade.PublicAccessConfig(
                     block_new_public_policies=module.params[
                         "block_new_public_policies"
@@ -410,7 +410,7 @@ def create_bucket(module, blade):
                 module.params["manual_eradication"] = "disabled"
             else:
                 module.params["manual_eradication"] = "enabled"
-            worm = BucketPatch(
+            worm = flashblade.BucketPatch(
                 eradication_config=flashblade.BucketEradicationConfig(
                     manual_eradication=module.params["manual_eradication"],
                     eradication_mode=module.params["eradication_mode"],
