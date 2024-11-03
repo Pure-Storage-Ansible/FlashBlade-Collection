@@ -240,6 +240,7 @@ def update_s3acc(module):
 def create_s3acc(module, blade):
     """Create Object Store Account"""
     changed = True
+    blade2 = get_system(module)
     versions = blade.api_version.list_versions().versions
     if not module.check_mode:
         try:
@@ -253,7 +254,6 @@ def create_s3acc(module, blade):
                 )
             )
         if module.params["quota"] or module.params["default_quota"]:
-            blade2 = get_system(module)
             if not module.params["default_quota"]:
                 default_quota = ""
             else:
