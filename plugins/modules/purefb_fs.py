@@ -956,7 +956,7 @@ def modify_fs(module, blade):
             or change_export
             or change_share
             or change_ca
-            or change_goi
+            or change_go
             or change_client
         )
     )
