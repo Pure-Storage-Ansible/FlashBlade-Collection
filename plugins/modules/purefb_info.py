@@ -527,9 +527,12 @@ def generate_admin_dict(module, blade):
                 ).strftime("%Y-%m-%d %H:%M:%S")
             else:
                 admin_info[admin_name]["token_expires"] = None
-            admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
-                admins[admin].api_token.created_at / 1000
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            if admins[admin].api_token.created_at:
+                admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
+                    admins[admin].api_token.created_at / 1000
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                admin_info[admin_name]["token_created"] = None
             admin_info[admin_name]["role"] = admins[admin].role.name
             if NFS_POLICY_API_VERSION in api_version:
                 admin_info[admin_name]["locked"] = admins[admin].locked
@@ -861,7 +864,7 @@ def generate_bucket_dict(module, blade):
             "destroyed": buckets.items[bckt].destroyed,
             "time_remaining": buckets.items[bckt].time_remaining,
             "time_remaining_status": getattr(
-                buckets.item[bckt], "time_remaining_status", None
+                buckets.items[bckt], "time_remaining_status", None
             ),
             "lifecycle_rules": {},
         }
@@ -1013,40 +1016,54 @@ def generate_ad_dict(blade):
     return ad_info
 
 
-def generate_bucket_access_policies_dict(blade):
+def generate_bucket_access_policies_dict(module, blade):
+    blade1 = get_blade(module)
     policies_info = {}
-    policies = list(blade.get_buckets_bucket_access_policies().items)
-    for policy in range(0, len(policies)):
-        policy_name = policies[policy].name
-        policies_info[policy_name] = {
-            "description": policies[policy].description,
-            "enabled": policies[policy].enabled,
-            "local": policies[policy].is_local,
-            "rules": [],
-        }
-        for rule in range(0, len(policies[policy].rules)):
-            policies_info[policy_name]["rules"].append(
-                {
-                    "actions": policies[policy].rules[rule].actions,
-                    "resources": policies[policy].rules[rule].resources,
-                    "all_principals": policies[policy].rules[rule].principals.all,
-                    "effect": policies[policy].rules[rule].effect,
-                    "name": policies[policy].rules[rule].name,
-                }
-            )
+    buckets = blade1.get_buckets().items
+    for bucket in range(0, len(buckets)):
+        policies = list(
+            blade.get_buckets_bucket_access_policies(
+                bucket_names=[bucket[bucket].name]
+            ).items
+        )
+        for policy in range(0, len(policies)):
+            policy_name = policies[policy].name
+            policies_info[policy_name] = {
+                "description": policies[policy].description,
+                "enabled": policies[policy].enabled,
+                "local": policies[policy].is_local,
+                "rules": [],
+            }
+            for rule in range(0, len(policies[policy].rules)):
+                policies_info[policy_name]["rules"].append(
+                    {
+                        "actions": policies[policy].rules[rule].actions,
+                        "resources": policies[policy].rules[rule].resources,
+                        "all_principals": policies[policy].rules[rule].principals.all,
+                        "effect": policies[policy].rules[rule].effect,
+                        "name": policies[policy].rules[rule].name,
+                    }
+                )
     return policies_info
 
 
-def generate_bucket_cross_object_policies_dict(blade):
+def generate_bucket_cross_object_policies_dict(module, blade):
+    blade1 = get_blade(module)
     policies_info = {}
-    policies = list(blade.get_buckets_cross_origin_resource_sharing_policies().items)
-    for policy in range(0, len(policies)):
-        policy_name = policies[policy].name
-        policies_info[policy_name] = {
-            "allowed_headers": policies[policy].allowed_headers,
-            "allowed_methods": policies[policy].allowed_methods,
-            "allowed_origins": policies[policy].allowed_origins,
-        }
+    buckets = blade1.get_buckets().items
+    for bucket in range(0, len(buckets)):
+        policies = list(
+            blade.get_buckets_cross_origin_resource_sharing_policies(
+                names=[bucket[bucket].name]
+            ).items
+        )
+        for policy in range(0, len(policies)):
+            policy_name = policies[policy].name
+            policies_info[policy_name] = {
+                "allowed_headers": policies[policy].allowed_headers,
+                "allowed_methods": policies[policy].allowed_methods,
+                "allowed_origins": policies[policy].allowed_origins,
+            }
     return policies_info
 
 
@@ -1486,10 +1503,10 @@ def main():
                 )
             if PUBLIC_API_VERSION in api_version:
                 info["bucket_access_policies"] = generate_bucket_access_policies_dict(
-                    blade
+                    module, blade
                 )
                 info["bucket_cross_origin_policies"] = (
-                    generate_bucket_cross_object_policies_dict(blade)
+                    generate_bucket_cross_object_policies_dict(module, blade)
                 )
             if NFS_POLICY_API_VERSION in api_version:
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
