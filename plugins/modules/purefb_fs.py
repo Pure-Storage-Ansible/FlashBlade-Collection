@@ -597,9 +597,11 @@ def create_fs(module, blade):
 def modify_fs(module, blade):
     """Modify Filesystem"""
     changed = False
+    change_client = False
     change_export = False
     change_share = False
     change_ca = False
+    change_go = False
     mod_fs = False
     attr = {}
     if module.params["policy"] and module.params["policy_state"] == "present":
@@ -859,7 +861,6 @@ def modify_fs(module, blade):
                     )
                 )
     if SMB_POLICY_API_VERSION in api_version and module.params["client_policy"]:
-        change_client = False
         if (
             current_fs.smb.client_policy.name
             and current_fs.smb.client_policy.name != module.params["client_policy"]
@@ -884,7 +885,6 @@ def modify_fs(module, blade):
                     )
                 )
     if SMB_POLICY_API_VERSION in api_version and module.params["share_policy"]:
-        change_share = False
         if (
             current_fs.smb.share_policy.name
             and current_fs.smb.share_policy.name != module.params["share_policy"]
@@ -909,7 +909,6 @@ def modify_fs(module, blade):
                     )
                 )
     if CA_API_VERSION in api_version:
-        change_ca = False
         if (
             module.params["continuous_availability"]
             != current_fs.smb.continuous_availability_enabled
@@ -935,7 +934,6 @@ def modify_fs(module, blade):
                     )
                 )
     if GOWNER_API_VERSION in api_version:
-        change_go = False
         if module.params["group_ownership"] != current_fs.group_ownership:
             change_go = True
         if not module.check_mode and change_go:
@@ -953,7 +951,14 @@ def modify_fs(module, blade):
                 )
 
     module.exit_json(
-        changed=(changed or change_export or change_share or change_ca or change_go)
+        changed=(
+            changed
+            or change_export
+            or change_share
+            or change_ca
+            or change_go
+            or change_client
+        )
     )
 
 
