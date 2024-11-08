@@ -126,8 +126,8 @@ def main():
     api_version = list(blade.get_versions().items)
     if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client SDK is required for this module")
-    if SMTP_ENCRYPT_API_VERSION not in api_version and module.params["encryption_mode"]:
-        module.fail_json(msg="Purity//FB must be upgraded to support encryption_mode.")
+    if SMTP_ENCRYPT_API_VERSION not in api_version and module.params["encryption"]:
+        module.fail_json(msg="Purity//FB must be upgraded to support encryption.")
 
     set_smtp(module, blade)
     module.exit_json(changed=False)
