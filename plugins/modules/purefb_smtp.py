@@ -102,9 +102,7 @@ def set_smtp(module, blade):
             )
         else:
             res = blade.patch_smtp_servers(
-                smtp=SmtpServer(
-                    relay_host=relay_host, sender_domain=domain
-                )
+                smtp=SmtpServer(relay_host=relay_host, sender_domain=domain)
             )
         if res.status_code != 200:
             module.fail_json(
