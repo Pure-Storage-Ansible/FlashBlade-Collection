@@ -80,9 +80,7 @@ def set_smtp(module, blade):
     current_smtp = list(blade.get_smtp_servers(names=["management"]).items)[0]
     relay_host = current_smtp.relay_host
     domain = current_smtp.sender_domain
-    encrypt = current_smtp.encryption_mode
-    if encrypt is None:
-        encrypt = ""
+    encrypt = getattr(current_smtp, "encryption_mode", "")
     if module.params["host"] and module.params["host"] != relay_host:
         relay_host = module.params["host"]
         changed = True
@@ -96,11 +94,16 @@ def set_smtp(module, blade):
         encrypt = module.params["encryption"]
         changed = True
     if changed and not module.check_mode:
-        res = blade.patch_smtp_servers(
-            smtp=SmtpServer(
-                relay_host=relay_host, sender_domain=domain, encryption_mode=encrypt
+        if SMTP_ENCRYPT_API_VERSION in list(blade.get_versions().items):
+            res = blade.patch_smtp_servers(
+                smtp=SmtpServer(
+                    relay_host=relay_host, sender_domain=domain, encryption_mode=encrypt
+                )
             )
-        )
+        else:
+            res = blade.patch_smtp_servers(
+                smtp=SmtpServer(relay_host=relay_host, sender_domain=domain)
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to set SMTP configuration. Error: {0}".format(
@@ -126,8 +129,8 @@ def main():
     api_version = list(blade.get_versions().items)
     if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client SDK is required for this module")
-    if SMTP_ENCRYPT_API_VERSION not in api_version and module.params["encryption_mode"]:
-        module.fail_json(msg="Purity//FB must be upgraded to support encryption_mode.")
+    if SMTP_ENCRYPT_API_VERSION not in api_version and module.params["encryption"]:
+        module.fail_json(msg="Purity//FB must be upgraded to support encryption.")
 
     set_smtp(module, blade)
     module.exit_json(changed=False)
