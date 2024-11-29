@@ -34,8 +34,8 @@ options:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
         capacity, network, subnets, lags, filesystems, snapshots, buckets,
-        replication, policies, arrays, accounts, admins, ad, kerberos
-        and drives.
+        replication, policies, arrays, accounts, admins, ad, kerberos,
+        drives and servers.
     required: false
     type: list
     elements: str
@@ -114,6 +114,7 @@ PUBLIC_API_VERSION = "2.12"
 NAP_API_VERSION = "2.13"
 RA_DURATION_API_VERSION = "2.14"
 SMTP_ENCRYPT_API_VERSION = "2.15"
+SERVERS_API_VERSION = " 2.16"
 
 
 def _millisecs_to_time(millisecs):
@@ -1402,6 +1403,21 @@ def generate_drives_dict(blade):
     return drives_info
 
 
+def generate_servers_dict(blade):
+    servers_info = {}
+    servers = list(blade.get_servers().items)
+    for server in range(0, len(servers)):
+        name = servers[server].name
+        servers_info[name] = {
+            "created": datetime.fromtimestamp(servers[server].created / 1000).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            "dns": getattr(servers[server].dns, "name", None),
+            "directory_services": servers[server].directory_services.name,
+        }
+    return servers_info
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
@@ -1515,6 +1531,12 @@ def main():
                 info["share_policies"] = generate_smb_client_policies_dict(blade)
         if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_version:
             info["drives"] = generate_drives_dict(blade)
+        if (
+            "servers" in subset
+            or "all" in subset
+            and SERVERS_API_VERSION in api_version
+        ):
+            info["servers"] = generate_servers_dict(blade)
     module.exit_json(changed=False, purefb_info=info)
 
 
