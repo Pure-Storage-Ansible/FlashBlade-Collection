@@ -1,0 +1,2 @@
+bugfixes:
+ - purefb_info - Fiex issue with admin token creation time and bucket policies
