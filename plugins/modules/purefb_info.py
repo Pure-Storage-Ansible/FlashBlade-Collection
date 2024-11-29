@@ -628,19 +628,24 @@ def generate_bucket_repl_dict(module, blade):
 
 def generate_network_dict(blade):
     net_info = {}
-    ports = blade.network_interfaces.list_network_interfaces()
-    for portcnt in range(0, len(ports.items)):
-        int_name = ports.items[portcnt].name
-        if ports.items[portcnt].enabled:
+    ports = list(blade.get_network_interfaces().items)
+    for portcnt in range(0, len(ports)):
+        int_name = ports[portcnt].name
+        if ports[portcnt].enabled:
             net_info[int_name] = {
-                "type": ports.items[portcnt].type,
-                "mtu": ports.items[portcnt].mtu,
-                "vlan": ports.items[portcnt].vlan,
-                "address": ports.items[portcnt].address,
-                "services": ports.items[portcnt].services,
-                "gateway": ports.items[portcnt].gateway,
-                "netmask": ports.items[portcnt].netmask,
+                "type": ports[portcnt].type,
+                "mtu": ports[portcnt].mtu,
+                "vlan": ports[portcnt].vlan,
+                "address": ports[portcnt].address,
+                "services": ports[portcnt].services,
+                "gateway": ports[portcnt].gateway,
+                "netmask": ports[portcnt].netmask,
+                "server": None,
             }
+            if hasattr(ports[portcnt], "server"):
+                net_info[int_name]["server"]["name"] = getattr(
+                    net_info[int_name].server, "name", None
+                )
     return net_info
 
 
@@ -1463,8 +1468,6 @@ def main():
         info["capacity"] = generate_capacity_dict(module, blade)
     if "lags" in subset or "all" in subset:
         info["lag"] = generate_lag_dict(blade)
-    if "network" in subset or "all" in subset:
-        info["network"] = generate_network_dict(blade)
     if "subnets" in subset or "all" in subset:
         info["subnet"] = generate_subnet_dict(blade)
     if "filesystems" in subset or "all" in subset:
@@ -1491,6 +1494,8 @@ def main():
     if MIN_32_API in api_version:
         # Calls for data only available from Purity//FB 3.2 and higher
         blade = get_system(module)
+        if "network" in subset or "all" in subset:
+            info["network"] = generate_network_dict(blade)
         if "accounts" in subset or "all" in subset:
             info["accounts"] = generate_object_store_accounts_dict(blade)
         if "ad" in subset or "all" in subset:
