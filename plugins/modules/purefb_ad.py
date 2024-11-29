@@ -98,6 +98,16 @@ options:
     - If not specified B(Computer Name.Domain) is used
     type: list
     elements: str
+  global_catalog_servers:
+    description:
+    - A list of global catalog servers that will be used for lookups related to user authorization.
+    - Accepted server formats are IP address and DNS name with optional @domain suffix.
+      If the suffix is ommited, the joined domain is assumed.
+    - All specified servers must be registered to the domain appropriately in the arrays
+      configured DNS and will only be communicated with over the secure LDAP (LDAPS) protocol.
+    type: list
+    elements: str
+    version_added: 1.20.0
   service:
     description:
     - Service protocol for Active Directory principals
@@ -133,6 +143,8 @@ EXAMPLES = r"""
     - ldap.acme.com
     service_principals:
     - vip1.flashblade.acme.com
+    global_catalog_servers:
+    - gc1.flashblade.acme.com
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
@@ -195,6 +207,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 MIN_REQUIRED_API_VERSION = "2.0"
+GC_SERVERS_API_VERSION = "2.12"
 
 
 def delete_account(module, blade):
@@ -214,18 +227,33 @@ def delete_account(module, blade):
 def create_account(module, blade):
     """Create Active Directory Account"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.params["existing"]:
-        ad_config = ActiveDirectoryPost(
-            computer_name=module.params["computer"],
-            directory_servers=module.params["directory_servers"],
-            kerberos_servers=module.params["kerberos_servers"],
-            domain=module.params["domain"],
-            encryption_types=module.params["encryption"],
-            fqdns=module.params["service_principals"],
-            join_ou=module.params["join_ou"],
-            user=module.params["username"],
-            password=module.params["password"],
-        )
+        if GC_SERVERS_API_VERSION in api_version:
+            ad_config = ActiveDirectoryPost(
+                computer_name=module.params["computer"],
+                directory_servers=module.params["directory_servers"],
+                kerberos_servers=module.params["kerberos_servers"],
+                domain=module.params["domain"],
+                encryption_types=module.params["encryption"],
+                fqdns=module.params["service_principals"],
+                join_ou=module.params["join_ou"],
+                user=module.params["username"],
+                password=module.params["password"],
+                global_catalog_servers=module.params["global_catalog_servers"],
+            )
+        else:
+            ad_config = ActiveDirectoryPost(
+                computer_name=module.params["computer"],
+                directory_servers=module.params["directory_servers"],
+                kerberos_servers=module.params["kerberos_servers"],
+                domain=module.params["domain"],
+                encryption_types=module.params["encryption"],
+                fqdns=module.params["service_principals"],
+                join_ou=module.params["join_ou"],
+                user=module.params["username"],
+                password=module.params["password"],
+            )
         if not module.check_mode:
             res = blade.post_active_directory(
                 names=[module.params["name"]], active_directory=ad_config
@@ -237,15 +265,27 @@ def create_account(module, blade):
                     )
                 )
     else:
-        ad_config = ActiveDirectoryPost(
-            computer_name=module.params["computer"],
-            directory_servers=module.params["directory_servers"],
-            kerberos_servers=module.params["kerberos_servers"],
-            domain=module.params["domain"],
-            encryption_types=module.params["encryption"],
-            user=module.params["username"],
-            password=module.params["password"],
-        )
+        if GC_SERVERS_API_VERSION in api_version:
+            ad_config = ActiveDirectoryPost(
+                computer_name=module.params["computer"],
+                directory_servers=module.params["directory_servers"],
+                kerberos_servers=module.params["kerberos_servers"],
+                domain=module.params["domain"],
+                encryption_types=module.params["encryption"],
+                user=module.params["username"],
+                password=module.params["password"],
+                global_catalog_servers=module.params["global_catalog_servers"],
+            )
+        else:
+            ad_config = ActiveDirectoryPost(
+                computer_name=module.params["computer"],
+                directory_servers=module.params["directory_servers"],
+                kerberos_servers=module.params["kerberos_servers"],
+                domain=module.params["domain"],
+                encryption_types=module.params["encryption"],
+                user=module.params["username"],
+                password=module.params["password"],
+            )
         if not module.check_mode:
             res = blade.post_active_directory(
                 names=[module.params["name"]],
@@ -263,6 +303,7 @@ def create_account(module, blade):
 
 def update_account(module, blade):
     """Update Active Directory Account"""
+    api_version = list(blade.get_versions().items)
     changed = False
     mod_ad = False
     current_ad = list(blade.get_active_directory(names=[module.params["name"]]).items)[
@@ -307,6 +348,17 @@ def update_account(module, blade):
             if set(current_ad.service_principal_names) != set(full_spns):
                 attr["service_principal_names"] = full_spns
                 mod_ad = True
+    if GC_SERVERS_API_VERSION in api_version:
+        if module.params["global_catalog_servers"]:
+            if current_ad.global_catalog_servers:
+                if (
+                    set(current_ad.global_catalog_servers)
+                    != module.params["global_catalog_servers"]
+                ):
+                    attr["global_catalog_servers"] = module.params[
+                        "global_catalog_servers"
+                    ]
+                    mod_ad = True
     if mod_ad:
         changed = True
         if not module.check_mode:
@@ -345,6 +397,7 @@ def main():
             directory_servers=dict(type="list", elements="str"),
             kerberos_servers=dict(type="list", elements="str"),
             service_principals=dict(type="list", elements="str"),
+            global_catalog_servers=dict(type="list", elements="str"),
             encryption=dict(
                 type="list",
                 elements="str",
