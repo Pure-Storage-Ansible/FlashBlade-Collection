@@ -51,7 +51,8 @@ options:
     required: false
     choices: [ "data", "replication" ]
     default: data
-    type: str
+    type: list
+    elements: str
   itype:
     description:
       - Type of interface.
@@ -59,14 +60,29 @@ options:
     choices: [ "vip" ]
     default: vip
     type: str
+  server:
+    description:
+    - The server to use this interface for data ingress.
+    - Requires the I(services) of the interface to include I(data)
+    type: str
+    version_added: 1.20.0
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
 
 EXAMPLES = """
-- name: Create new network interface named foo
+- name: Create new network interface named foo for the whole array
   purestorage.flashblade.purefb_network:
     name: foo
+    address: 10.21.200.23
+    state: present
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Create new network interface named foo for server object bar
+  purestorage.flashblade.purefb_network:
+    name: foo2
+    server: bar
     address: 10.21.200.23
     state: present
     fb_url: 10.10.10.2
@@ -91,54 +107,63 @@ EXAMPLES = """
 RETURN = """
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import NetworkInterface
+    from pypureclient.flashblade import (
+        NetworkInterface,
+        Reference,
+    )
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
-MINIMUM_API_VERSION = "1.3"
+SERVER_API_VERSION = "2.16"
 
 
 def get_iface(module, blade):
     """Return Filesystem or None"""
-    iface = []
-    iface.append(module.params["name"])
-    try:
-        res = blade.network_interfaces.list_network_interfaces(names=iface)
-        return res.items[0]
-    except Exception:
+    res = blade.get_network_interfaces(names=[module.params["name"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    else:
         return None
 
 
 def create_iface(module, blade):
     """Create Network Interface"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        iface = []
-        services = []
-        iface.append(module.params["name"])
-        services.append(module.params["services"])
-        try:
-            blade.network_interfaces.create_network_interfaces(
-                names=iface,
+        if SERVER_API_VERSION in api_version and module.params["server"]:
+            res = blade.post_network_interfaces(
+                names=[module.params["name"]],
                 network_interface=NetworkInterface(
                     address=module.params["address"],
-                    services=services,
+                    services=module.params["services"],
+                    type=module.params["itype"],
+                    server=Reference(name=module.params["server"]),
+                ),
+            )
+        else:
+            res = blade.post_network_interfaces(
+                names=module.params["name"],
+                network_interface=NetworkInterface(
+                    address=module.params["address"],
+                    services=module.params["services"],
                     type=module.params["itype"],
                 ),
             )
-        except Exception:
+        if res.status_code != 200:
             module.fail_json(
-                msg="Interface creation failed. Check subnet exists for {0}".format(
-                    module.params["address"]
+                msg="Interface {0} creation failed. Error: {1}".format(
+                    module.params["address"],
+                    res.errors[0].message,
                 )
             )
     module.exit_json(changed=changed)
@@ -147,24 +172,47 @@ def create_iface(module, blade):
 def modify_iface(module, blade):
     """Modify Network Interface IP address"""
     changed = False
+    failed = False
+    failedmsg = None
     iface = get_iface(module, blade)
-    iface_new = []
-    iface_new.append(module.params["name"])
     if module.params["address"] != iface.address:
         changed = True
         if not module.check_mode:
-            try:
-                blade.network_interfaces.update_network_interfaces(
-                    names=iface_new,
-                    network_interface=NetworkInterface(
-                        address=module.params["address"]
-                    ),
-                )
-                changed = True
-            except Exception:
-                module.fail_json(
-                    msg="Failed to modify Interface {0}".format(module.params["name"])
-                )
+            res = blade.patch_network_interfaces(
+                names=[module.params["name"]],
+                network_interface=NetworkInterface(address=module.params["address"]),
+            )
+            if res.status_code != 200:
+                failed = True
+                failedmsg = res.errors[0].message
+    if set(module.params["services"]) != set(iface.services):
+        changed = True
+        if not module.check_mode:
+            res = blade.patch_network_interfaces(
+                names=[module.params["name"]],
+                network_interface=NetworkInterface(services=module.params["services"]),
+            )
+            if res.status_code != 200:
+                failed = True
+                failedmsg = res.errors[0].message
+    if hasattr(iface, "server") and module.params["server"] != iface.server.name:
+        changed = True
+        if not module.check_mode:
+            res = blade.patch_network_interfaces(
+                names=[module.params["name"]],
+                network_interface=NetworkInterface(
+                    server=Reference(name=module.params["address"])
+                ),
+            )
+            if res.status_code != 200:
+                failed = True
+                failedmsg = res.errors[0].message
+    if failed:
+        module.fail_json(
+            msg="Failed to modify Interface {0}. Error: {1}".format(
+                module.params["name"], failedmsg
+            )
+        )
     module.exit_json(changed=changed)
 
 
@@ -172,13 +220,12 @@ def delete_iface(module, blade):
     """Delete Network Interface"""
     changed = True
     if not module.check_mode:
-        iface = []
-        iface.append(module.params["name"])
-        try:
-            blade.network_interfaces.delete_network_interfaces(names=iface)
-        except Exception:
+        res = blade.delete_network_interfaces(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to delete network {0}".format(module.params["name"])
+                msg="Failed to delete network {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
             )
     module.exit_json(changed=changed)
 
@@ -187,11 +234,17 @@ def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
-            name=dict(required=True),
-            state=dict(default="present", choices=["present", "absent"]),
-            address=dict(),
-            services=dict(default="data", choices=["data", "replication"]),
-            itype=dict(default="vip", choices=["vip"]),
+            name=dict(type="str", required=True),
+            state=dict(type="str", default="present", choices=["present", "absent"]),
+            address=dict(type="str"),
+            server=dict(type="str"),
+            services=dict(
+                type="list",
+                elements="str",
+                default="data",
+                choices=["data", "replication"],
+            ),
+            itype=dict(type="str", default="vip", choices=["vip"]),
         )
     )
 
@@ -201,14 +254,12 @@ def main():
         argument_spec, required_if=required_if, supports_check_mode=True
     )
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    if MINIMUM_API_VERSION not in api_version:
-        module.fail_json(msg="Upgrade Purity//FB to enable this module")
+    blade = get_system(module)
+    api_version = list(blade.get_versions().items)
     iface = get_iface(module, blade)
 
     if state == "present" and not iface:
@@ -217,8 +268,8 @@ def main():
         modify_iface(module, blade)
     elif state == "absent" and iface:
         delete_iface(module, blade)
-    elif state == "absent" and not iface:
-        module.exit_json(changed=False)
+
+    module.exit_json(changed=False)
 
 
 if __name__ == "__main__":

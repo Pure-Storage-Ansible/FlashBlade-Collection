@@ -1,0 +1,2 @@
+minor_changes:
+ - purefb_network - Update to REST v2 and add support for ``server`` parameter
