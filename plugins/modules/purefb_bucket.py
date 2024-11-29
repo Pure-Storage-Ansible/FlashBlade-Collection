@@ -576,7 +576,10 @@ def update_bucket(module, blade, bucket):
             if quota != current_quota["quota"]:
                 change_quota = True
                 new_quota["quota"] = human_to_bytes(module.params["quota"])
-        if module.params["hard_limit"] != current_quota["hard"]:
+        if (
+            module.params["hard_limit"]
+            and module.params["hard_limit"] != current_quota["hard"]
+        ):
             change_quota = True
             new_quota["hard"] = module.params["hard_limit"]
         if current_quota != new_quota and not module.check_mode:
