@@ -191,9 +191,9 @@ def create_snapshot(module, blade):
     source = []
     # Special case as we have changed 'target' to be a string not a list of one string
     # so this provides backwards compatability
-    target = module.params["target"].replace("[", "").replace("'", "").replace("]", "")
     source.append(module.params["name"])
     if module.params["now"]:
+        target = module.params["target"].replace("[", "").replace("'", "").replace("]", "")
         blade2 = get_system(module)
         blade_exists = False
         connected_blades = blade.array_connections.list_array_connections().items
