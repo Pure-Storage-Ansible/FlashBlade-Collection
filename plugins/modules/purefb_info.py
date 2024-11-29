@@ -746,15 +746,16 @@ def generate_snap_dict(blade):
             ].source_location.name
             snap_info[snapshot]["policies"] = []
             if PUBLIC_API_VERSION in api_version:
-                for policy in range(0, len(snaps.items[snap].policies)):
-                    snap_info[snapshot]["policies"].append(
-                        {
-                            "name": snaps.items[snap].policies[policy].name,
-                            "location": snaps.items[snap]
-                            .policies[policy]
-                            .location.name,
-                        }
-                    )
+                if hasattr(snaps.items[snap], "policies"):
+                    for policy in range(0, len(snaps.items[snap].policies)):
+                        snap_info[snapshot]["policies"].append(
+                            {
+                                "name": snaps.items[snap].policies[policy].name,
+                                "location": snaps.items[snap]
+                                .policies[policy]
+                                .location.name,
+                            }
+                        )
     return snap_info
 
 
