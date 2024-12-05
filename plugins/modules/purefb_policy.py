@@ -3200,7 +3200,7 @@ def main():
             policy = None
         if module.params["user"]:
             member_name = module.params["account"] + "/" + module.params["user"]
-            res = blade.get_object_store_users(filter='name="' + member_name + "'")
+            res = blade.get_object_store_users(names=[member_name])
             if res.status_code != 200:
                 module.fail_json(
                     msg="User {0} does not exist in account {1}. Error: {2}".format(
