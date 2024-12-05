@@ -3203,8 +3203,9 @@ def main():
             res = blade.get_object_store_users(filter='name="' + member_name + "'")
             if res.status_code != 200:
                 module.fail_json(
-                    msg="User {0} does not exist in account {1}".format(
-                        module.params["user"], module.params["account"]
+                    msg="User {0} does not exist in account {1}. Error: {2}".format(
+                        module.params["user"], module.params["account"],
+                        res.errors[0].message
                     )
                 )
         if policy and state == "present":
