@@ -118,36 +118,33 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
 
 
-MIN_REQUIRED_API_VERSION = "1.3"
 QUOTA_API_VERSION = "2.1"
 PUBLIC_API_VERSION = "2.12"
 
 
 def get_s3acc(module, blade):
     """Return Object Store Account or None"""
-    s3acc = None
-    accts = blade.object_store_accounts.list_object_store_accounts()
-    for acct in range(0, len(accts.items)):
-        if accts.items[acct].name == module.params["name"]:
-            s3acc = accts.items[acct]
-    return s3acc
+    res = blade.get_object_store_accounts(names=[module.params["name"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    else:
+        return None
 
 
-def update_s3acc(module):
+def update_s3acc(module, blade):
     """Update Object Store Account"""
     changed = False
     public = False
-    blade = get_system(module)
     acc_settings = list(
         blade.get_object_store_accounts(names=[module.params["name"]]).items
     )[0]
-    if getattr(acc_settings, "public_access_config", None):
+    versions = list(blade.get_versions().items)
+    if PUBLIC_API_VERSION in versions:
         public = True
         current_account = {
             "hard_limit": acc_settings.hard_limit_enabled,
@@ -217,14 +214,30 @@ def update_s3acc(module):
     if new_account != current_account:
         changed = True
         if not module.check_mode:
-            osa = ObjectStoreAccountPatch(
-                hard_limit_enabled=new_account["hard_limit"],
-                quota_limit=new_account["quota"],
-                bucket_defaults=BucketDefaults(
-                    hard_limit_enabled=new_account["default_hard_limit"],
-                    quota_limit=new_account["default_quota"],
-                ),
-            )
+            if public:
+                osa = ObjectStoreAccountPatch(
+                    hard_limit_enabled=new_account["hard_limit"],
+                    quota_limit=new_account["quota"],
+                    bucket_defaults=BucketDefaults(
+                        hard_limit_enabled=new_account["default_hard_limit"],
+                        quota_limit=new_account["default_quota"],
+                    ),
+                    public_access_config=PublicAccessConfig(
+                        block_public_access=new_account["block_public_access"],
+                        block_new_public_policies=new_account[
+                            "block_new_public_policies"
+                        ],
+                    ),
+                )
+            else:
+                osa = ObjectStoreAccountPatch(
+                    hard_limit_enabled=new_account["hard_limit"],
+                    quota_limit=new_account["quota"],
+                    bucket_defaults=BucketDefaults(
+                        hard_limit_enabled=new_account["default_hard_limit"],
+                        quota_limit=new_account["default_quota"],
+                    ),
+                )
             res = blade.patch_object_store_accounts(
                 object_store_account=osa, names=[module.params["name"]]
             )
@@ -240,17 +253,14 @@ def update_s3acc(module):
 def create_s3acc(module, blade):
     """Create Object Store Account"""
     changed = True
-    blade2 = get_system(module)
-    versions = blade.api_version.list_versions().versions
+    versions = list(blade.get_versions().items)
     if not module.check_mode:
-        try:
-            blade.object_store_accounts.create_object_store_accounts(
-                names=[module.params["name"]]
-            )
-        except Exception:
+        res = blade.post_object_store_accounts(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
-                msg="Object Store Account {0}: Creation failed".format(
-                    module.params["name"]
+                msg="Object Store Account {0} creation failed. Error: {1}".format(
+                    module.params["name"],
+                    res.errors[0].message,
                 )
             )
         if module.params["quota"] or module.params["default_quota"]:
@@ -274,7 +284,7 @@ def create_s3acc(module, blade):
                     quota_limit=default_quota,
                 ),
             )
-            res = blade2.patch_object_store_accounts(
+            res = blade.patch_object_store_accounts(
                 object_store_account=osa, names=[module.params["name"]]
             )
             if res.status_code != 200:
@@ -298,7 +308,7 @@ def create_s3acc(module, blade):
                     block_public_access=module.params["block_public_access"],
                 )
             )
-            res = blade2.patch_object_store_accounts(
+            res = blade.patch_object_store_accounts(
                 object_store_account=osa, names=[module.params["name"]]
             )
             if res.status_code != 200:
@@ -314,12 +324,8 @@ def delete_s3acc(module, blade):
     """Delete Object Store Account"""
     changed = True
     if not module.check_mode:
-        count = len(
-            blade.object_store_users.list_object_store_users(
-                filter="name='" + module.params["name"] + "/*'"
-            ).items
-        )
-        if count != 0:
+        res = blade.get_object_store_users(names=[module.params["name"] + "/*'"])
+        if res.status_code == 200:
             module.fail_json(
                 msg="Remove all Users from Object Store Account {0} \
                                  before deletion".format(
@@ -327,14 +333,11 @@ def delete_s3acc(module, blade):
                 )
             )
         else:
-            try:
-                blade.object_store_accounts.delete_object_store_accounts(
-                    names=[module.params["name"]]
-                )
-            except Exception:
+            res = blade.delete_object_store_accounts(names=[module.params["name"]])
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Object Store Account {0}: Deletion failed".format(
-                        module.params["name"]
+                    msg="Object Store Account {0} deletion failed. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
                     )
                 )
     module.exit_json(changed=changed)
@@ -358,15 +361,8 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     state = module.params["state"]
-    blade = get_blade(module)
-    versions = blade.api_version.list_versions().versions
-
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
+    blade = get_system(module)
+    versions = list(blade.get_versions().items)
 
     if module.params["quota"] or module.params["default_quota"]:
         if not HAS_PURESTORAGE:
@@ -392,7 +388,7 @@ def main():
     if state == "absent" and s3acc:
         delete_s3acc(module, blade)
     elif state == "present" and s3acc:
-        update_s3acc(module)
+        update_s3acc(module, blade)
     elif not s3acc and state == "present":
         create_s3acc(module, blade)
     else:
