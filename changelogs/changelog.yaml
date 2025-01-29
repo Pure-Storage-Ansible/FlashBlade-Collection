@@ -251,6 +251,27 @@ releases:
     fragments:
     - 317_quota_update.yaml
     release_date: '2024-11-03'
+  1.19.2:
+    changes:
+      bugfixes:
+      - purefb_bucket - Fixed issue with idempotency reported when ``hard_limit``
+        not provided.
+      - purefb_info - Fixed ``AttributeError`` for ``snapshot`` subset when snapshot
+        had been created manually, rather than using a snapshot policy
+      - purefb_info - Fixed issue with admin token creation time and bucket policies
+      - purefb_policy - Fixed syntax error is account name.
+      - purefb_smtp - Fix errors that occurred after adding support for smtp encrpytion
+        and using the module on older FlashBlades.
+      - purefb_snap - Fixed issue where ``target`` incorrectly required for a regular
+        snapshot
+    fragments:
+    - 324_info_fix.yaml
+    - 326_smtp_encryption_fix.yaml
+    - 327_bucket_idempotency.yaml
+    - 328_immeadiate_snap_fix.yaml
+    - 329_no_policy_snap.yaml
+    - 336_policy_fix.yaml
+    release_date: '2024-12-05'
   1.3.0:
     changes:
       bugfixes:
