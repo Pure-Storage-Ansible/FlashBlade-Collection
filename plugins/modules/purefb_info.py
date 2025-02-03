@@ -91,7 +91,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 MIN_REQUIRED_API_VERSION = "1.3"
@@ -734,6 +734,11 @@ def generate_snap_dict(blade):
             "source": snaps.items[snap].source,
             "suffix": snaps.items[snap].suffix,
             "source_destroyed": snaps.items[snap].source_destroyed,
+            "created": datetime.fromtimestamp(
+                snaps.items[snap].created / 1000,
+                tz=timezone.utc,
+            ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "time_remaining": getattr(snaps.items[snap], "time_remaining", None),
         }
         if REPLICATION_API_VERSION in api_version:
             snap_info[snapshot]["owner"] = snaps.items[snap].owner.name
