@@ -153,6 +153,7 @@ RETURN = r"""
 
 
 NIS_API_VERSION = "1.7"
+NO_SMB_VERSION = "2.16"
 HAS_PURITY_FB = True
 try:
     from purity_fb import DirectoryService
@@ -447,6 +448,11 @@ def main():
     state = module.params["state"]
     blade = get_blade(module)
     api_version = blade.api_version.list_versions().versions
+    if NO_SMB_VERSION in api_version and module.params["dstype"] == "smb":
+        module.warn(
+            msg="Directory Service for SMB no " "longer supported by FlashBlade"
+        )
+        module.exit_json(changed=False)
     ds_configured = False
     dirserv = blade.directory_services.list_directory_services(
         names=[module.params["dstype"]]
