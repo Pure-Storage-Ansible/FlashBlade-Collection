@@ -241,9 +241,7 @@ def update_saml(module, blade):
                 decryption_credential=ReferenceWriteable(
                     name=new_idp["sp_decrypt_cred"]
                 ),
-                signing_credential=ReferenceWriteable(
-                    name=new_idp["sp_sign_cred"]
-                ),
+                signing_credential=ReferenceWriteable(name=new_idp["sp_sign_cred"]),
             )
             idp = Saml2SsoIdp(
                 url=new_idp["id_url"],
