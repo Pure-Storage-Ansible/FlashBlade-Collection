@@ -34,8 +34,8 @@ options:
       - When supplied, this argument will define the information to be collected.
         Possible values for this include all, minimum, config, performance,
         capacity, network, subnets, lags, filesystems, snapshots, buckets,
-        replication, policies, arrays, accounts, admins, ad, kerberos
-        and drives.
+        replication, policies, arrays, accounts, admins, ad, kerberos, drives
+        and fleet.
     required: false
     type: list
     elements: str
@@ -114,6 +114,7 @@ PUBLIC_API_VERSION = "2.12"
 NAP_API_VERSION = "2.13"
 RA_DURATION_API_VERSION = "2.14"
 SMTP_ENCRYPT_API_VERSION = "2.15"
+FLEET_API_VERSION = "2.17"
 
 
 def _millisecs_to_time(millisecs):
@@ -1407,6 +1408,24 @@ def generate_drives_dict(blade):
     return drives_info
 
 
+def generate_fleet_dict(blade):
+    fleet_info = {}
+    fleet = list(blade.get_fleets().items)
+    if fleet:
+        fleet_name = list(blade.get_fleets().items)[0].name
+        fleet_info[fleet_name] = {
+            "members": {},
+        }
+        members = list(blade.get_fleets_members().items)
+        for member in range(0, len(members)):
+            name = members[member].member.name
+            fleet_info[fleet_name]["members"][name] = {
+                "status": members[member].status,
+                "status_details": members[member].status_details,
+            }
+    return fleet_info
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
@@ -1447,6 +1466,7 @@ def main():
         "ad",
         "kerberos",
         "drives",
+        "fleet",
     )
     subset_test = (test in valid_subsets for test in subset)
     if not all(subset_test):
@@ -1518,6 +1538,8 @@ def main():
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
             if SMB_CLIENT_API_VERSION in api_version:
                 info["share_policies"] = generate_smb_client_policies_dict(blade)
+            if FLEET_API_VERSION in api_version:
+                info["fleet"] = generate_fleet_dict(blade)
         if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_version:
             info["drives"] = generate_drives_dict(blade)
     module.exit_json(changed=False, purefb_info=info)
