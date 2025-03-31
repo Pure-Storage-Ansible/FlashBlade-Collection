@@ -2,3 +2,4 @@
 *.pyc
 .pylintrc
 collections/ansible_collections/purestorage/flashblade/tests/output/*
+collections/ansible_collections/purestorage/flashblade/tests/output/.*
