@@ -4,6 +4,19 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.19.2
+=======
+
+Bugfixes
+--------
+
+- purefb_bucket - Fixed issue with idempotency reported when ``hard_limit`` not provided.
+- purefb_info - Fixed ``AttributeError`` for ``snapshot`` subset when snapshot had been created manually, rather than using a snapshot policy
+- purefb_info - Fixed issue with admin token creation time and bucket policies
+- purefb_policy - Fixed syntax error is account name.
+- purefb_smtp - Fix errors that occurred after adding support for smtp encrpytion and using the module on older FlashBlades.
+- purefb_snap - Fixed issue where ``target`` incorrectly required for a regular snapshot
+
 v1.19.1
 =======
 
