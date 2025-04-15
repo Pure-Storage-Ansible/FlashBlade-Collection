@@ -67,55 +67,74 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import Support
+    from pypureclient.flashblade import Support
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
 def delete_proxy(module, blade):
     """Delete proxy settings"""
-    changed = False
-    current_proxy = blade.support.list_support().items[0].proxy
-    if current_proxy != "":
-        changed = True
-        if not module.check_mode:
-            try:
-                proxy_settings = Support(proxy="")
-                blade.support.update_support(support=proxy_settings)
-            except Exception:
-                module.fail_json(msg="Delete proxy settigs failed")
+    changed = True
+    if not module.check_mode:
+        res = blade.patch_support(support=Support(proxy=""))
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Delete proxy settings failed. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
 def create_proxy(module, blade):
     """Set proxy settings"""
-    changed = False
-    current_proxy = blade.support.list_support().items[0].proxy
+    changed = True
+    current_proxy = list(blade.get_support().items)[0].proxy
     if module.params["secure"]:
         protocol = "https://"
     else:
         protocol = "http://"
-    if current_proxy is not None:
-        changed = True
-        if not module.check_mode:
-            new_proxy = (
-                protocol + module.params["host"] + ":" + str(module.params["port"])
+    if not module.check_mode:
+        new_proxy = protocol + module.params["host"] + ":" + str(module.params["port"])
+        res = blade.patch_support(support=Support(proxy=new_proxy))
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Set phone home proxy failed. Error: {0}".format(
+                    res.errors[0].message
+                )
             )
-            if new_proxy != current_proxy:
-                try:
-                    proxy_settings = Support(proxy=new_proxy)
-                    blade.support.update_support(support=proxy_settings)
-                except Exception:
-                    module.fail_json(msg="Set phone home proxy failed.")
+
+    module.exit_json(changed=changed)
+
+
+def update_proxy(module, blade):
+    """Update proxy settings"""
+    changed = False
+    current_proxy = list(blade.get_support().items)[0].proxy
+    if module.params["secure"]:
+        protocol = "https://"
+    else:
+        protocol = "http://"
+    if not module.check_mode:
+        new_proxy = protocol + module.params["host"] + ":" + str(module.params["port"])
+        if new_proxy != current_proxy:
+            changed = True
+            res = blade.patch_support(support=Support(proxy=new_proxy))
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Phone home proxy update failed. Error: {0}".format(
+                        res.errors[0].message
+                    )
+                )
 
     module.exit_json(changed=changed)
 
@@ -137,16 +156,19 @@ def main():
         argument_spec, required_together=required_together, supports_check_mode=True
     )
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb SDK is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client SDK is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
+    blade = get_system(module)
+    current_proxy = bool(list(blade.get_support().items)[0].proxy)
 
-    if state == "absent":
+    if state == "absent" and current_proxy:
         delete_proxy(module, blade)
-    elif state == "present":
+    elif state == "present" and not current_proxy:
         create_proxy(module, blade)
+    elif state == "present" and current_proxy:
+        update_proxy(module, blade)
     else:
         module.exit_json(changed=False)
 
