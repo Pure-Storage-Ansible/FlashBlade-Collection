@@ -201,7 +201,7 @@ def generate_default_dict(module, blade):
                     str(admin_settings.lockout_duration / 1000) + " seconds"
                 )
         if NFS_POLICY_API_VERSION in api_version:
-            default_info["smb_mode"] = blade_info.smb_mode
+            default_info["smb_mode"] = getattr(blade_info, "smb_mode", None)
         if VSO_VERSION in api_version:
             default_info["timezone"] = blade_info.time_zone
         if DRIVES_API_VERSION in api_version:
@@ -379,11 +379,12 @@ def generate_config_dict(module, blade):
         .items[0]
         .to_dict()
     )
-    config_info["smb_directory_service"] = (
-        blade.directory_services.list_directory_services(names=["smb"])
-        .items[0]
-        .to_dict()
-    )
+    if SERVERS_API_VERSION not in api_version:
+        config_info["smb_directory_service"] = (
+            blade.directory_services.list_directory_services(names=["smb"])
+            .items[0]
+            .to_dict()
+        )
     config_info["ntp"] = blade.arrays.list_arrays().items[0].ntp_servers
     config_info["ssl_certs"] = blade.certificates.list_certificates().items[0].to_dict()
     if CERT_GROUPS_API_VERSION in api_version:
@@ -1023,14 +1024,13 @@ def generate_ad_dict(blade):
     return ad_info
 
 
-def generate_bucket_access_policies_dict(module, blade):
-    blade1 = get_blade(module)
+def generate_bucket_access_policies_dict(blade):
     policies_info = {}
-    buckets = blade1.get_buckets().items
+    buckets = list(blade.get_buckets().items)
     for bucket in range(0, len(buckets)):
         policies = list(
             blade.get_buckets_bucket_access_policies(
-                bucket_names=[bucket[bucket].name]
+                bucket_names=[buckets[bucket].name]
             ).items
         )
         for policy in range(0, len(policies)):
@@ -1054,14 +1054,13 @@ def generate_bucket_access_policies_dict(module, blade):
     return policies_info
 
 
-def generate_bucket_cross_object_policies_dict(module, blade):
-    blade1 = get_blade(module)
+def generate_bucket_cross_object_policies_dict(blade):
     policies_info = {}
-    buckets = blade1.get_buckets().items
+    buckets = list(blade.get_buckets().items)
     for bucket in range(0, len(buckets)):
         policies = list(
             blade.get_buckets_cross_origin_resource_sharing_policies(
-                names=[bucket[bucket].name]
+                bucket_names=[buckets[bucket].name]
             ).items
         )
         for policy in range(0, len(policies)):
@@ -1532,10 +1531,10 @@ def main():
                 )
             if PUBLIC_API_VERSION in api_version:
                 info["bucket_access_policies"] = generate_bucket_access_policies_dict(
-                    module, blade
+                    blade
                 )
                 info["bucket_cross_origin_policies"] = (
-                    generate_bucket_cross_object_policies_dict(module, blade)
+                    generate_bucket_cross_object_policies_dict(blade)
                 )
             if NFS_POLICY_API_VERSION in api_version:
                 info["export_policies"] = generate_nfs_export_policies_dict(blade)
