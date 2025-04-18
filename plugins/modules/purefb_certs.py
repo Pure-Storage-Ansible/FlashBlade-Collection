@@ -130,7 +130,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create SSL certifcate foo
-  purestorage.flashblade.purefd_certs:
+  purestorage.flashblade.purefb_certs:
     name: foo
     key_size: 4096
     country: US
