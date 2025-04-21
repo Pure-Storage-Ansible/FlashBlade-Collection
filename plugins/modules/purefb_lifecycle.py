@@ -417,11 +417,11 @@ def main():
         )
     )
 
-    mutually_exclusive = ["keep_current_for", "keep_current_until"]
+    mutually_exclusive = [["keep_current_for", "keep_current_until"]]
 
-    module = AnsibleModule(argument_spec,
-                           mutually_exclusive=mutually_exclusive,
-                           supports_check_mode=True)
+    module = AnsibleModule(
+        argument_spec, mutually_exclusive=mutually_exclusive, supports_check_mode=True
+    )
 
     if not HAS_PURITYFB:
         module.fail_json(msg="purity_fb sdk is required for this module")
