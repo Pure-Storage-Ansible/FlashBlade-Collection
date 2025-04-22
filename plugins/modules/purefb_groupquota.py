@@ -96,7 +96,7 @@ EXAMPLES = """
     name: foo
     quota: 20G
     gname: bar
-    state: absent
+    state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
@@ -105,7 +105,7 @@ EXAMPLES = """
     name: foo
     quota: 20G
     gid: bar
-    state: absent
+    state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 """
