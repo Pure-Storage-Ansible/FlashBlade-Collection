@@ -197,7 +197,7 @@ def generate_hardware_dict(module, blade, api_version):
             "identify": components[component].identify_enabled,
         }
         if PART_NUMBER_API_VERSION in api_version:
-            hw_info["bay"][component_name]["part_number"] = components[
+            hw_info["bays"][component_name]["part_number"] = components[
                 component
             ].part_number
 
