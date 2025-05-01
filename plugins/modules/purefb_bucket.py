@@ -617,10 +617,10 @@ def update_bucket(module, blade, bucket):
         }
         if current_pac != new_pac:
             change_pac = True
-            pac = BucketPatch(
+            pac = flashblade.BucketPatch(
                 public_access_config=flashblade.PublicAccessConfig(
-                    block_new_public_policies=new_pac.block_new_public_policies,
-                    block_public_access=new_pac.block_public_access,
+                    block_new_public_policies=new_pac["block_new_public_policies"],
+                    block_public_access=new_pac["block_public_access"],
                 )
             )
         if change_pac and not module.check_mode:
@@ -661,11 +661,11 @@ def update_bucket(module, blade, bucket):
         }
         if current_worm != new_worm:
             change_worm = True
-            worm = BucketPatch(
+            worm = flashblade.BucketPatch(
                 public_access_config=flashblade.BucketEradicationConfig(
-                    eradication_delay=new_worm.eradication_delay,
-                    manual_eradication=new_worm.manual_eradication,
-                    eradication_mode=new_worm.eradication_mode,
+                    eradication_delay=new_worm["eradication_delay"],
+                    manual_eradication=new_worm["manual_eradication"],
+                    eradication_mode=new_worm["eradication_mode"],
                 )
             )
         if change_worm and not module.check_mode:
