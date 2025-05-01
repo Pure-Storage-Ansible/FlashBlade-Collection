@@ -93,7 +93,6 @@ EXAMPLES = r"""
     name: bar
     bucket: foo
     keep_previous_for: 2d
-    keep_current_for: 1w
     abort_uploads_after: 1d
     keep_current_until: 2020-11-23
     prefix: test
@@ -418,7 +417,11 @@ def main():
         )
     )
 
-    module = AnsibleModule(argument_spec, supports_check_mode=True)
+    mutually_exclusive = [["keep_current_for", "keep_current_until"]]
+
+    module = AnsibleModule(
+        argument_spec, mutually_exclusive=mutually_exclusive, supports_check_mode=True
+    )
 
     if not HAS_PURITYFB:
         module.fail_json(msg="purity_fb sdk is required for this module")
