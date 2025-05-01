@@ -2390,12 +2390,14 @@ def update_os_policy(module, blade):
                         rule=rule,
                         enforce_action_restrictions=module.params["ignore_enforcement"],
                     )
-                if res.status_code != 200:
-                    module.fail_json(
-                        msg="Failed to update rule {0} in policy {1}. Error: {2}".format(
-                            module.params["rule"], policy_name, res.errors[0].message
+                    if res.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to update rule {0} in policy {1}. Error: {2}".format(
+                                module.params["rule"],
+                                policy_name,
+                                res.errors[0].message,
+                            )
                         )
-                    )
     if module.params["user"]:
         member_name = module.params["account"] + "/" + module.params["user"]
         res = blade.get_object_store_access_policies_object_store_users(
