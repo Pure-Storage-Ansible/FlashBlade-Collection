@@ -275,11 +275,7 @@ def main():
         )
     )
 
-    required_if = [["state", "present", ["prefix"]]]
-
-    module = AnsibleModule(
-        argument_spec, required_if=required_if, supports_check_mode=True
-    )
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     if not HAS_PURITY_FB:
         module.fail_json(msg="purity_fb sdk is required for this module")
