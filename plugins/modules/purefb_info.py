@@ -1013,7 +1013,17 @@ def generate_kerb_dict(blade):
                     "principal": keytabs[key].principal,
                     "realm": keytabs[key].realm,
                     "encryption_type": keytabs[key].encryption_type,
+                    "server": None,
+                    "source": None,
                 }
+                if hasattr(keytabs[key], "server"):
+                    kerb_info[keytab_name][keytabs[key].suffix]["server"] = getattr(
+                        keytabs[key].server, "name", None
+                    )
+                if hasattr(keytabs[key], "source"):
+                    kerb_info[keytab_name][keytabs[key].suffix]["source"] = getattr(
+                        keytabs[key].source, "name", None
+                    )
     return kerb_info
 
 

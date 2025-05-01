@@ -29,7 +29,7 @@ options:
     - Create or delete object store account user
     - Remove a specified access key for a user
     default: present
-    choices: [ absent, present, remove_key, key_state ]
+    choices: [ absent, present, remove_key, keystate ]
     type: str
   name:
     description:
@@ -107,7 +107,7 @@ EXAMPLES = r"""
     account: bar
     access_key: true
     policy:
-      - pure:policy/safemode-configure
+      - pure:policy/object-write
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
@@ -133,7 +133,7 @@ EXAMPLES = r"""
     name: foo
     account: bar
     key_name: PSFBSAZRDHFKAMIEGIBLIEDDOFLHGEEEEFCBPBFCLJ
-    state: key_state
+    state: keystate
     enable_key: false
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
@@ -364,8 +364,10 @@ def create_s3user(module, blade):
                     )
                     if res.status_code != 200:
                         module.warn(
-                            "Failed to add policy {0} to account user {1}. Skipping...".format(
-                                policy_list[policy], username
+                            "Failed to add policy {0} to account user {1}. Error: {2}. Skipping...".format(
+                                policy_list[policy],
+                                username,
+                                res.errors[0].message,
                             )
                         )
             if "pure:policy/full-access" not in policy_list:
@@ -429,7 +431,7 @@ def delete_s3user(module, blade, internal=False):
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
         try:
-            blade.object_store_users.delete_object_store_users(names=[user])
+            blade.delete_object_store_users(names=[user])
         except Exception:
             module.fail_json(
                 msg="Object Store Account {0}: Deletion failed".format(
@@ -456,7 +458,7 @@ def main():
             policy=dict(type="list", elements="str"),
             state=dict(
                 default="present",
-                choices=["present", "absent", "remove_key", "key_state"],
+                choices=["present", "absent", "remove_key", "keystate"],
             ),
         )
     )
@@ -504,7 +506,7 @@ def main():
         create_s3user(module, blade)
     elif state == "remove_key" and s3user:
         remove_key(module, blade)
-    elif state == "key_state" and s3user:
+    elif state == "keystate" and s3user:
         change_key(module, blade)
     else:
         module.exit_json(changed=False)
