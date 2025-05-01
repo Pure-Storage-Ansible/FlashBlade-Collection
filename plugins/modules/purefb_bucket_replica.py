@@ -76,7 +76,7 @@ EXAMPLES = """
     name: foo
     target: arrayB
     target_bucket: bar
-    credentials: cred_1
+    credential: cred_1
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
@@ -89,7 +89,7 @@ EXAMPLES = """
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Delete bucket replica link foo
-  purestorage.flashblade.purefb_fs_replica:
+  purestorage.flashblade.purefb_bucket_replica:
     name: foo
     state: absent
     fb_url: 10.10.10.2
