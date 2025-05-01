@@ -114,7 +114,7 @@ PUBLIC_API_VERSION = "2.12"
 NAP_API_VERSION = "2.13"
 RA_DURATION_API_VERSION = "2.14"
 SMTP_ENCRYPT_API_VERSION = "2.15"
-SERVERS_API_VERSION = " 2.16"
+SERVERS_API_VERSION = "2.16"
 
 
 def _millisecs_to_time(millisecs):
@@ -343,7 +343,19 @@ def generate_config_dict(module, blade):
     config_info = {}
     bladev2 = get_system(module)
     api_version = blade.api_version.list_versions().versions
-    config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
+    if SERVERS_API_VERSION in api_version:
+        config_info["dns"] = {}
+        dns_configs = list(bladev2.get_dns().items)
+        for config in range(0, len(dns_configs)):
+            config_info["dns"][dns_configs[config].name] = {
+                "nameservers": dns_configs[config].nameservers,
+                "domain": dns_configs[config].domain,
+            }
+            config_info["dns"][dns_configs[config].name]["source"] = getattr(
+                dns_configs[config].source, "name", None
+            )
+    else:
+        config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
     if SMTP_ENCRYPT_API_VERSION in api_version:
         snmp_config = list(bladev2.get_smtp_servers().items)[0]
         config_info["smtp"] = {
