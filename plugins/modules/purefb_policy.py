@@ -419,6 +419,14 @@ EXAMPLES = r"""
     timezone: Asia/Shanghai
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+- name: Delete filesystem foo from snapshot policy
+  purestorage.flashblade.purefb_policy:
+    name: test_policy
+    policy_type: snapshot
+    filesystem: foo
+    state: absent
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 - name: Delete a snapshot policy
   purestorage.flashblade.purefb_policy:
     name: test_policy
@@ -2647,6 +2655,53 @@ def create_snap_policy(module, blade):
                     module.params["name"], res.errors[0].message
                 )
             )
+        if module.params["filesystem"]:
+            for filesystem in module.params["filesystem"]:
+                if (
+                    blade.get_file_systems(
+                        names=[filesystem], destroyed=False
+                    ).status_code
+                    != 200
+                ):
+                    module.fail_json(
+                        msg="Filesystems to assign to {0} does not "
+                        "exist, or is deleted.".format(module.params["name"])
+                    )
+                res = blade.post_policies_file_systems(
+                    policy_names=[module.params["name"]],
+                    member_names=[filesystem],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to add filesystem {0} to "
+                        "policy {1}. Error: {2}.".format(
+                            filesystem, module.params["name"], res.errors[0].message
+                        )
+                    )
+        if module.params["replica_link"]:
+            repl_link = []
+            for link in module.params["replica_link"]:
+                res = blade.get_file_system_replica_links(
+                    local_file_system_names=[link]
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Replica Link {0} does not exist.".format(link)
+                    )
+                else:
+                    repl_link = list(res.items)[0]
+                res = blade.post_policies_file_system_replica_links(
+                    policy_names=[module.params["name"]],
+                    local_file_system_names=[link],
+                    remote_names=[repl_link.remote.name],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to connect filesystem replicsa link {0} to policy {1}. "
+                        "Error: {2}".format(
+                            link, module.params["name"], res.errors[0].message
+                        )
+                    )
     module.exit_json(changed=changed)
 
 
@@ -2791,7 +2846,7 @@ def update_snap_policy(module, blade):
     current_rules = list(blade.get_policies(names=[module.params["name"]]).items)[
         0
     ].rules
-    create_new = True
+    create_new = False
     for rule in range(0, len(current_rules)):
         current_rule = {
             "at": current_rules[rule].at,
@@ -2821,8 +2876,8 @@ def update_snap_policy(module, blade):
             "keep_for": new_keep_for * 1000,
             "time_zone": new_tz,
         }
-        if current_rule == new_rule:
-            create_new = False
+        if current_rule != new_rule:
+            create_new = True
 
     if create_new:
         changed = True
@@ -2900,6 +2955,108 @@ def update_snap_policy(module, blade):
                         module.params["name"], res.errors[0].message
                     )
                 )
+
+    if module.params["filesystem"]:
+        current_filesystems = []
+        policy_fs_details = list(
+            blade.get_policies_file_systems(policy_names=[module.params["name"]]).items
+        )
+        for member in range(0, len(policy_fs_details)):
+            current_filesystems.append(policy_fs_details[member].member.name)
+        if module.params["state"] == "present":
+            difference_set = [
+                item
+                for item in module.params["filesystem"]
+                if item not in current_filesystems
+            ]
+            for new_fs in difference_set:
+                changed = True
+                if (
+                    blade.get_file_systems(names=[new_fs], destroyed=False).status_code
+                    != 200
+                ):
+                    module.fail_json(
+                        msg="Filesystem {0} to assign to {1} does not "
+                        "exist, or is deleted.".format(new_fs, module.params["name"])
+                    )
+                res = blade.post_policies_file_systems(
+                    policy_names=[module.params["name"]],
+                    member_names=[new_fs],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to add filesystem {0} to "
+                        "policy {1}. Error: {2}.".format(
+                            new_fs, module.params["name"], res.errors[0].message
+                        )
+                    )
+        else:
+            for old_fs in module.params["filesystem"]:
+                if old_fs in current_filesystems:
+                    changed = True
+                    res = blade.delete_policies_file_systems(
+                        policy_names=[module.params["name"]],
+                        member_names=[old_fs],
+                    )
+                    if res.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to remove filesystem {0} from "
+                            "policy {1}. Error: {2}.".format(
+                                old_fs, module.params["name"], res.errors[0].message
+                            )
+                        )
+    if module.params["replica_link"]:
+        current_rls = []
+        policy_rl_details = list(
+            blade.get_policies_file_system_replica_links(
+                policy_names=[module.params["name"]]
+            ).items
+        )
+        for member in range(0, len(policy_rl_details)):
+            current_rls.append(policy_rl_details[member].member.name)
+        if module.params["state"] == "present":
+            difference_set = [
+                item
+                for item in module.params["replica_link"]
+                if item not in current_rls
+            ]
+            for new_rl in difference_set:
+                changed = True
+                if (
+                    blade.get_file_systems_replica_links(names=[new_rl]).status_code
+                    != 200
+                ):
+                    module.fail_json(
+                        msg="Replica link {0} to assign to {1} does not "
+                        "exist, or is deleted.".format(new_rl, module.params["name"])
+                    )
+                res = blade.post_policies_file_system_replica_links(
+                    policy_names=[module.params["name"]],
+                    member_names=[new_rl],
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to add replica link {0} to "
+                        "policy {1}. Error: {2}.".format(
+                            new_rl, module.params["name"], res.errors[0].message
+                        )
+                    )
+        else:
+            for old_rl in module.params["replica_link"]:
+                if old_rl in current_rls:
+                    changed = True
+                    res = blade.delete_policies_file_system_replica_links(
+                        policy_names=[module.params["name"]],
+                        member_names=[old_rl],
+                    )
+                    if res.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to remove replica link {0} from "
+                            "policy {1}. Error: {2}.".format(
+                                old_rl, module.params["name"], res.errors[0].message
+                            )
+                        )
+
     module.exit_json(changed=changed)
 
 
@@ -3490,7 +3647,10 @@ def main():
         elif policy and state == "present":
             update_snap_policy(module, blade)
         elif policy and state == "absent":
-            delete_snap_policy(module, blade)
+            if module.params["filesystem"] or module.params["replica_link"]:
+                update_snap_policy(module, blade)
+            else:
+                delete_snap_policy(module, blade)
     else:
         if MIN_REQUIRED_API_VERSION not in versions:
             module.fail_json(
