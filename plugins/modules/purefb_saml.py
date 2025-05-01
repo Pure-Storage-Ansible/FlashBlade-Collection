@@ -114,7 +114,7 @@ try:
         Saml2SsoPost,
         Saml2SsoSp,
         Saml2SsoIdp,
-        ReferenceNoId,
+        ReferenceWriteable,
     )
 except ImportError:
     HAS_PURESTORAGE = False
@@ -238,8 +238,10 @@ def update_saml(module, blade):
         changed = True
         if not module.check_mode:
             sp = Saml2SsoSp(
-                decryption_credential=ReferenceNoId(name=new_idp["sp_decrypt_cred"]),
-                signing_credential=ReferenceNoId(name=new_idp["sp_sign_cred"]),
+                decryption_credential=ReferenceWriteable(
+                    name=new_idp["sp_decrypt_cred"]
+                ),
+                signing_credential=ReferenceWriteable(name=new_idp["sp_sign_cred"]),
             )
             idp = Saml2SsoIdp(
                 url=new_idp["id_url"],
@@ -271,10 +273,12 @@ def create_saml(module, blade):
     changed = True
     if not module.check_mode:
         sp = Saml2SsoSp(
-            decryption_credential=ReferenceNoId(
+            decryption_credential=ReferenceWriteable(
                 name=module.params["decryption_credential"]
             ),
-            signing_credential=ReferenceNoId(name=module.params["signing_credential"]),
+            signing_credential=ReferenceWriteable(
+                name=module.params["signing_credential"]
+            ),
         )
         idp = Saml2SsoIdp(
             url=module.params["url"],
