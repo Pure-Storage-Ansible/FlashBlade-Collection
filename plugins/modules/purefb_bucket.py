@@ -583,7 +583,7 @@ def update_bucket(module, blade, bucket):
             change_quota = True
             new_quota["hard"] = module.params["hard_limit"]
         if current_quota != new_quota and not module.check_mode:
-            if new_quota["quota"] is None:
+            if new_quota["quota"] is None or new_quota["quota"] == 0:
                 bucket = flashblade.BucketPatch(
                     quota_limit="",
                 )
