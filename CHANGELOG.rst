@@ -4,6 +4,41 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.20.0
+=======
+
+Minor Changes
+-------------
+
+- purefb_ad - Add support for Global Catalog Servers
+- purefb_dns - Added support for multiple DNS configurations.
+- purefb_ds - SMB directory services deprecated from Purity//FB 4.5.2
+- purefb_info - Add support for Active Directory Global Catalog Servers
+- purefb_info - Added snapshot creation date-time and time_remaining, if snapshot is not deleted, to the ``snapshots`` response.
+- purefb_info - Added support for multiple DNS configurations.
+- purefb_policy - Snapshot policies can now have specific filesystems and/or replica links added or deletred from the policy
+- purefb_proxy - Added support to update existing proxy
+- purefb_proxy - Updated to REST v2
+- purefb_s3user - Changed ``key_state`` state to be ``keystate`` as ``key_state`` is reserved.
+- purefb_s3user - Changed ``remove_key`` parameter to ``key_name`` and add new ``state`` of ``key_state`` to allow a specificed key to be enabled/disabled using the new parameter ``enable_key``.
+- purefb_s3user - Updated failure messages for applying policies to an object user account.
+- purefb_subnet - ``prefix`` removed as a required parameter for updating an existing subnet
+
+Bugfixes
+--------
+
+- purefb_bucket - Resolved issue with removing bucket quota
+- purefb_info - Fixed issue after SMD Directory Services no longer avaible from REST 2.16
+- purefb_policy - Fixed creation of snapshot policies with assigned filesystems and/or replica links
+- purefb_s3acc - Fixed issue with public access config settings not being correctly for an account
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_bucket_access - Manage FlashBlade bucket access policies
+- purestorage.flashblade.purefb_fleet - Manage Fusion Fleet
+- purestorage.flashblade.purefb_server - Manage FlashBlade servers
+
 v1.19.2
 =======
 
