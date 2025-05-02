@@ -46,6 +46,11 @@ plugins:
       name: purefb_bucket
       namespace: ''
       version_added: 1.0.0
+    purefb_bucket_access:
+      description: Manage FlashBlade bucket access policies
+      name: purefb_bucket_access
+      namespace: ''
+      version_added: 1.20.0
     purefb_bucket_replica:
       description: Manage bucket replica links between Pure Storage FlashBlades
       name: purefb_bucket_replica
@@ -67,7 +72,7 @@ plugins:
       namespace: ''
       version_added: 1.0.0
     purefb_dns:
-      description: Configure Pure Storage FlashBlade DNS settings
+      description: Configure FlashBlade DNS settings
       name: purefb_dns
       namespace: ''
       version_added: 1.0.0
@@ -86,6 +91,11 @@ plugins:
       name: purefb_eula
       namespace: ''
       version_added: 1.6.0
+    purefb_fleet:
+      description: Manage Fusion Fleet
+      name: purefb_fleet
+      namespace: ''
+      version_added: 1.20.0
     purefb_fs:
       description: Manage filesystemon Pure Storage FlashBlade`
       name: purefb_fs
@@ -191,6 +201,11 @@ plugins:
       name: purefb_saml
       namespace: ''
       version_added: 1.19.0
+    purefb_server:
+      description: Manage FlashBlade servers
+      name: purefb_server
+      namespace: ''
+      version_added: 1.20.0
     purefb_smtp:
       description: Configure SMTP for Pure Storage FlashBlade
       name: purefb_smtp
@@ -261,4 +276,4 @@ plugins:
   strategy: {}
   test: {}
   vars: {}
-version: 1.19.2
+version: 1.20.0
