@@ -3,5 +3,4 @@ datetime
 pycountry
 pytz
 purity-fb
-py-pure-client
 urllib3
