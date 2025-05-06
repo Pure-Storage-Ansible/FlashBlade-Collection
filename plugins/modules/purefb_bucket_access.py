@@ -324,7 +324,7 @@ def create_access_policy(module, blade):
                 resources=all_resources,
                 actions=module.params["actions"],
                 principals=BucketAccessPolicyRulePrincipal(
-                    all=module.params["pricipals"]
+                    all=module.params["principals"]
                 ),
             ),
         )
