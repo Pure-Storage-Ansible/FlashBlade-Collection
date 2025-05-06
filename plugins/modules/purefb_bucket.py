@@ -513,10 +513,12 @@ def update_bucket(module, blade, bucket):
             bucket_detail.object_lock_config, "freeze_locked_objects", False
         ):
             module.warn("Freeze locked onjects cannot be disabled.")
-        if getattr(bucket_detail.object_lock_config, "default_retention", 0) > 1:
+        default_retention = getattr(
+            bucket_detail.object_lock_config, "default_retention"
+        )
+        if default_retention and default_retention > 1:
             if (
-                bucket_detail.object_lock_config.default_retention / 86400000
-                > int(module.params["default_retention"])
+                default_retention / 86400000 > int(module.params["default_retention"])
                 and bucket_detail.retention_lock == "ratcheted"
             ):
                 module.warn(
