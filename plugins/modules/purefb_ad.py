@@ -407,11 +407,7 @@ def main():
         )
     )
 
-    required_if = [["state", "present", ["username", "password", "domain"]]]
-
-    module = AnsibleModule(
-        argument_spec, required_if=required_if, supports_check_mode=True
-    )
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     if not HAS_PURESTORAGE:
         module.fail_json(msg="py-pure-client sdk is required for this module")
