@@ -108,14 +108,6 @@ options:
     type: list
     elements: str
     version_added: 1.20.0
-  service:
-    description:
-    - Service protocol for Active Directory principals
-    - Refer to FlashBlade User Guide for more details
-    type: list
-    elements: str
-    choices: ['nfs', 'cifs', 'HOST']
-    default: nfs
   local_only:
     description:
     - Do a local-only delete of an active directory account
@@ -142,7 +134,8 @@ EXAMPLES = r"""
     directory_servers:
     - ldap.acme.com
     service_principals:
-    - vip1.flashblade.acme.com
+    - "nfs/vip1.flashblade.acme.com"
+    - "HOST/vip2.flashblade.acme.com"
     global_catalog_servers:
     - gc1.flashblade.acme.com
     fb_url: 10.10.10.2
@@ -173,7 +166,7 @@ EXAMPLES = r"""
     directory_servers:
     - ldap.acme.com
     service_principals:
-    - vip1.flashblade.acme.com
+    - "HOST/vip1.flashblade.acme.com"
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
@@ -317,14 +310,14 @@ def update_account(module, blade):
         module.fail_json(msg="Cannot make changes to OU when changing encryption types")
     if module.params["directory_servers"]:
         if current_ad.directory_servers:
-            if set(module.params["directory_servers"]) != set(
+            if sorted(module.params["directory_servers"]) != sorted(
                 current_ad.directory_servers
             ):
                 attr["directory_servers"] = module.params["directory_servers"]
                 mod_ad = True
     if module.params["kerberos_servers"]:
         if current_ad.kerberos_servers:
-            if set(module.params["kerberos_servers"]) != set(
+            if sorted(module.params["kerberos_servers"]) != sorted(
                 current_ad.kerberos_servers
             ):
                 attr["kerberos_servers"] = module.params["kerberos_servers"]
@@ -332,28 +325,21 @@ def update_account(module, blade):
     if module.params["join_ou"] != current_ad.join_ou:
         attr["join_ou"] = module.params["join_ou"]
         mod_ad = True
-    if set(module.params["encryption"]) != set(current_ad.encryption_types):
+    if sorted(module.params["encryption"]) != sorted(current_ad.encryption_types):
         attr["encryption_types"] = module.params["encryption"]
         mod_ad = True
     if module.params["service_principals"]:
         if current_ad.service_principal_names:
-            full_spns = []
-            for spn in range(0, len(module.params["service_principals"])):
-                for service in range(0, len(module.params["service"])):
-                    full_spns.append(
-                        module.params["service"][service]
-                        + "/"
-                        + module.params["service_principals"][spn]
-                    )
-            if set(current_ad.service_principal_names) != set(full_spns):
-                attr["service_principal_names"] = full_spns
+            if sorted(module.params["service_principals"]) != sorted(
+                current_ad.service_principal_names
+            ):
+                attr["service_principal_names"] = module.params["service_principals"]
                 mod_ad = True
     if GC_SERVERS_API_VERSION in api_version:
         if module.params["global_catalog_servers"]:
             if current_ad.global_catalog_servers:
-                if (
-                    set(current_ad.global_catalog_servers)
-                    != module.params["global_catalog_servers"]
+                if sorted(current_ad.global_catalog_servers) != sorted(
+                    module.params["global_catalog_servers"]
                 ):
                     attr["global_catalog_servers"] = module.params[
                         "global_catalog_servers"
@@ -383,12 +369,6 @@ def main():
             username=dict(type="str"),
             password=dict(type="str", no_log=True),
             name=dict(type="str", required=True),
-            service=dict(
-                type="list",
-                elements="str",
-                default="nfs",
-                choices=["nfs", "cifs", "HOST"],
-            ),
             computer=dict(type="str"),
             existing=dict(type="bool", default=False),
             local_only=dict(type="bool", default=False),
@@ -407,11 +387,7 @@ def main():
         )
     )
 
-    required_if = [["state", "present", ["username", "password", "domain"]]]
-
-    module = AnsibleModule(
-        argument_spec, required_if=required_if, supports_check_mode=True
-    )
+    module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     if not HAS_PURESTORAGE:
         module.fail_json(msg="py-pure-client sdk is required for this module")
