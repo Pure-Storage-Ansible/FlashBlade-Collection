@@ -275,7 +275,10 @@ def main():
         )
     )
 
-    module = AnsibleModule(argument_spec, supports_check_mode=True)
+    required_if = [["state", "present", ["prefix"]]]
+    module = AnsibleModule(
+        argument_spec, required_if=required_if, supports_check_mode=True
+    )
 
     if not HAS_PURITY_FB:
         module.fail_json(msg="purity_fb sdk is required for this module")
@@ -320,6 +323,7 @@ def main():
             if (
                 subnets.items[sub].vlan == module.params["vlan"]
                 and subnets.items[sub].name != module.params["name"]
+                and hasattr(subnets.items[sub].link_aggregation_group, "name")
             ):
                 module.fail_json(
                     msg="VLAN ID {0} is already in use.".format(module.params["vlan"])
