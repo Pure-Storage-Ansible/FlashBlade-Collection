@@ -326,24 +326,43 @@ def create_bucket(module, blade):
                             res.errors[0].message,
                         )
                     )
-                if QUOTA_VERSION in api_version:
-                    bucket = flashblade.BucketPatch(
-                        retention_lock=module.params["retention_lock"],
-                        object_lock_config=flashblade.ObjectLockConfigRequestBody(
-                            default_retention_mode=module.params["retention_mode"],
-                            enabled=module.params["object_lock_enabled"],
-                            freeze_locked_objects=module.params[
-                                "freeze_locked_objects"
-                            ],
-                            default_retention=module.params["default_retention"],
-                        ),
-                        versioning=module.params["versioning"],
-                    )
+                if module.params["versioning"] != "absent":
+                    if QUOTA_VERSION in api_version:
+                        bucket = flashblade.BucketPatch(
+                            retention_lock=module.params["retention_lock"],
+                            object_lock_config=flashblade.ObjectLockConfigRequestBody(
+                                default_retention_mode=module.params["retention_mode"],
+                                enabled=module.params["object_lock_enabled"],
+                                freeze_locked_objects=module.params[
+                                    "freeze_locked_objects"
+                                ],
+                                default_retention=module.params["default_retention"],
+                            ),
+                            versioning=module.params["versioning"],
+                        )
+                    else:
+                        bucket = flashblade.BucketPatch(
+                            retention_lock=module.params["retention_lock"],
+                            versioning=module.params["versioning"],
+                        )
                 else:
-                    bucket = flashblade.BucketPatch(
-                        retention_lock=module.params["retention_lock"],
-                        versioning=module.params["versioning"],
-                    )
+                    if QUOTA_VERSION in api_version:
+                        bucket = flashblade.BucketPatch(
+                            retention_lock=module.params["retention_lock"],
+                            object_lock_config=flashblade.ObjectLockConfigRequestBody(
+                                default_retention_mode=module.params["retention_mode"],
+                                enabled=module.params["object_lock_enabled"],
+                                freeze_locked_objects=module.params[
+                                    "freeze_locked_objects"
+                                ],
+                                default_retention=module.params["default_retention"],
+                            ),
+                        )
+                    else:
+                        bucket = flashblade.BucketPatch(
+                            retention_lock=module.params["retention_lock"],
+                        )
+
                 res = bladev2.patch_buckets(
                     names=[module.params["name"]], bucket=bucket
                 )
@@ -399,6 +418,41 @@ def create_bucket(module, blade):
                     msg="Failed to set Public Access config correctly for bucket {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
+            if (
+                not module.params["block_public_access"]
+                and not module.params["block_new_public_policies"]
+            ):
+                # To make the bucket truely public we have to create a bucket access policy
+                # and rule
+                policy = flashblade.BucketAccessPolicyPost(
+                    name=module.params["name"],
+                )
+                res = bladev2.post_buckets_bucket_access_policies(
+                    bucket_names=[module.params["name"]], policy=policy
+                )
+                if res.status_code != 200:
+                    module.warn(
+                        msg="Failed to set bucket access policy for bucket {0}. Error: {1}".format(
+                            module.params["name"], res.errors[0].message
+                        )
+                    )
+                rule = flashblade.BucketAccessPolicyRulePost(
+                    actions=["s3:GetObject"],
+                    effect="allow",
+                    principals=flashblade.BucketAccessPolicyRulePrincipal(all=True),
+                    resources=[module.params["name"] + "/*"],
+                )
+                res = bladev2.post_buckets_bucket_access_policies_rules(
+                    bucket_names=[module.params["name"]],
+                    rule=rule,
+                    names=["default"],
+                )
+                if res.status_code != 200:
+                    module.warn(
+                        msg="Failed to set bucket access policy rule for bucket {0}. Error: {1}".format(
+                            module.params["name"], res.errors[0].message
+                        )
+                    )
         if WORM_VERSION in api_version and module.params["eradication_mode"]:
             if not module.params["eradication_delay"]:
                 module.params["eradication_delay"] = SEC_PER_DAY
@@ -528,7 +582,7 @@ def update_bucket(module, blade, bucket):
     if VERSIONING_VERSION in api_version:
         if bucket.versioning != "none":
             if module.params["versioning"] == "absent":
-                versioning = "suspended"
+                versioning = "none"
             else:
                 versioning = module.params["versioning"]
             if bucket.versioning != versioning:
