@@ -178,8 +178,9 @@ def update_lag(module, blade):
             new_ports.append(module.params["ports"][port].upper())
     ports = []
     for final_port in range(0, len(new_ports)):
-        ports.append(flashblade.FixedReference(name=new_ports[final_port]))
-    link_aggregation_group = flashblade.Linkaggregationgroup(ports=ports)
+        ports.append(flashblade.Reference(name=new_ports[final_port]))
+    link_aggregation_group = flashblade.LinkAggregationGroup(ports=[])
+    link_aggregation_group["ports"] = ports
     if sorted(used_ports) != sorted(new_ports):
         changed = True
         if not module.check_mode:
@@ -238,9 +239,11 @@ def create_lag(module, blade):
             + module.params["ports"][new_port].split(".")[1].upper()
         )
     ports = []
+    module.warn("new_ports: {0}".format(new_ports))
     for final_port in range(0, len(new_ports)):
         ports.append(flashblade.FixedReference(name=new_ports[final_port]))
     link_aggregation_group = flashblade.LinkAggregationGroup(ports=ports)
+    module.warn("LAG: {0}".format(link_aggregation_group))
     if not module.check_mode:
         res = blade.post_link_aggregation_groups(
             names=[module.params["name"]], link_aggregation_group=link_aggregation_group
