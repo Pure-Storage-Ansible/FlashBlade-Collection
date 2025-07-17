@@ -208,9 +208,10 @@ def create_rule(module, blade, bladev2=None):
             not module.params["keep_previous_for"]
             and not module.params["keep_current_until"]
             and not module.params["keep_current_for"]
+            and not module.params["abort_uploads_after"]
         ):
             module.fail_json(
-                msg="At least one `keep...` parameter is required to create a new lifecycle rule"
+                msg="At least one parameter is required to create a new lifecycle rule"
             )
 
     else:
