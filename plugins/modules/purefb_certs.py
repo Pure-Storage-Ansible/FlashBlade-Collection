@@ -545,7 +545,7 @@ def main():
     if not HAS_PYCOUNTRY:
         module.fail_json(msg="pycountry sdk is required for this module")
 
-    email_pattern = r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,6}$"
+    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     blade = get_system(module)
 
     if module.params["email"]:
