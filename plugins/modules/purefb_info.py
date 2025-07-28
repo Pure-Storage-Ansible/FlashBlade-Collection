@@ -392,12 +392,15 @@ def generate_config_dict(module, blade):
         .items[0]
         .to_dict()
     )
-    if SERVERS_API_VERSION not in api_version:
-        config_info["smb_directory_service"] = (
-            blade.directory_services.list_directory_services(names=["smb"])
-            .items[0]
-            .to_dict()
-        )
+    try:
+        if SERVERS_API_VERSION not in api_version:
+            config_info["smb_directory_service"] = (
+                blade.directory_services.list_directory_services(names=["smb"])
+                .items[0]
+                .to_dict()
+            )
+    except Exception:
+        config_info["smb_directory_service"] = {}
     config_info["ntp"] = blade.arrays.list_arrays().items[0].ntp_servers
     config_info["ssl_certs"] = blade.certificates.list_certificates().items[0].to_dict()
     if CERT_GROUPS_API_VERSION in api_version:

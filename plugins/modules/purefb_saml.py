@@ -39,6 +39,11 @@ options:
     description:
     - The URL of the identity provider
     type: str
+  entity_id:
+    description:
+    - A globally unique name for the identity provider
+    type: str
+    version_added: '1.21.0'
   array_url:
     description:
     - The URL of the FlashBlade
@@ -182,11 +187,16 @@ def update_saml(module, blade):
         "sp_sign_cred": getattr(current_idp.sp.signing_credential, "name", None),
         "sp_decrypt_cred": getattr(current_idp.sp.decryption_credential, "name", None),
         "id_metadata": current_idp.idp.metadata_url,
+        "id_entity": getattr(current_idp.idp, "entity_id", "None"),
         "id_url": getattr(current_idp.idp, "url", None),
         "id_sign_enabled": current_idp.idp.sign_request_enabled,
         "id_encrypt_enabled": current_idp.idp.encrypt_assertion_enabled,
         "id_cert": current_idp.idp.verification_certificate,
     }
+    if module.params["entity_id"]:
+        new_entity = module.params["entity_id"]
+    else:
+        new_entity = old_idp["id_entity"]
     if module.params["url"]:
         new_url = module.params["url"]
     else:
@@ -228,6 +238,7 @@ def update_saml(module, blade):
         "enabled": new_enabled,
         "sp_sign_cred": new_sign_cred,
         "sp_decrypt_cred": new_decrypt_cred,
+        "id_entity": new_entity,
         "id_metadata": new_meta_url,
         "id_sign_enabled": new_sign,
         "id_encrypt_enabled": new_encrypt,
@@ -246,6 +257,7 @@ def update_saml(module, blade):
             idp = Saml2SsoIdp(
                 url=new_idp["id_url"],
                 metadata_url=new_idp["id_metadata"],
+                entity_id=new_idp["id_entity"],
                 sign_request_enabled=new_idp["id_sign_enabled"],
                 encrypt_assertion_enabled=new_idp["id_encrypt_enabled"],
                 verification_certificate=new_idp["id_cert"],
@@ -283,6 +295,7 @@ def create_saml(module, blade):
         idp = Saml2SsoIdp(
             url=module.params["url"],
             metadata_url=module.params["metadata_url"],
+            entity_id=module.params["entity_id"],
             sign_request_enabled=module.params["sign_request"],
             encrypt_assertion_enabled=module.params["encrypt_asserts"],
             verification_certificate=module.params["x509_cert"],
@@ -324,6 +337,7 @@ def main():
             name=dict(type="str", required=True),
             url=dict(type="str"),
             array_url=dict(type="str"),
+            entity_id=dict(type="str"),
             metadata_url=dict(type="str"),
             x509_cert=dict(type="str", no_log=True),
             signing_credential=dict(type="str"),
