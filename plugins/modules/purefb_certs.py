@@ -173,8 +173,6 @@ EXAMPLES = r"""
     state: import
     name: foo
     certificate: "{{lookup('file', 'example.crt') }}"
-    key: "{{lookup('file', 'example.key') }}"
-    passphrase: password
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 """
@@ -346,57 +344,31 @@ def delete_cert(module, blade):
     module.exit_json(changed=changed)
 
 
-def import_cert(module, blade, reimport=False):
+def import_cert(module, blade):
     """Import a CA provided SSL certificate"""
     changed = True
     if not module.check_mode:
-        if reimport:
-            certificate = flashblade.CertificatePatch(
+        if CERT_TYPE_VERSION in list(blade.get_versions().items):
+            certificate = flashblade.CertificatePost(
+                certificate_type="external",
                 certificate=module.params["certificate"],
-                intermediate_certificate=module.params["intermediate_cert"],
-                passphrase=module.params["passphrase"],
-                private_key=module.params["key"],
-            )
-            res = blade.patch_certificates(
-                names=[module.params["name"]], certificate=certificate
+                status="imported",
             )
         else:
-            if CERT_TYPE_VERSION in list(blade.get_versions().items):
-                certificate = flashblade.CertificatePost(
-                    certificate_type="external",
-                    certificate=module.params["certificate"],
-                    intermediate_certificate=module.params["intermediate_cert"],
-                    key_size=module.params["key_size"],
-                    passphrase=module.params["passphrase"],
-                    status="imported",
-                )
-            else:
-                certificate = flashblade.CertificatePost(
-                    certificate=module.params["certificate"],
-                    intermediate_certificate=module.params["intermediate_cert"],
-                    key_size=module.params["key_size"],
-                    passphrase=module.params["passphrase"],
-                    status="imported",
-                )
-            res = blade.post_certificates(
-                names=[module.params["name"]], certificate=certificate
-            )
-            certificate = flashblade.CertificatePatch(
+            certificate = flashblade.CertificatePost(
                 certificate=module.params["certificate"],
                 intermediate_certificate=module.params["intermediate_cert"],
+                key_size=module.params["key_size"],
                 passphrase=module.params["passphrase"],
-                private_key=module.params["key"],
+                status="imported",
             )
-            if res.status_code == 200:
-                res = blade.patch_certificates(
-                    names=[module.params["name"]], certificate=certificate
-                )
-        if res.status_code != 200:
-            module.fail_json(
-                msg="Importing Certificate failed. Error: {0}".format(
-                    res.errors[0].message
-                )
-            )
+        res = blade.post_certificates(
+            names=[module.params["name"]], certificate=certificate
+        )
+    if res.status_code != 200:
+        module.fail_json(
+            msg="Importing Certificate failed. Error: {0}".format(res.errors[0].message)
+        )
     module.exit_json(changed=changed)
 
 
@@ -545,7 +517,7 @@ def main():
     if not HAS_PYCOUNTRY:
         module.fail_json(msg="pycountry sdk is required for this module")
 
-    email_pattern = r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,6}$"
+    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     blade = get_system(module)
 
     if module.params["email"]:
@@ -581,7 +553,7 @@ def main():
     elif not exists and state == "import":
         import_cert(module, blade)
     elif exists and state == "import":
-        import_cert(module, blade, reimport=True)
+        module.fail_json(msg="External Certificates cannot be reimported")
     elif state == "export":
         export_cert(module, blade)
     elif exists and state == "absent":
