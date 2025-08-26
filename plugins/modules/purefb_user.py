@@ -35,6 +35,7 @@ options:
     description:
     - The name of the user account
     type: str
+    required: true
   role:
     description:
     - Sets the local user's access level to the system
@@ -45,12 +46,10 @@ options:
   password:
     description:
     - Password for the local user.
-    - Only applies to the local user 'pureuser'
     type: str
   old_password:
     description:
     - If changing an existing password, you must provide the old password for security
-    - Only applies to the local user 'pureuser'
     type: str
   api:
     description:
@@ -78,6 +77,13 @@ options:
     type: bool
     default: false
     version_added: "1.8.0"
+  ad_user:
+    description:
+      - Whether the user is in the AD system
+      - Not required for local users
+    type: bool
+    default: false
+    version_added: "1.21.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -102,6 +108,16 @@ EXAMPLES = r"""
   purestorage.flashblade.purefb_user:
     name: fred
     clear_lock: true
+    fb_url: 10.10.10.2
+    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
+
+- name: Create an API token (TTL of 2 days) and assign a public key to an AD user
+  purestorage.flashblade.purefb_user:
+    name: ansible-ad
+    ad_user: true
+    public_key: "{{lookup('file', 'id_rsa.pub') }}"
+    api: true
+    timeout: 2d
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 """
@@ -137,29 +153,18 @@ MIN_EXPOSE_API = "2.18"
 def get_user(module, blade):
     """Return Local User Account or None"""
     user = None
-    api_version = list(blade.get_versions().items)
-    if MIN_EXPOSE_API in api_version:
-        res = blade.get_admins(
-            names=[module.params["name"]],
-            expose_public_key=True,
-        )
-    else:
-        res = blade.get_admins(
-            names=[module.params["name"]],
-        )
+    res = blade.get_admins(names=[module.params["name"]])
     if res.status_code != 200:
         return None
     else:
         return list(res.items)[0]
 
 
-def create_user(module, blade):
+def create_local_user(module, blade, user):
     """Create or Update Local User Account"""
     changed = key_changed = api_changed = role_changed = passwd_changed = False
-    user = get_user(module, blade)
     role = module.params["role"]
-    ttl = convert_time_to_millisecs(module.params["timeout"])
-    api_token = None
+    api_token = "No API token created"
     if not user:
         changed = True
         if not module.check_mode:
@@ -281,19 +286,106 @@ def create_user(module, blade):
     module.exit_json(changed=changed, user_info=api_token)
 
 
-def delete_user(module, blade):
-    """Delete Local User Account"""
-    changed = False
-    if get_user(module, blade):
-        changed = True
-        if not module.check_mode:
-            res = blade.delete_admins(names=[module.params["name"]])
+def update_ad_user(module, blade, user):
+    """Update AD user API token and/or SSH key"""
+    api_token = "No API token created"
+    api_changed = ssh_changed = False
+    if module.params["api"]:
+        if user:
+            api_changed = True
+            ttl = convert_time_to_millisecs(module.params["timeout"])
+            if getattr(user.api_token, "token"):
+                res = blade.delete_admins_api_tokens(
+                    admin_names=[module.params["name"]]
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to delete original API token. Error: {0}".format(
+                            res.errors[0].message
+                        )
+                    )
+            res = blade.post_admins_api_tokens(
+                admin_names=[module.params["name"]], timeout=ttl
+            )
             if res.status_code != 200:
                 module.fail_json(
-                    msg="User Account {0} deletion failed. Error: {1}".format(
+                    msg="Failed to recreate API token. Error: {0}".format(
+                        res.errors[0].message
+                    )
+                )
+            api_token = list(res.items)[0].api_token.token
+        else:
+            api_changed = True
+            ttl = convert_time_to_millisecs(module.params["timeout"])
+            res = blade.post_admins_api_tokens(
+                admin_names=[module.params["name"]], timeout=ttl
+            )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to create API token. Error: {0}".format(
+                        res.errors[0].message
+                    )
+                )
+            api_token = list(res.items)[0].api_token.token
+    if module.params["public_key"]:
+        ssh_changed = True
+        res = blade.patch_admins(
+            names=[module.params["name"]],
+            admin=AdminPatch(public_key=module.params["public_key"]),
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to add SSH key. Error: {0}".format(res.errors[0].message)
+            )
+    changed = bool(api_changed or ssh_changed)
+    module.exit_json(changed=changed, user_info=api_token)
+
+
+def delete_ad_user(module, blade, user):
+    """Delete AD User Account references"""
+    changed = False
+    if not module.check_mode:
+        if user:
+            changed = True
+            res = blade.delete_admins_api_tokens(admin_names=[module.params["name"]])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="AD Account {0} API token deletion failed. Error: {1}".format(
                         module.params["name"], res.errors[0].message
                     )
                 )
+            if hasattr(user, "public_key"):
+                res = blade.patch_admins(
+                    names=[module.params["name"]],
+                    admin=AdminPatch(public_key=""),
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="AD Account {0} public key deletion failed. Error: {1}".format(
+                            module.params["name"], res.errors[0].message
+                        )
+                    )
+        res = blade.delete_admins_cache(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Admin Cache deleteion failed for AD user {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+    module.exit_json(changed=changed)
+
+
+def delete_local_user(module, blade):
+    """Delete Local User Account"""
+    changed = True
+    if not module.check_mode:
+        res = blade.delete_admins(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="User Account {0} deletion failed. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -301,7 +393,7 @@ def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
-            name=dict(type="str"),
+            name=dict(type="str", required=True),
             public_key=dict(type="str", no_log=True),
             password=dict(type="str", no_log=True),
             old_password=dict(type="str", no_log=True),
@@ -313,6 +405,7 @@ def main():
             ),
             state=dict(type="str", default="present", choices=["absent", "present"]),
             api=dict(type="bool", default=False),
+            ad_user=dict(type="bool", default=False),
             timeout=dict(type="str", default="0"),
         )
     )
@@ -331,16 +424,22 @@ def main():
 
     state = module.params["state"]
     pattern = re.compile("^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$")
+    user = get_user(module, blade)
+    local_user = getattr(user, "is_local", False)
     if not pattern.match(module.params["name"]):
         module.fail_json(
             msg="name must contain a minimum of 1 and a maximum of 32 characters "
             "(alphanumeric or `-`). All letters must be lowercase."
         )
 
-    if state == "absent":
-        delete_user(module, blade)
-    elif state == "present":
-        create_user(module, blade)
+    if state == "present" and not local_user and module.params["ad_user"]:
+        update_ad_user(module, blade, user)
+    if state == "absent" and local_user:
+        delete_local_user(module, blade)
+    if state == "absent" and not local_user:
+        delete_ad_user(module, blade, user)
+    elif state == "present" and not module.params["ad_user"]:
+        create_local_user(module, blade, user)
     else:
         module.exit_json(changed=False)
 
