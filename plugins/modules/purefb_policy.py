@@ -2156,7 +2156,7 @@ def delete_os_policy(module, blade):
         if res.status_code == 200 and res.total_item_count != 0:
             changed = True
             if not module.check_mode:
-                res = blade.delete_object_store_access_policies_object_store_rules(
+                res = blade.delete_object_store_access_policies_rules(
                     policy_names=[policy_name], names=[module.params["rule"]]
                 )
                 if res.status_code != 200:
