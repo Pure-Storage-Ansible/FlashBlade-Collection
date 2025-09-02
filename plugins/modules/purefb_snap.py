@@ -59,6 +59,16 @@ options:
     - Define whether to eradicate the snapshot on delete or leave in trash.
     type: bool
     default: false
+  lastest_replica:
+    description:
+    - Used when destroying a snapshot.
+    - If false, and the snapshot is the
+      latest replicated snapshot, then destroy will fail.
+    - If true or the snapshot is not the latest replicated snapshot,
+      then destroy will be successful.
+    type: bool
+    default: false
+    version_added: "1.21.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -135,7 +145,7 @@ except ImportError:
 
 HAS_PYPURECLIENT = True
 try:
-    from pypureclient.flashblade import FileSystemSnapshotPost
+    from pypureclient.flashblade import FileSystemSnapshotPost, FileSystemSnapshot
 except ImportError:
     HAS_PYPURECLIENT = False
 
@@ -282,36 +292,43 @@ def update_snapshot(module, blade):
 
 def delete_snapshot(module, blade):
     """Delete Snapshot"""
+    changed = True
     if not module.check_mode:
         snapname = module.params["name"] + "." + module.params["suffix"]
-        new_attr = FileSystemSnapshot(destroyed=True)
-        try:
-            blade.file_system_snapshots.update_file_system_snapshots(
-                name=snapname, attributes=new_attr
+        res = blade.patch_file_system_snapshots(
+            names=[snapname],
+            lastest_replica=module.params["lastest_replica"],
+            file_system_snapshot=FileSystemSnapshot(destroyed=True),
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to delete snapshot {0}. Error: {1}".format(
+                    snapname, res.errors[0].message
+                )
             )
-            changed = True
-            if module.params["eradicate"]:
-                try:
-                    blade.file_system_snapshots.delete_file_system_snapshots(
-                        name=snapname
+        if module.params["eradicate"]:
+            res = blade.delete_file_system_snapshots(names=[snapname])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to eradicate snapshot {0}. Error: {1}".format(
+                        snapname, res.errors[0].message
                     )
-                    changed = True
-                except Exception:
-                    changed = False
-        except Exception:
-            changed = False
+                )
     module.exit_json(changed=changed)
 
 
 def eradicate_snapshot(module, blade):
     """Eradicate Snapshot"""
+    changed = True
     if not module.check_mode:
         snapname = module.params["name"] + "." + module.params["suffix"]
-        try:
-            blade.file_system_snapshots.delete_file_system_snapshots(name=snapname)
-            changed = True
-        except Exception:
-            changed = False
+        res = blade.delete_file_system_snapshots(names=[snapname])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to eradicate snapshot {0}. Error: {1}".format(
+                    snapname, res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -325,6 +342,7 @@ def main():
             target=dict(type="str", aliases=["targets"]),
             eradicate=dict(default="false", type="bool"),
             state=dict(default="present", choices=["present", "absent", "restore"]),
+            lastest_replica=dict(default="false", type="bool"),
         )
     )
 
@@ -346,6 +364,7 @@ def main():
 
     state = module.params["state"]
     blade = get_blade(module)
+    blade2 = get_system(module)
     versions = blade.api_version.list_versions().versions
 
     if SNAP_NOW_API not in versions and module.params["now"]:
@@ -384,9 +403,9 @@ def main():
     elif state == "restore" and filesystem:
         restore_snapshot(module, blade)
     elif state == "absent" and snap and not snap.destroyed:
-        delete_snapshot(module, blade)
+        delete_snapshot(module, blade2)
     elif state == "absent" and snap and snap.destroyed:
-        eradicate_snapshot(module, blade)
+        eradicate_snapshot(module, blade2)
     elif state == "absent" and not snap:
         module.exit_json(changed=False)
     else:
