@@ -4,6 +4,14 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.21.1
+=======
+
+Minor Changes
+-------------
+
+- purefb_ad - Revert removal of ``service`` parameter (breaking change). Added more logic to use of ``service`` parameter and recommend use of ``service_principals`` with service incorporated.
+
 v1.21.0
 =======
 
@@ -18,7 +26,6 @@ Minor Changes
 Bugfixes
 --------
 
-- puref_policy - Fixed typo when calling object store policy rule deletion
 - purefb_ad - Fixed issue where updating an AD account required unnecessary parameters.
 - purefb_bucket - Fix versioning control and access rules for public buckets
 - purefb_bucket - Fixed issue where a bucket with no versioning defined was incorrectly created.
@@ -29,6 +36,7 @@ Bugfixes
 - purefb_dns - Fixed multiple issues for data DNS configuration
 - purefb_fs - Ensured that NFS rules are emprty if requested filesystem is SMB only
 - purefb_info - Fixed error when ``default`` subset fails if SMD has been disabled on the FLashBlade
+- purefb_policy - Fixed typo when calling object store policy rule deletion
 - purefb_s3user - Fixed typo in imported keys code
 - purefb_subnet - Ensured prefix is required for subnet creation or update
 
