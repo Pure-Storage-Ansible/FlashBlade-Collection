@@ -357,10 +357,12 @@ def create_bucket(module, blade):
                                 ],
                                 default_retention=module.params["default_retention"],
                             ),
+                            versioning="none",
                         )
                     else:
                         bucket = flashblade.BucketPatch(
                             retention_lock=module.params["retention_lock"],
+                            versioning="none",
                         )
 
                 res = bladev2.patch_buckets(
