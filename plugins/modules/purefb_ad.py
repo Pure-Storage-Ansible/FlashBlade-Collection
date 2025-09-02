@@ -108,6 +108,16 @@ options:
     type: list
     elements: str
     version_added: 1.20.0
+  service:
+    description:
+    - Service protocol for Active Directory principals
+    - Refer to FlashBlade User Guide for more details
+    - Use the I(service_principals) parameter instead to correctly define the service type to be used
+      for each principal.
+    type: list
+    elements: str
+    choices: ['nfs', 'cifs', 'HOST', '']
+    default: ''
   local_only:
     description:
     - Do a local-only delete of an active directory account
@@ -328,6 +338,19 @@ def update_account(module, blade):
     if sorted(module.params["encryption"]) != sorted(current_ad.encryption_types):
         attr["encryption_types"] = module.params["encryption"]
         mod_ad = True
+    if len(module.params["service"]) > 1 or module.params["service"] != "":
+        module.warn(
+            "Please incorporate the service parameter into the "
+            "service_principals parameter for better security control."
+        )
+    elif module.params["service_principals"]:
+        for sprin in range(0, len(module.params["service_principals"])):
+            if "/" not in module.params["service_principals"][sprin]:
+                module.params["service_principals"][sprin] = (
+                    module.params["service"]
+                    + "/"
+                    + module.params["service_principals"][sprin]
+                )
     if module.params["service_principals"]:
         if current_ad.service_principal_names:
             if sorted(module.params["service_principals"]) != sorted(
@@ -370,6 +393,12 @@ def main():
             password=dict(type="str", no_log=True),
             name=dict(type="str", required=True),
             computer=dict(type="str"),
+            service=dict(
+                type="list",
+                elements="str",
+                default="",
+                choices=["nfs", "cifs", "HOST", ""],
+            ),
             existing=dict(type="bool", default=False),
             local_only=dict(type="bool", default=False),
             domain=dict(type="str"),
