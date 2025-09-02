@@ -376,6 +376,10 @@ def create_fs(module, blade):
                                 module.fail_json(
                                     msg="Cannot set access_control to smb or independent when SMB is not enabled."
                                 )
+                            if module.params["smb"] and not (
+                                module.params["nfsv3"] or module.params["nfsv4"]
+                            ):
+                                module.params["nfs_rules"] = ""
                             if module.params["safeguard_acls"] and (
                                 module.params["access_control"]
                                 in ["mode-bits", "independent"]
