@@ -329,7 +329,7 @@ releases:
   1.21.0:
     changes:
       bugfixes:
-      - puref_policy - Fixed typo when calling object store policy rule deletion
+      - purefb_policy - Fixed typo when calling object store policy rule deletion
       - purefb_ad - Fixed issue where updating an AD account required unnecessary
         parameters.
       - purefb_bucket - Fix versioning control and access rules for public buckets
