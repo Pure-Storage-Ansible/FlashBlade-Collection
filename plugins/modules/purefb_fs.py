@@ -99,7 +99,7 @@ options:
     default: false
   writable:
     description:
-      - Define if a filesystem is writeable.
+      - Define if a filesystem is writable.
     required: false
     type: bool
   promote:
@@ -207,6 +207,33 @@ options:
     choices: [ 'creator', 'parent-directory' ]
     default: creator
     version_added: "1.17.0"
+  ignore_usage:
+    description:
+    - Allow update operations that lead to a hard_limit_enabled file
+      system with usage over its limiting value
+    type: bool
+    default: false
+    version_added: "1.22.0"
+  cancel_in_progress:
+    description:
+    - Whether to cancel any existing storage class transitons that are in progress
+      if the file system is requested to changed to another storage class
+    type: bool
+    default: false
+    version_added: "1.22.0"
+  storage_class:
+    description:
+    - Name of storage class in Fusion fleet file system is associated with
+    type: str
+    version_added: "1.22.0"
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -277,19 +304,6 @@ EXAMPLES = """
 RETURN = """
 """
 
-HAS_PURITY_FB = True
-try:
-    from purity_fb import (
-        FileSystem,
-        ProtocolRule,
-        NfsRule,
-        SmbRule,
-        MultiProtocolRule,
-        rest,
-    )
-except ImportError:
-    HAS_PURITY_FB = False
-
 HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import (
@@ -297,224 +311,175 @@ try:
         NfsPatch,
         Reference,
         Smb,
+        FileSystemPost,
+        Nfs,
+        SmbPost,
+        Http,
+        MultiProtocolPost,
+        MultiProtocol,
+        StorageClassInfo,
     )
 except ImportError:
     HAS_PYPURECLIENT = False
 
-HAS_JSON = True
-try:
-    import json
-except ImportError:
-    HAS_JSON = False
-
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
 
 
-HARD_LIMIT_API_VERSION = "1.4"
-NFSV4_API_VERSION = "1.6"
-REPLICATION_API_VERSION = "1.9"
-MULTIPROTOCOL_API_VERSION = "1.11"
 EXPORT_POLICY_API_VERSION = "2.3"
 SMB_POLICY_API_VERSION = "2.10"
 CA_API_VERSION = "2.12"
 GOWNER_API_VERSION = "2.13"
+CONTEXT_API_VERSION = "2.17"
 
 
 def get_fs(module, blade):
     """Return Filesystem or None"""
-    fsys = []
-    fsys.append(module.params["name"])
-    try:
-        res = blade.file_systems.list_file_systems(names=fsys)
-        return res.items[0]
-    except Exception:
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_file_systems(
+            context_names=[module.params["context"]],
+            names=[module.params["name"]],
+        )
+    else:
+        res = blade.get_file_systems(names=[module.params["name"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    else:
         return None
 
 
 def create_fs(module, blade):
     """Create Filesystem"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        try:
-            if not module.params["nfs_rules"]:
-                module.params["nfs_rules"] = "*(rw,no_root_squash)"
-            if module.params["size"]:
-                size = human_to_bytes(module.params["size"])
-            else:
-                size = 0
+        if not module.params["nfs_rules"]:
+            module.params["nfs_rules"] = "*(rw,no_root_squash)"
+        if module.params["size"]:
+            size = human_to_bytes(module.params["size"])
+        else:
+            size = 0
 
-            if module.params["user_quota"]:
-                user_quota = human_to_bytes(module.params["user_quota"])
-            else:
-                user_quota = None
-            if module.params["group_quota"]:
-                group_quota = human_to_bytes(module.params["group_quota"])
-            else:
-                group_quota = None
+        if module.params["user_quota"]:
+            user_quota = human_to_bytes(module.params["user_quota"])
+        else:
+            user_quota = None
+        if module.params["group_quota"]:
+            group_quota = human_to_bytes(module.params["group_quota"])
+        else:
+            group_quota = None
 
-            api_version = blade.api_version.list_versions().versions
-            if HARD_LIMIT_API_VERSION in api_version:
-                if NFSV4_API_VERSION in api_version:
-                    if REPLICATION_API_VERSION in api_version:
-                        if MULTIPROTOCOL_API_VERSION in api_version:
-                            if module.params["access_control"] == "nfs" and not (
-                                module.params["nfsv3"] or module.params["nfsv4"]
-                            ):
-                                module.fail_json(
-                                    msg="Cannot set access_control to nfs when NFS is not enabled."
-                                )
-                            if (
-                                module.params["access_control"]
-                                in ["smb", "independent"]
-                                and not module.params["smb"]
-                            ):
-                                module.fail_json(
-                                    msg="Cannot set access_control to smb or independent when SMB is not enabled."
-                                )
-                            if module.params["smb"] and not (
-                                module.params["nfsv3"] or module.params["nfsv4"]
-                            ):
-                                module.params["nfs_rules"] = ""
-                            if module.params["safeguard_acls"] and (
-                                module.params["access_control"]
-                                in ["mode-bits", "independent"]
-                            ):
-                                module.fail_json(
-                                    msg="ACL Safeguarding cannot be enabled if access_control is mode-bits or independent."
-                                )
-                            fs_obj = FileSystem(
-                                name=module.params["name"],
-                                provisioned=size,
-                                fast_remove_directory_enabled=module.params[
-                                    "fastremove"
-                                ],
-                                hard_limit_enabled=module.params["hard_limit"],
-                                snapshot_directory_enabled=module.params["snapshot"],
-                                nfs=NfsRule(
-                                    v3_enabled=module.params["nfsv3"],
-                                    v4_1_enabled=module.params["nfsv4"],
-                                    rules=module.params["nfs_rules"],
-                                ),
-                                smb=SmbRule(enabled=module.params["smb"]),
-                                http=ProtocolRule(enabled=module.params["http"]),
-                                multi_protocol=MultiProtocolRule(
-                                    safeguard_acls=module.params["safeguard_acls"],
-                                    access_control_style=module.params[
-                                        "access_control"
-                                    ],
-                                ),
-                                default_user_quota=user_quota,
-                                default_group_quota=group_quota,
-                            )
-                        else:
-                            fs_obj = FileSystem(
-                                name=module.params["name"],
-                                provisioned=size,
-                                fast_remove_directory_enabled=module.params[
-                                    "fastremove"
-                                ],
-                                hard_limit_enabled=module.params["hard_limit"],
-                                snapshot_directory_enabled=module.params["snapshot"],
-                                nfs=NfsRule(
-                                    v3_enabled=module.params["nfsv3"],
-                                    v4_1_enabled=module.params["nfsv4"],
-                                    rules=module.params["nfs_rules"],
-                                ),
-                                smb=SmbRule(
-                                    enabled=module.params["smb"],
-                                    acl_mode=module.params["smb_aclmode"],
-                                ),
-                                http=ProtocolRule(enabled=module.params["http"]),
-                                default_user_quota=user_quota,
-                                default_group_quota=group_quota,
-                            )
-                    else:
-                        fs_obj = FileSystem(
-                            name=module.params["name"],
-                            provisioned=size,
-                            fast_remove_directory_enabled=module.params["fastremove"],
-                            hard_limit_enabled=module.params["hard_limit"],
-                            snapshot_directory_enabled=module.params["snapshot"],
-                            nfs=NfsRule(
-                                v3_enabled=module.params["nfsv3"],
-                                v4_1_enabled=module.params["nfsv4"],
-                                rules=module.params["nfs_rules"],
-                            ),
-                            smb=ProtocolRule(enabled=module.params["smb"]),
-                            http=ProtocolRule(enabled=module.params["http"]),
-                            default_user_quota=user_quota,
-                            default_group_quota=group_quota,
-                        )
-                else:
-                    fs_obj = FileSystem(
-                        name=module.params["name"],
-                        provisioned=size,
-                        fast_remove_directory_enabled=module.params["fastremove"],
-                        hard_limit_enabled=module.params["hard_limit"],
-                        snapshot_directory_enabled=module.params["snapshot"],
-                        nfs=NfsRule(
-                            enabled=module.params["nfsv3"],
-                            rules=module.params["nfs_rules"],
-                        ),
-                        smb=ProtocolRule(enabled=module.params["smb"]),
-                        http=ProtocolRule(enabled=module.params["http"]),
-                    )
-            else:
-                fs_obj = FileSystem(
-                    name=module.params["name"],
-                    provisioned=size,
-                    fast_remove_directory_enabled=module.params["fastremove"],
-                    snapshot_directory_enabled=module.params["snapshot"],
-                    nfs=NfsRule(
-                        enabled=module.params["nfs"], rules=module.params["nfs_rules"]
-                    ),
-                    smb=ProtocolRule(enabled=module.params["smb"]),
-                    http=ProtocolRule(enabled=module.params["http"]),
-                )
-            blade.file_systems.create_file_systems(fs_obj)
-        except rest.ApiException as err:
-            message = json.loads(err.body)["errors"][0]["message"]
+        if module.params["access_control"] == "nfs" and not (
+            module.params["nfsv3"] or module.params["nfsv4"]
+        ):
+            module.fail_json(
+                msg="Cannot set access_control to nfs when NFS is not enabled."
+            )
+        if (
+            module.params["access_control"] in ["smb", "independent"]
+            and not module.params["smb"]
+        ):
+            module.fail_json(
+                msg="Cannot set access_control to smb or independent when SMB is not enabled."
+            )
+        if module.params["smb"] and not (
+            module.params["nfsv3"] or module.params["nfsv4"]
+        ):
+            module.params["nfs_rules"] = ""
+        if module.params["safeguard_acls"] and (
+            module.params["access_control"] in ["mode-bits", "independent"]
+        ):
+            module.fail_json(
+                msg="ACL Safeguarding cannot be enabled if access_control is mode-bits or independent."
+            )
+        fs_obj = FileSystemPost(
+            provisioned=size,
+            fast_remove_directory_enabled=module.params["fastremove"],
+            hard_limit_enabled=module.params["hard_limit"],
+            snapshot_directory_enabled=module.params["snapshot"],
+            nfs=Nfs(
+                v3_enabled=module.params["nfsv3"],
+                v4_1_enabled=module.params["nfsv4"],
+                rules=module.params["nfs_rules"],
+            ),
+            smb=SmbPost(enabled=module.params["smb"]),
+            http=Http(enabled=module.params["http"]),
+            multi_protocol=MultiProtocolPost(
+                safeguard_acls=module.params["safeguard_acls"],
+                access_control_style=module.params["access_control"],
+            ),
+            default_user_quota=user_quota,
+            default_group_quota=group_quota,
+        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_file_systems(
+                names=[module.params["name"]],
+                file_system=fs_obj,
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.post_file_systems(
+                names=[module.params["name"]], file_system=fs_obj
+            )
+        if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create filesystem {0}. Error: {1}".format(
-                    module.params["name"], message
+                    module.params["name"], res.errors[0].message
                 )
             )
-        if REPLICATION_API_VERSION in api_version:
-            if module.params["policy"]:
-                try:
-                    blade.policies.list_policies(names=[module.params["policy"]])
-                except Exception:
-                    _delete_fs(module, blade)
-                    module.fail_json(
-                        msg="Policy {0} doesn't exist.".format(module.params["policy"])
+        if module.params["policy"]:
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_policies(
+                    names=[module.params["policy"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_policies(names=[module.params["policy"]])
+            if res.status_code != 200:
+                _delete_fs(module, blade)
+                module.fail_json(
+                    msg="Policy {0} doesn't exist.".format(module.params["policy"])
+                )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_policies_file_systems(
+                    policy_names=[module.params["policy"]],
+                    member_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.post_policies_file_systems(
+                    policy_names=[module.params["policy"]],
+                    member_names=[module.params["name"]],
+                )
+            if res.status_code != 200:
+                _delete_fs(module, blade)
+                module.fail_json(
+                    msg="Failed to apply policy {0} when creating filesystem {1}. Error: {2}".format(
+                        module.params["policy"],
+                        module.params["name"],
+                        res.errors[0].message,
                     )
-                try:
-                    blade.policies.create_policy_filesystems(
-                        policy_names=[module.params["policy"]],
-                        member_names=[module.params["name"]],
-                    )
-                except Exception:
-                    _delete_fs(module, blade)
-                    module.fail_json(
-                        msg="Failed to apply policy {0} when creating filesystem {1}.".format(
-                            module.params["policy"], module.params["name"]
-                        )
-                    )
+                )
         if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
-            system = get_system(module)
             export_attr = FileSystemPatch(
                 nfs=NfsPatch(
                     export_policy=Reference(name=module.params["export_policy"])
                 )
             )
-            res = system.patch_file_systems(
-                names=[module.params["name"]], file_system=export_attr
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=export_attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]], file_system=export_attr
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Filesystem {0} created, but failed to assign export "
@@ -525,16 +490,22 @@ def create_fs(module, blade):
                     )
                 )
         if SMB_POLICY_API_VERSION in api_version:
-            system = get_system(module)
             if module.params["client_policy"]:
                 export_attr = FileSystemPatch(
                     smb=Smb(
                         client_policy=Reference(name=module.params["client_policy"])
                     )
                 )
-                res = system.patch_file_systems(
-                    names=[module.params["name"]], file_system=export_attr
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]],
+                        file_system=export_attr,
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]], file_system=export_attr
+                    )
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Filesystem {0} created, but failed to assign client "
@@ -548,9 +519,17 @@ def create_fs(module, blade):
                 export_attr = FileSystemPatch(
                     smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
                 )
-                res = system.patch_file_systems(
-                    names=[module.params["name"]], file_system=export_attr
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]],
+                        file_system=export_attr,
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]],
+                        file_system=export_attr,
+                    )
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Filesystem {0} created, but failed to assign share "
@@ -568,9 +547,16 @@ def create_fs(module, blade):
                         ]
                     )
                 )
-                res = system.patch_file_systems(
-                    names=[module.params["name"]], file_system=ca_attr
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]],
+                        file_system=ca_attr,
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]], file_system=ca_attr
+                    )
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Filesystem {0} created, but failed to set continuous availability"
@@ -583,9 +569,16 @@ def create_fs(module, blade):
                 go_attr = FileSystemPatch(
                     group_ownership=module.params["group_ownership"]
                 )
-                res = system.patch_file_systems(
-                    names=[module.params["name"]], file_system=go_attr
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]],
+                        file_system=go_attr,
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_file_systems(
+                        names=[module.params["name"]], file_system=go_attr
+                    )
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Filesystem {0} created, but failed to set group ownership"
@@ -594,6 +587,17 @@ def create_fs(module, blade):
                             res.errors[0].message,
                         )
                     )
+            if CONTEXT_API_VERSION in api_version and module.params["storage_class"]:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=FileSystemPatch(
+                        storage_class=StorageClassInfo(
+                            name=module.params["storage_class"]
+                        )
+                    ),
+                    cancel_in_progress_storage_class_transition=False,
+                    context_names=[module.params["context"]],
+                )
 
     module.exit_json(changed=changed)
 
@@ -606,237 +610,270 @@ def modify_fs(module, blade):
     change_share = False
     change_ca = False
     change_go = False
+    change_sc = False
     mod_fs = False
-    attr = {}
+    api_version = list(blade.get_versions().items)
     if module.params["policy"] and module.params["policy_state"] == "present":
-        try:
-            policy = blade.policies.list_policy_filesystems(
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_policies(
+                names=[module.params["policy"]],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_policies(names=[module.params["policy"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Policy {0} doesn't exist.".format(module.params["policy"])
+            )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_policies_file_systems(
+                policy_names=[module.params["policy"]],
+                member_names=[module.params["name"]],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_policies_file_systems(
                 policy_names=[module.params["policy"]],
                 member_names=[module.params["name"]],
             )
-        except Exception:
-            module.fail_json(
-                msg="Policy {0} does not exist.".format(module.params["policy"])
-            )
-        if not policy.items:
-            try:
-                blade.policies.create_policy_filesystems(
+        if res.status_code != 200:
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_policies_file_systems(
+                    policy_names=[module.params["policy"]],
+                    member_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_policies_file_systems(
                     policy_names=[module.params["policy"]],
                     member_names=[module.params["name"]],
                 )
-                mod_fs = True
-            except Exception:
+            mod_fs = True
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to add filesystem {0} to policy {1}.".format(
-                        module.params["name"], module.params["polict"]
+                    msg="Failed to add filesystem {0} to policy {1}. Error: {2}".format(
+                        module.params["name"],
+                        module.params["policy"],
+                        res.errors[0].message,
                     )
                 )
     if module.params["policy"] and module.params["policy_state"] == "absent":
-        try:
-            policy = blade.policies.list_policy_filesystems(
-                policy_names=[module.params["policy"]],
-                member_names=[module.params["name"]],
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_policies(
+                names=[module.params["policy"]],
+                context_names=[module.params["context"]],
             )
-        except Exception:
-            module.fail_json(
-                msg="Policy {0} does not exist.".format(module.params["policy"])
-            )
-        if len(policy.items) == 1:
-            try:
-                blade.policies.delete_policy_filesystems(
+        else:
+            res = blade.get_policies(names=[module.params["policy"]])
+        if res.status_code == 200:
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_policies_file_systems(
+                    policy_names=[module.params["policy"]],
+                    member_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_policies_file_systems(
                     policy_names=[module.params["policy"]],
                     member_names=[module.params["name"]],
                 )
-                mod_fs = True
-            except Exception:
-                module.fail_json(
-                    msg="Failed to remove filesystem {0} to policy {1}.".format(
-                        module.params["name"], module.params["polict"]
+            if res.status_code == 200:
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.delete_policies_file_systems(
+                        policy_names=[module.params["policy"]],
+                        member_names=[module.params["name"]],
+                        context_names=[module.params["context"]],
                     )
-                )
+                else:
+                    res = blade.delete_policies_file_systems(
+                        policy_names=[module.params["policy"]],
+                        member_names=[module.params["name"]],
+                    )
+                mod_fs = True
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to remove filesystem {0} from policy {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["policy"],
+                            res.errors[0].message,
+                        )
+                    )
     if module.params["user_quota"]:
         user_quota = human_to_bytes(module.params["user_quota"])
     if module.params["group_quota"]:
         group_quota = human_to_bytes(module.params["group_quota"])
     fsys = get_fs(module, blade)
+    new_fsys = {
+        "destroyed": fsys.destroyed,
+        "provisioned": fsys.provisioned,
+        "nfsv3": fsys.nfs.v3_enabled,
+        "nfsv4": fsys.nfs.v4_1_enabled,
+        "nfs_rules": fsys.nfs.rules,
+        "default_user_quota": fsys.default_user_quota,
+        "default_group_quota": fsys.default_group_quota,
+        "group_ownership": fsys.group_ownership,
+        "smb": fsys.smb.enabled,
+        "http": fsys.http.enabled,
+        "snapshot": fsys.snapshot_directory_enabled,
+        "fastremove": fsys.fast_remove_directory_enabled,
+        "hardlimit": fsys.hard_limit_enabled,
+        "safeguard_acls": fsys.multi_protocol.safeguard_acls,
+        "acs": fsys.multi_protocol.access_control_style,
+        "writable": fsys.writable,
+        "promotion_status": fsys.promotion_status,
+        "requested_promotion_state": fsys.requested_promotion_state,
+        "storage_class": fsys.get("storage_class", {}).get("name"),
+    }
     if fsys.destroyed:
-        attr["destroyed"] = False
+        new_fsys["destroyed"] = False
         mod_fs = True
     if module.params["size"]:
         if human_to_bytes(module.params["size"]) != fsys.provisioned:
-            attr["provisioned"] = human_to_bytes(module.params["size"])
+            new_fsys["provisioned"] = human_to_bytes(module.params["size"])
             mod_fs = True
-    api_version = blade.api_version.list_versions().versions
-    if NFSV4_API_VERSION in api_version:
-        v3_state = v4_state = None
-        if module.params["nfsv3"] and not fsys.nfs.v3_enabled:
-            v3_state = module.params["nfsv3"]
-        if not module.params["nfsv3"] and fsys.nfs.v3_enabled:
-            v3_state = module.params["nfsv3"]
-        if module.params["nfsv4"] and not fsys.nfs.v4_1_enabled:
-            v4_state = module.params["nfsv4"]
-        if not module.params["nfsv4"] and fsys.nfs.v4_1_enabled:
-            v4_state = module.params["nfsv4"]
-        if v3_state is not None or v4_state is not None:
-            attr["nfs"] = NfsRule(v4_1_enabled=v4_state, v3_enabled=v3_state)
-            mod_fs = True
-        if (
-            module.params["nfsv3"]
-            or module.params["nfsv4"]
-            and fsys.nfs.v3_enabled
-            or fsys.nfs.v4_1_enabled
-        ):
-            if module.params["nfs_rules"] is not None:
-                if fsys.nfs.rules != module.params["nfs_rules"]:
-                    attr["nfs"] = NfsRule(rules=module.params["nfs_rules"])
-                    mod_fs = True
-        if module.params["user_quota"] and user_quota != fsys.default_user_quota:
-            attr["default_user_quota"] = user_quota
-            mod_fs = True
-        if module.params["group_quota"] and group_quota != fsys.default_group_quota:
-            attr["default_group_quota"] = group_quota
-            mod_fs = True
-    else:
-        if module.params["nfsv3"] and not fsys.nfs.enabled:
-            attr["nfs"] = NfsRule(enabled=module.params["nfsv3"])
-            mod_fs = True
-        if not module.params["nfsv3"] and fsys.nfs.enabled:
-            attr["nfs"] = NfsRule(enabled=module.params["nfsv3"])
-            mod_fs = True
-        if module.params["nfsv3"] and fsys.nfs.enabled:
-            if fsys.nfs.rules != module.params["nfs_rules"]:
-                attr["nfs"] = NfsRule(rules=module.params["nfs_rules"])
-                mod_fs = True
-    if REPLICATION_API_VERSION in api_version:
-        if module.params["smb"] and not fsys.smb.enabled:
-            if MULTIPROTOCOL_API_VERSION in api_version:
-                attr["smb"] = SmbRule(enabled=module.params["smb"])
-            else:
-                attr["smb"] = SmbRule(
-                    enabled=module.params["smb"], acl_mode=module.params["smb_aclmode"]
-                )
-            mod_fs = True
-        if not module.params["smb"] and fsys.smb.enabled:
-            attr["smb"] = ProtocolRule(enabled=module.params["smb"])
-            mod_fs = True
-        if (
-            module.params["smb"]
-            and fsys.smb.enabled
-            and MULTIPROTOCOL_API_VERSION not in api_version
-        ):
-            if fsys.smb.acl_mode != module.params["smb_aclmode"]:
-                attr["smb"] = SmbRule(
-                    enabled=module.params["smb"], acl_mode=module.params["smb_aclmode"]
-                )
-                mod_fs = True
-    else:
-        if module.params["smb"] and not fsys.smb.enabled:
-            attr["smb"] = ProtocolRule(enabled=module.params["smb"])
-            mod_fs = True
-        if not module.params["smb"] and fsys.smb.enabled:
-            attr["smb"] = ProtocolRule(enabled=module.params["smb"])
-            mod_fs = True
-    if module.params["http"] and not fsys.http.enabled:
-        attr["http"] = ProtocolRule(enabled=module.params["http"])
+    if module.params["nfsv3"] != fsys.nfs.v3_enabled:
+        new_fsys["nfsv3"] = module.params["nfsv3"]
         mod_fs = True
-    if not module.params["http"] and fsys.http.enabled:
-        attr["http"] = ProtocolRule(enabled=module.params["http"])
+    if module.params["nfsv4"] != fsys.nfs.v4_1_enabled:
+        new_fsys["nfsv4"] = module.params["nfsv4"]
+        mod_fs = True
+    if module.params["nfs_rules"] is not None:
+        if sorted(fsys.nfs.rules) != sorted(module.params["nfs_rules"]):
+            new_fsys["nfs_rules"] = module.params["nfs_rules"]
+            mod_fs = True
+    if module.params["user_quota"] and user_quota != fsys.default_user_quota:
+        new_fsys["default_user_quota"] = user_quota
+        mod_fs = True
+    if module.params["group_quota"] and group_quota != fsys.default_group_quota:
+        new_fsys["default_group_quota"] = group_quota
+        mod_fs = True
+    if module.params["http"] and not fsys.http.enabled:
+        new_fsys["http"] = module.params["http"]
         mod_fs = True
     if module.params["snapshot"] and not fsys.snapshot_directory_enabled:
-        attr["snapshot_directory_enabled"] = module.params["snapshot"]
-        mod_fs = True
-    if not module.params["snapshot"] and fsys.snapshot_directory_enabled:
-        attr["snapshot_directory_enabled"] = module.params["snapshot"]
+        new_fsys["snapshot_directory_enabled"] = module.params["snapshot"]
         mod_fs = True
     if module.params["fastremove"] and not fsys.fast_remove_directory_enabled:
-        attr["fast_remove_directory_enabled"] = module.params["fastremove"]
+        new_fsys["fast_remove_directory_enabled"] = module.params["fastremove"]
         mod_fs = True
-    if not module.params["fastremove"] and fsys.fast_remove_directory_enabled:
-        attr["fast_remove_directory_enabled"] = module.params["fastremove"]
+    if module.params["hard_limit"] and not fsys.hard_limit_enabled:
+        new_fsys["hard_limit_enabled"] = module.params["hard_limit"]
         mod_fs = True
-    if HARD_LIMIT_API_VERSION in api_version:
-        if not module.params["hard_limit"] and fsys.hard_limit_enabled:
-            attr["hard_limit_enabled"] = module.params["hard_limit"]
+    if module.params["safeguard_acls"] and not fsys.multi_protocol.safeguard_acls:
+        new_fsys["safeguard_acls"] = module.params["safeguard_acls"]
+        mod_fs = True
+    if module.params["access_control"] != fsys.multi_protocol.access_control_style:
+        new_fsys["acs"] = module.params["access_control"]
+        mod_fs = True
+    if module.params["writable"] is not None:
+        if not module.params["writable"] and fsys.writable:
+            new_fsys["writable"] = module.params["writable"]
             mod_fs = True
-        if module.params["hard_limit"] and not fsys.hard_limit_enabled:
-            attr["hard_limit_enabled"] = module.params["hard_limit"]
+        if (
+            module.params["writable"]
+            and not fsys.writable
+            and fsys.promotion_status == "promoted"
+        ):
+            new_fsys["writable"] = module.params["writable"]
             mod_fs = True
-    if MULTIPROTOCOL_API_VERSION in api_version:
-        if module.params["safeguard_acls"] and not fsys.multi_protocol.safeguard_acls:
-            attr["multi_protocol"] = MultiProtocolRule(safeguard_acls=True)
+    if module.params["promote"] is not None:
+        if module.params["promote"] and fsys.promotion_status != "promoted":
+            new_fsys["requested_promotion_state"] = "promoted"
             mod_fs = True
-        if not module.params["safeguard_acls"] and fsys.multi_protocol.safeguard_acls:
-            attr["multi_protocol"] = MultiProtocolRule(safeguard_acls=False)
-            mod_fs = True
-        if module.params["access_control"] != fsys.multi_protocol.access_control_style:
-            attr["multi_protocol"] = MultiProtocolRule(
-                access_control_style=module.params["access_control"]
-            )
-            mod_fs = True
-    if REPLICATION_API_VERSION in api_version:
-        if module.params["writable"] is not None:
-            if not module.params["writable"] and fsys.writable:
-                attr["writable"] = module.params["writable"]
-                mod_fs = True
-            if (
-                module.params["writable"]
-                and not fsys.writable
-                and fsys.promotion_status == "promoted"
-            ):
-                attr["writable"] = module.params["writable"]
-                mod_fs = True
-        if module.params["promote"] is not None:
-            if module.params["promote"] and fsys.promotion_status != "promoted":
-                attr["requested_promotion_state"] = "promoted"
-                mod_fs = True
-            if not module.params["promote"] and fsys.promotion_status == "promoted":
-                # Demotion only allowed on filesystems in a replica-link
-                try:
-                    blade.file_system_replica_links.list_file_system_replica_links(
-                        local_file_system_names=[module.params["name"]]
-                    ).items[0]
-                except Exception:
-                    module.fail_json(
-                        msg="Filesystem {0} not demoted. Not in a replica-link".format(
-                            module.params["name"]
-                        )
+        if not module.params["promote"] and fsys.promotion_status == "promoted":
+            # Demotion only allowed on filesystems in a replica-link
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_file_system_replica_links(
+                    local_file_system_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_file_system_replica_links(
+                    local_file_system_names=[module.params["name"]]
+                )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Filesystem {0} not demoted. Not in a replica-link".format(
+                        module.params["name"]
                     )
-                attr["requested_promotion_state"] = "demoted"
-                mod_fs = True
+                )
+            new_fsys["requested_promotion_state"] = "demoted"
+            mod_fs = True
     if mod_fs:
         changed = True
         if not module.check_mode:
-            n_attr = FileSystem(**attr)
-            if REPLICATION_API_VERSION in api_version:
-                try:
-                    blade.file_systems.update_file_systems(
-                        name=module.params["name"],
-                        attributes=n_attr,
-                        discard_non_snapshotted_data=module.params["discard_snaps"],
-                    )
-                except rest.ApiException as err:
-                    message = json.loads(err.body)["errors"][0]["message"]
-                    module.fail_json(
-                        msg="Failed to update filesystem {0}. Error {1}".format(
-                            module.params["name"], message
-                        )
-                    )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=module.params["name"],
+                    context_names=[module.params["context"]],
+                    file_system=FileSystemPatch(
+                        default_group_quota=new_fsys["default_group_quota"],
+                        default_user_quota=new_fsys["default_user_quota"],
+                        destroyed=new_fsys["destroyed"],
+                        fast_remove_directory_enabled=new_fsys["fastremove"],
+                        hard_limit_enabled=new_fsys["hardlimit"],
+                        http=Http(enabled=new_fsys["http"]),
+                        multi_protocol=MultiProtocol(
+                            access_control_style=new_fsys["acs"],
+                            safeguard_acls=new_fsys["safeguard_acls"],
+                        ),
+                        nfs=NfsPatch(
+                            rules=new_fsys["nfs_rules"],
+                            v3_enabled=new_fsys["nfsv3"],
+                            v4_1_enabled=new_fsys["nfsv4"],
+                        ),
+                        provisioned=new_fsys["provisioned"],
+                        requested_promotion_state=new_fsys["requested_promotion_state"],
+                        smb=Smb(enabled=new_fsys["smb"]),
+                        writable=new_fsys["writable"],
+                    ),
+                    discard_non_snapshotted_data=module.params["discard_snaps"],
+                    ignore_usage=module.params["ignore_usage"],
+                )
             else:
-                try:
-                    blade.file_systems.update_file_systems(
-                        name=module.params["name"], attributes=n_attr
+                res = blade.patch_file_systems(
+                    names=module.params["name"],
+                    file_system=FileSystemPatch(
+                        default_group_quota=new_fsys["default_group_quota"],
+                        default_user_quota=new_fsys["default_user_quota"],
+                        destroyed=new_fsys["destroyed"],
+                        fast_remove_directory_enabled=new_fsys["fastremove"],
+                        hard_limit_enabled=new_fsys["hardlimit"],
+                        http=Http(enabled=new_fsys["http"]),
+                        multi_protocol=MultiProtocol(
+                            access_control_style=new_fsys["acs"],
+                            safeguard_acls=new_fsys["safeguard_acls"],
+                        ),
+                        nfs=NfsPatch(
+                            rules=new_fsys["nfs_rules"],
+                            v3_enabled=new_fsys["nfsv3"],
+                            v4_1_enabled=new_fsys["nfsv4"],
+                        ),
+                        provisioned=new_fsys["provisioned"],
+                        requested_promotion_state=new_fsys["requested_promotion_state"],
+                        smb=Smb(enabled=new_fsys["smb"]),
+                        writable=new_fsys["writable"],
+                    ),
+                    discard_non_snapshotted_data=module.params["discard_snaps"],
+                    ignore_usage=module.params["ignore_usage"],
+                )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update filesystem {0}. Error {1}".format(
+                        module.params["name"], res.errors[0].message
                     )
-                except rest.ApiException as err:
-                    message = json.loads(err.body)["errors"][0]["message"]
-                    module.fail_json(
-                        msg="Failed to update filesystem {0}. Error {1}".format(
-                            module.params["name"], message
-                        )
-                    )
-    system = get_system(module)
-    current_fs = list(
-        system.get_file_systems(filter="name='" + module.params["name"] + "'").items
-    )[0]
+                )
+    if CONTEXT_API_VERSION in api_version:
+        current_fs = list(
+            blade.get_file_systems(
+                context_names=[module.params["context"]],
+                filter="name='" + module.params["name"] + "'",
+            ).items
+        )[0]
+    else:
+        current_fs = list(
+            blade.get_file_systems(filter="name='" + module.params["name"] + "'").items
+        )[0]
     if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
         change_export = False
         if (
@@ -852,9 +889,16 @@ def modify_fs(module, blade):
                     export_policy=Reference(name=module.params["export_policy"])
                 )
             )
-            res = system.patch_file_systems(
-                names=[module.params["name"]], file_system=export_attr
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=export_attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]], file_system=export_attr
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to modify export policy {1} for "
@@ -876,9 +920,16 @@ def modify_fs(module, blade):
             client_attr = FileSystemPatch(
                 smb=Smb(client_policy=Reference(name=module.params["client_policy"]))
             )
-            res = system.patch_file_systems(
-                names=[module.params["name"]], file_system=client_attr
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=client_attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]], file_system=client_attr
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to modify client policy {1} for "
@@ -900,9 +951,16 @@ def modify_fs(module, blade):
             share_attr = FileSystemPatch(
                 smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
             )
-            res = system.patch_file_systems(
-                names=[module.params["name"]], file_system=share_attr
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=share_attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]], file_system=share_attr
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to modify share policy {1} for "
@@ -926,9 +984,16 @@ def modify_fs(module, blade):
                     ]
                 )
             )
-            res = system.patch_file_systems(
-                names=[module.params["name"]], file_system=ca_attr
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=ca_attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]], file_system=ca_attr
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to modify continuous availability for "
@@ -942,9 +1007,16 @@ def modify_fs(module, blade):
             change_go = True
         if not module.check_mode and change_go:
             go_attr = FileSystemPatch(group_ownership=module.params["group_ownership"])
-            res = system.patch_file_systems(
-                names=[module.params["name"]], file_system=go_attr
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]],
+                    file_system=go_attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_file_systems(
+                    names=[module.params["name"]], file_system=go_attr
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to modify group ownership for "
@@ -953,6 +1025,19 @@ def modify_fs(module, blade):
                         res.errors[0].message,
                     )
                 )
+    if CONTEXT_API_VERSION in api_version and module.params["storage_class"]:
+        if module.params["storage_class"] != current_fs.storage_class:
+            change_sc = True
+        res = blade.patch_file_systems(
+            names=[module.params["name"]],
+            file_system=FileSystemPatch(
+                storage_class=StorageClassInfo(name=module.params["storage_class"])
+            ),
+            cancel_in_progress_storage_class_transition=module.params[
+                "cancel_in_progress"
+            ],
+            context_names=[module.params["context"]],
+        )
 
     module.exit_json(
         changed=(
@@ -961,6 +1046,7 @@ def modify_fs(module, blade):
             or change_share
             or change_ca
             or change_go
+            or change_sc
             or change_client
         )
     )
@@ -968,108 +1054,60 @@ def modify_fs(module, blade):
 
 def _delete_fs(module, blade):
     """In module Delete Filesystem"""
-    api_version = blade.api_version.list_versions().versions
-    if NFSV4_API_VERSION in api_version:
-        if MULTIPROTOCOL_API_VERSION in api_version:
-            blade.file_systems.update_file_systems(
-                name=module.params["name"],
-                attributes=FileSystem(
-                    nfs=NfsRule(v3_enabled=False, v4_1_enabled=False),
-                    smb=ProtocolRule(enabled=False),
-                    http=ProtocolRule(enabled=False),
-                    multi_protocol=MultiProtocolRule(access_control_style="shared"),
-                    destroyed=True,
-                ),
+    res = blade.patch_file_systems(
+        name=module.params["name"],
+        file_system=FileSystemPatch(
+            nfs=NfsPatch(v3_enabled=False, v4_1_enabled=False),
+            smb=Smb(enabled=False),
+            http=Http(enabled=False),
+            multi_protocol=MultiProtocol(access_control_style="shared"),
+            destroyed=True,
+        ),
+    )
+    if res.status_code != 200:
+        module.fail_json(
+            msg="Failed to delete filesystem {0}. Error: {1}".format(
+                module.params["name"], res.errors[0].message
             )
-        else:
-            blade.file_systems.update_file_systems(
-                name=module.params["name"],
-                attributes=FileSystem(
-                    nfs=NfsRule(v3_enabled=False, v4_1_enabled=False),
-                    smb=ProtocolRule(enabled=False),
-                    http=ProtocolRule(enabled=False),
-                    destroyed=True,
-                ),
-            )
-    else:
-        blade.file_systems.update_file_systems(
-            name=module.params["name"],
-            attributes=FileSystem(
-                nfs=NfsRule(enabled=False),
-                smb=ProtocolRule(enabled=False),
-                http=ProtocolRule(enabled=False),
-                destroyed=True,
-            ),
         )
 
-    blade.file_systems.delete_file_systems(name=module.params["name"])
+    res = blade.delete_file_systems(name=module.params["name"])
+    if res.status_code != 200:
+        module.fail_json(
+            msg="Failed to eradicate deleted filesystem {0}. Error: {1}".format(
+                module.params["name"], res.errors[0].message
+            )
+        )
 
 
 def delete_fs(module, blade):
     """Delete Filesystem"""
     changed = True
     if not module.check_mode:
-        try:
-            api_version = blade.api_version.list_versions().versions
-            if REPLICATION_API_VERSION in api_version:
-                if NFSV4_API_VERSION in api_version:
-                    blade.file_systems.update_file_systems(
-                        name=module.params["name"],
-                        attributes=FileSystem(
-                            nfs=NfsRule(v3_enabled=False, v4_1_enabled=False),
-                            smb=ProtocolRule(enabled=False),
-                            http=ProtocolRule(enabled=False),
-                            destroyed=True,
-                        ),
-                        delete_link_on_eradication=module.params["delete_link"],
-                    )
-                else:
-                    blade.file_systems.update_file_systems(
-                        name=module.params["name"],
-                        attributes=FileSystem(
-                            nfs=NfsRule(enabled=False),
-                            smb=ProtocolRule(enabled=False),
-                            http=ProtocolRule(enabled=False),
-                            destroyed=True,
-                        ),
-                        delete_link_on_eradication=module.params["delete_link"],
-                    )
-            else:
-                if NFSV4_API_VERSION in api_version:
-                    blade.file_systems.update_file_systems(
-                        name=module.params["name"],
-                        attributes=FileSystem(
-                            nfs=NfsRule(v3_enabled=False, v4_1_enabled=False),
-                            smb=ProtocolRule(enabled=False),
-                            http=ProtocolRule(enabled=False),
-                            destroyed=True,
-                        ),
-                    )
-                else:
-                    blade.file_systems.update_file_systems(
-                        name=module.params["name"],
-                        attributes=FileSystem(
-                            nfs=NfsRule(enabled=False),
-                            smb=ProtocolRule(enabled=False),
-                            http=ProtocolRule(enabled=False),
-                            destroyed=True,
-                        ),
-                    )
-            if module.params["eradicate"]:
-                try:
-                    blade.file_systems.delete_file_systems(name=module.params["name"])
-                except Exception:
-                    module.fail_json(
-                        msg="Failed to delete filesystem {0}.".format(
-                            module.params["name"]
-                        )
-                    )
-        except Exception:
+        res = blade.patch_file_systems(
+            name=module.params["name"],
+            file_system=FileSystemPatch(
+                nfs=NfsPatch(v3_enabled=False, v4_1_enabled=False),
+                smb=Smb(enabled=False),
+                http=Http(enabled=False),
+                destroyed=True,
+            ),
+            delete_link_on_eradication=module.params["delete_link"],
+        )
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to update filesystem {0} prior to deletion.".format(
-                    module.params["name"]
+                msg="Failed to delete filesystem {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
             )
+        if module.params["eradicate"]:
+            res = blade.delete_file_systems(name=module.params["name"])
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to eradicate filesystem {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
+                    )
+                )
     module.exit_json(changed=changed)
 
 
@@ -1077,11 +1115,12 @@ def eradicate_fs(module, blade):
     """Eradicate Filesystem"""
     changed = True
     if not module.check_mode:
-        try:
-            blade.file_systems.delete_file_systems(name=module.params["name"])
-        except Exception:
+        res = blade.delete_file_systems(name=module.params["name"])
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to eradicate filesystem {0}.".format(module.params["name"])
+                msg="Failed to eradicate filesystem {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
             )
     module.exit_json(changed=changed)
 
@@ -1126,23 +1165,27 @@ def main():
             share_policy=dict(type="str"),
             client_policy=dict(type="str"),
             continuous_availability=dict(type="bool", default="true"),
+            ignore_usage=dict(type="bool", default=False),
+            cancel_in_progress=dict(type="bool", default=False),
+            context=dict(type="str", default=""),
+            storage_class=dict(type="str"),
         )
     )
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    if not HAS_JSON:
-        module.fail_json(msg="json sdk is required for this module")
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
-
     state = module.params["state"]
-    blade = get_blade(module)
+    blade = get_system(module)
     fsys = get_fs(module, blade)
 
     if module.params["eradicate"] and state == "present":
         module.warn("Eradicate flag ignored without state=absent")
 
+    if module.params["smb_aclmode"] == "native":
+        module.fail_json(
+            msg="Native SMB ACL mode is no longer supported. "
+            "Use the access_control parameter."
+        )
     if state == "present" and not fsys:
         create_fs(module, blade)
     elif state == "present" and fsys:
