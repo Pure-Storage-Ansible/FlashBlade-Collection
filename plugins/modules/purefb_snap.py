@@ -59,7 +59,7 @@ options:
     - Define whether to eradicate the snapshot on delete or leave in trash.
     type: bool
     default: false
-  lastest_replica:
+  latest_replica:
     description:
     - Used when destroying a snapshot.
     - If false, and the snapshot is the
@@ -297,7 +297,7 @@ def delete_snapshot(module, blade):
         snapname = module.params["name"] + "." + module.params["suffix"]
         res = blade.patch_file_system_snapshots(
             names=[snapname],
-            lastest_replica=module.params["lastest_replica"],
+            latest_replica=module.params["latest_replica"],
             file_system_snapshot=FileSystemSnapshot(destroyed=True),
         )
         if res.status_code != 200:
@@ -342,7 +342,7 @@ def main():
             target=dict(type="str", aliases=["targets"]),
             eradicate=dict(default="false", type="bool"),
             state=dict(default="present", choices=["present", "absent", "restore"]),
-            lastest_replica=dict(default="false", type="bool"),
+            latest_replica=dict(default="false", type="bool"),
         )
     )
 
