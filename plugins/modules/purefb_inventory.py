@@ -52,7 +52,6 @@ purefb_inventory:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
@@ -62,7 +61,8 @@ MIN_API_VERSION = "2.1"
 PART_NUMBER_API_VERSION = "2.8"
 
 
-def generate_hardware_dict(module, blade, api_version):
+def generate_hardware_dict(module, blade):
+    api_version = list(blade.get_versions().items)
     hw_info = {
         "modules": {},
         "ethernet": {},
@@ -75,7 +75,6 @@ def generate_hardware_dict(module, blade, api_version):
         "power": {},
         "switch": {},
     }
-    blade = get_system(module)
     components = list(blade.get_hardware(filter="type='fm'").items)
     for component in range(0, len(components)):
         component_name = components[component].name
@@ -208,12 +207,8 @@ def main():
     argument_spec = purefb_argument_spec()
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-
-    module.exit_json(
-        changed=False, purefb_info=generate_hardware_dict(module, blade, api_version)
-    )
+    blade = get_system(module)
+    module.exit_json(changed=False, purefb_info=generate_hardware_dict(module, blade))
 
 
 if __name__ == "__main__":
