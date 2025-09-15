@@ -53,17 +53,17 @@ RETURN = r"""
 """
 
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import PureArray
+    from pypureclient.flashblade import Array
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 
 import re
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
@@ -72,12 +72,13 @@ def update_name(module, blade):
     """Change aray name"""
     changed = True
     if not module.check_mode:
-        try:
-            blade_settings = PureArray(name=module.params["name"])
-            blade.arrays.update_arrays(array_settings=blade_settings)
-        except Exception:
+        blade_settings = Array(name=module.params["name"])
+        res = blade.patch_arrays(array=blade_settings)
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to change array name to {0}".format(module.params["name"])
+                msg="Failed to change array name to {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
             )
 
     module.exit_json(changed=changed)
@@ -94,10 +95,10 @@ def main():
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
-    blade = get_blade(module)
+    blade = get_system(module)
     pattern = re.compile("^[a-zA-Z0-9]([a-zA-Z0-9-]{0,54}[a-zA-Z0-9])?$")
     if not pattern.match(module.params["name"]):
         module.fail_json(
@@ -105,7 +106,7 @@ def main():
                 module.params["name"]
             )
         )
-    if module.params["name"] != blade.arrays.list_arrays().items[0].name:
+    if module.params["name"] != list(blade.get_arrays().items)[0].name:
         update_name(module, blade)
 
     module.exit_json(changed=False)
