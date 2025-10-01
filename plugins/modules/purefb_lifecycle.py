@@ -117,38 +117,29 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITYFB = True
-try:
-    from purity_fb import LifecycleRulePost, LifecycleRulePatch, Reference
-except ImportError:
-    HAS_PURITYFB = False
-
 HAS_PYPURECLIENT = True
 try:
-    from pypureclient import flashblade
+    from pypureclient.flashblade import (
+        LifecycleRulePost,
+        LifecycleRulePatch,
+        ReferenceWritable,
+    )
 except ImportError:
     HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
 from datetime import datetime
 
 
-MIN_REQUIRED_API_VERSION = "1.10"
-LIFECYCLE_API_VERSION = "2.1"
-
-
 def _get_bucket(module, blade):
-    s3bucket = None
-    buckets = blade.buckets.list_buckets()
-    for bucket in range(0, len(buckets.items)):
-        if buckets.items[bucket].name == module.params["bucket"]:
-            s3bucket = buckets.items[bucket]
-    return s3bucket
+    res = blade.get_buckets(names=[module.params["bucket"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    return None
 
 
 def _convert_date_to_epoch(module):
@@ -166,14 +157,16 @@ def _convert_date_to_epoch(module):
 
 
 def _convert_to_millisecs(day):
-    try:
-        if day[-1:].lower() == "w":
-            return int(day[:-1]) * 7 * 86400000
-        elif day[-1:].lower() == "d":
-            return int(day[:-1]) * 86400000
-    except Exception:
-        return 0
-    return 0
+    """Convert a string like '2w' or '3d' into milliseconds."""
+    multipliers = {
+        "w": 7 * 86400000,  # one week
+        "d": 86400000,  # one day
+    }
+
+    unit = day[-1].lower()
+    number = day[:-1]
+
+    return int(number) * multipliers.get(unit, 0)
 
 
 def _findstr(text, match):
@@ -187,126 +180,86 @@ def delete_rule(module, blade):
     """Delete lifecycle rule"""
     changed = True
     if not module.check_mode:
-        try:
-            blade.lifecycle_rules.delete_lifecycle_rules(
-                names=[module.params["bucket"] + "/" + module.params["name"]]
-            )
-        except Exception:
+        res = blade.delete_lifecycle_rules(
+            names=[module.params["bucket"] + "/" + module.params["name"]]
+        )
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to delete lifecycle rule {0} for bucket {1}.".format(
-                    module.params["name"], module.params["bucket"]
+                msg="Failed to delete lifecycle rule {0} for bucket {1}. Error: {2}".format(
+                    module.params["name"],
+                    module.params["bucket"],
+                    res.errors[0].message,
                 )
             )
     module.exit_json(changed=changed)
 
 
-def create_rule(module, blade, bladev2=None):
+def create_rule(module, blade):
     """Create lifecycle policy"""
     changed = True
-    if bladev2:
-        if (
-            not module.params["keep_previous_for"]
-            and not module.params["keep_current_until"]
-            and not module.params["keep_current_for"]
-            and not module.params["abort_uploads_after"]
-        ):
-            module.fail_json(
-                msg="At least one parameter is required to create a new lifecycle rule"
-            )
+    if (
+        not module.params["keep_previous_for"]
+        and not module.params["keep_current_until"]
+        and not module.params["keep_current_for"]
+        and not module.params["abort_uploads_after"]
+    ):
+        module.fail_json(
+            msg="At least one parameter is required to create a new lifecycle rule"
+        )
 
-    else:
-        if not module.params["keep_previous_for"] and not bladev2:
-            module.fail_json(
-                msg="'keep_previous_for' is required to create a new lifecycle rule"
-            )
     if not module.check_mode:
-        if not bladev2:
-            try:
-                attr = LifecycleRulePost(
-                    bucket=Reference(name=module.params["bucket"]),
-                    rule_id=module.params["name"],
-                    keep_previous_version_for=_convert_to_millisecs(
-                        module.params["keep_previous_for"]
-                    ),
-                    prefix=module.params["prefix"],
-                )
-                blade.lifecycle_rules.create_lifecycle_rules(
-                    rule=attr, confirm_date=True
-                )
-                if not module.params["enabled"]:
-                    attr = LifecycleRulePatch()
-                    attr.enabled = False
-                    blade.lifecycle_rules.update_lifecycle_rules(
-                        name=[module.params["bucket"] + "/" + module.params["name"]],
-                        rule=attr,
-                        confirm_date=True,
-                    )
-            except Exception:
-                module.fail_json(
-                    msg="Failed to create lifecycle rule {0} for bucket {1}.".format(
-                        module.params["name"], module.params["bucket"]
-                    )
-                )
+        attr = LifecycleRulePost(
+            bucket=ReferenceWritable(name=module.params["bucket"]),
+            rule_id=module.params["name"],
+            keep_previous_version_for=_convert_to_millisecs(
+                module.params["keep_previous_for"]
+            ),
+            keep_current_version_until=module.params["keep_current_until"],
+            keep_current_version_for=_convert_to_millisecs(
+                module.params["keep_current_for"]
+            ),
+            abort_incomplete_multipart_uploads_after=_convert_to_millisecs(
+                module.params["abort_uploads_after"]
+            ),
+            prefix=module.params["prefix"],
+        )
+        if attr.keep_current_version_until:
+            res = blade.post_lifecycle_rules(rule=attr, confirm_date=True)
         else:
-            attr = flashblade.LifecycleRulePost(
-                bucket=flashblade.Reference(name=module.params["bucket"]),
-                rule_id=module.params["name"],
-                keep_previous_version_for=_convert_to_millisecs(
-                    module.params["keep_previous_for"]
-                ),
-                keep_current_version_until=module.params["keep_current_until"],
-                keep_current_version_for=_convert_to_millisecs(
-                    module.params["keep_current_for"]
-                ),
-                abort_incomplete_multipart_uploads_after=_convert_to_millisecs(
-                    module.params["abort_uploads_after"]
-                ),
-                prefix=module.params["prefix"],
+            res = blade.post_lifecycle_rules(rule=attr)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create lifecycle rule {0} for bucket {1}. Error: {2}".format(
+                    module.params["name"],
+                    module.params["bucket"],
+                    res.errors[0].message,
+                )
             )
-            if attr.keep_current_version_until:
-                res = bladev2.post_lifecycle_rules(rule=attr, confirm_date=True)
-            else:
-                res = bladev2.post_lifecycle_rules(rule=attr)
+        if not module.params["enabled"]:
+            attr = LifecycleRulePatch(enabled=module.params["enabled"])
+            res = blade.patch_lifecycle_rules(
+                names=[module.params["bucket"] + "/" + module.params["name"]],
+                lifecycle=attr,
+            )
             if res.status_code != 200:
-                module.fail_json(
-                    msg="Failed to create lifecycle rule {0} for bucket {1}. Error: {2}".format(
-                        module.params["name"],
-                        module.params["bucket"],
-                        res.errors[0].message,
-                    )
+                module.warn(
+                    "Lifecycle Rule {0} did not enable correctly. "
+                    "Please chack your FlashBlade".format(module.params["name"])
                 )
-            if not module.params["enabled"]:
-                attr = flashblade.LifecycleRulePatch(enabled=module.params["enabled"])
-                res = bladev2.patch_lifecycle_rules(
-                    names=[module.params["bucket"] + "/" + module.params["name"]],
-                    lifecycle=attr,
-                )
-                if res.status_code != 200:
-                    module.warn(
-                        "Lifecycle Rule {0} did not enable correctly. "
-                        "Please chack your FlashBlade".format(module.params["name"])
-                    )
     module.exit_json(changed=changed)
 
 
-def update_rule(module, blade, rule, bladev2=None):
+def update_rule(module, blade, rule):
     """Update snapshot policy"""
     changed = False
-    if not bladev2:
-        current_rule = {
-            "prefix": rule.prefix,
-            "keep_previous_version_for": rule.keep_previous_version_for,
-            "enabled": rule.enabled,
-        }
-    else:
-        current_rule = {
-            "prefix": rule.prefix,
-            "abort_incomplete_multipart_uploads_after": rule.abort_incomplete_multipart_uploads_after,
-            "keep_current_version_for": rule.keep_current_version_for,
-            "keep_previous_version_for": rule.keep_previous_version_for,
-            "keep_current_version_until": rule.keep_current_version_until,
-            "enabled": rule.enabled,
-        }
+    current_rule = {
+        "prefix": rule.prefix,
+        "abort_incomplete_multipart_uploads_after": rule.abort_incomplete_multipart_uploads_after,
+        "keep_current_version_for": rule.keep_current_version_for,
+        "keep_previous_version_for": rule.keep_previous_version_for,
+        "keep_current_version_until": rule.keep_current_version_until,
+        "enabled": rule.enabled,
+    }
     if not module.params["prefix"]:
         prefix = current_rule["prefix"]
     else:
@@ -315,88 +268,60 @@ def update_rule(module, blade, rule, bladev2=None):
         keep_previous_for = current_rule["keep_previous_version_for"]
     else:
         keep_previous_for = _convert_to_millisecs(module.params["keep_previous_for"])
-    if bladev2:
-        if not module.params["keep_current_for"]:
-            keep_current_for = current_rule["keep_current_version_for"]
-        else:
-            keep_current_for = _convert_to_millisecs(module.params["keep_current_for"])
-        if not module.params["abort_uploads_after"]:
-            abort_uploads_after = current_rule[
-                "abort_incomplete_multipart_uploads_after"
-            ]
-        else:
-            abort_uploads_after = _convert_to_millisecs(
-                module.params["abort_uploads_after"]
-            )
-        if not module.params["keep_current_until"]:
-            keep_current_until = current_rule["keep_current_version_until"]
-        else:
-            keep_current_until = module.params["keep_current_until"]
-        new_rule = {
-            "prefix": prefix,
-            "abort_incomplete_multipart_uploads_after": abort_uploads_after,
-            "keep_current_version_for": keep_current_for,
-            "keep_previous_version_for": keep_previous_for,
-            "keep_current_version_until": keep_current_until,
-            "enabled": module.params["enabled"],
-        }
+    if not module.params["keep_current_for"]:
+        keep_current_for = current_rule["keep_current_version_for"]
     else:
-        new_rule = {
-            "prefix": prefix,
-            "keep_previous_version_for": keep_previous_for,
-            "enabled": module.params["enabled"],
-        }
+        keep_current_for = _convert_to_millisecs(module.params["keep_current_for"])
+    if not module.params["abort_uploads_after"]:
+        abort_uploads_after = current_rule["abort_incomplete_multipart_uploads_after"]
+    else:
+        abort_uploads_after = _convert_to_millisecs(
+            module.params["abort_uploads_after"]
+        )
+    if not module.params["keep_current_until"]:
+        keep_current_until = current_rule["keep_current_version_until"]
+    else:
+        keep_current_until = module.params["keep_current_until"]
+    new_rule = {
+        "prefix": prefix,
+        "abort_incomplete_multipart_uploads_after": abort_uploads_after,
+        "keep_current_version_for": keep_current_for,
+        "keep_previous_version_for": keep_previous_for,
+        "keep_current_version_until": keep_current_until,
+        "enabled": module.params["enabled"],
+    }
     if current_rule != new_rule:
         changed = True
         if not module.check_mode:
-            if not bladev2:
-                try:
-                    attr = LifecycleRulePatch(
-                        keep_previous_version_for=new_rule["keep_previous_version_for"],
-                        prefix=new_rule["prefix"],
-                    )
-                    attr.enabled = module.params["enabled"]
-                    blade.lifecycle_rules.update_lifecycle_rules(
-                        names=[module.params["bucket"] + "/" + module.params["name"]],
-                        rule=attr,
-                        confirm_date=True,
-                    )
-                except Exception:
-                    module.fail_json(
-                        msg="Failed to update lifecycle rule {0} for bucket {1}.".format(
-                            module.params["name"], module.params["bucket"]
-                        )
-                    )
-            else:
-                attr = flashblade.LifecycleRulePatch(
-                    keep_previous_version_for=new_rule["keep_previous_version_for"],
-                    keep_current_version_for=new_rule["keep_current_version_for"],
-                    keep_current_version_until=new_rule["keep_current_version_until"],
-                    abort_incomplete_multipart_uploads_after=new_rule[
-                        "abort_incomplete_multipart_uploads_after"
-                    ],
-                    prefix=new_rule["prefix"],
-                    enabled=new_rule["enabled"],
+            attr = LifecycleRulePatch(
+                keep_previous_version_for=new_rule["keep_previous_version_for"],
+                keep_current_version_for=new_rule["keep_current_version_for"],
+                keep_current_version_until=new_rule["keep_current_version_until"],
+                abort_incomplete_multipart_uploads_after=new_rule[
+                    "abort_incomplete_multipart_uploads_after"
+                ],
+                prefix=new_rule["prefix"],
+                enabled=new_rule["enabled"],
+            )
+            if attr.keep_current_version_until:
+                res = blade.patch_lifecycle_rules(
+                    names=[module.params["bucket"] + "/" + module.params["name"]],
+                    lifecycle=attr,
+                    confirm_date=True,
                 )
-                if attr.keep_current_version_until:
-                    res = bladev2.patch_lifecycle_rules(
-                        names=[module.params["bucket"] + "/" + module.params["name"]],
-                        lifecycle=attr,
-                        confirm_date=True,
+            else:
+                res = blade.patch_lifecycle_rules(
+                    names=[module.params["bucket"] + "/" + module.params["name"]],
+                    lifecycle=attr,
+                )
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to update lifecycle rule {0} for bucket {1}. Error: {2}".format(
+                        module.params["name"],
+                        module.params["bucket"],
+                        res.errors[0].message,
                     )
-                else:
-                    res = bladev2.patch_lifecycle_rules(
-                        names=[module.params["bucket"] + "/" + module.params["name"]],
-                        lifecycle=attr,
-                    )
-                if res.status_code != 200:
-                    module.fail_json(
-                        msg="Failed to update lifecycle rule {0} for bucket {1}. Error: {2}".format(
-                            module.params["name"],
-                            module.params["bucket"],
-                            res.errors[0].message,
-                        )
-                    )
+                )
     module.exit_json(changed=changed)
 
 
@@ -424,13 +349,11 @@ def main():
         argument_spec, mutually_exclusive=mutually_exclusive, supports_check_mode=True
     )
 
-    if not HAS_PURITYFB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    bladev2 = get_system(module)
-    versions = blade.api_version.list_versions().versions
+    blade = get_system(module)
 
     if module.params["keep_previous_for"] and not module.params["keep_previous_for"][
         -1:
@@ -451,39 +374,23 @@ def main():
             msg="'abort_uploads_after' format incorrect - specify as 'd' or 'w'"
         )
 
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
-
     if not _get_bucket(module, blade):
         module.fail_json(
             msg="Specified bucket {0} does not exist".format(module.params["bucket"])
         )
-
-    try:
-        if LIFECYCLE_API_VERSION not in versions:
-            rule = blade.lifecycle_rules.list_lifecycle_rules(
-                names=[module.params["bucket"] + "/" + module.params["name"]]
-            ).items[0]
-        else:
-            if module.params["keep_current_until"]:
-                module.params["keep_current_until"] = _convert_date_to_epoch(module)
-            bladev2 = get_system(module)
-            rule = list(
-                bladev2.get_lifecycle_rules(
-                    names=[module.params["bucket"] + "/" + module.params["name"]]
-                ).items
-            )[0]
-    except Exception:
-        rule = None
+    rule = None
+    if module.params["keep_current_until"]:
+        module.params["keep_current_until"] = _convert_date_to_epoch(module)
+    res = blade.get_lifecycle_rules(
+        names=[module.params["bucket"] + "/" + module.params["name"]]
+    )
+    if res.status_code == 200:
+        rule = list(res.items)[0]
 
     if rule and state == "present":
-        update_rule(module, blade, rule, bladev2)
+        update_rule(module, blade, rule)
     elif state == "present" and not rule:
-        create_rule(module, blade, bladev2)
+        create_rule(module, blade)
     elif state == "absent" and rule:
         delete_rule(module, blade)
 
