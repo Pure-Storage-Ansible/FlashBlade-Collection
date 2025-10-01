@@ -59,22 +59,18 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import Eula, EulaSignature
+    from pypureclient.flashblade import Eula, EulaSignature
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_system,
-    get_blade,
     purefb_argument_spec,
 )
-
-
-EULA_API_VERSION = "2.0"
 
 
 def set_eula(module, blade):
@@ -114,14 +110,9 @@ def main():
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
-
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    api_version = blade.api_version.list_versions().versions
-    if EULA_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
+    blade = get_system(module)
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client SDK required to support this module.")
     blade = get_system(module)
     set_eula(module, blade)
     module.exit_json(changed=False)
