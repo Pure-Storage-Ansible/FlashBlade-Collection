@@ -130,22 +130,20 @@ RETURN = r"""
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
 
 from datetime import datetime
 
-HAS_PURITY_FB = True
-try:
-    from purity_fb import FileSystemSnapshot, SnapshotSuffix, FileSystem, Reference
-except ImportError:
-    HAS_PURITY_FB = False
-
 HAS_PYPURECLIENT = True
 try:
-    from pypureclient.flashblade import FileSystemSnapshotPost, FileSystemSnapshot
+    from pypureclient.flashblade import (
+        FileSystemSnapshotPost,
+        FileSystemSnapshot,
+        FileSystemPost,
+        Reference,
+    )
 except ImportError:
     HAS_PYPURECLIENT = False
 
@@ -154,91 +152,77 @@ SNAP_NOW_API = "2.10"
 
 def get_fs(module, blade):
     """Return Filesystem or None"""
-    filesystem = []
-    filesystem.append(module.params["name"])
-    try:
-        res = blade.file_systems.list_file_systems(names=filesystem)
-        return res.items[0]
-    except Exception:
-        return None
+    res = blade.get_file_systems(names=[module.params["name"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    return None
 
 
 def get_latest_fssnapshot(module, blade):
     """Get the name of the latest snpshot or None"""
-    try:
-        filt = "source='" + module.params["name"] + "'"
-        all_snaps = blade.file_system_snapshots.list_file_system_snapshots(filter=filt)
-        if not all_snaps.items[0].destroyed:
-            return all_snaps.items[0].name
-        else:
-            module.fail_json(
-                msg="Latest snapshot {0} is destroyed."
-                " Eradicate or recover this first.".format(all_snaps.items[0].name)
+    filt = "source='" + module.params["name"] + "'"
+    res = blade.get_file_system_snapshots(filter=filt)
+    if res.status_code != 200:
+        module.fail_json(
+            msg="Failed to get filesystem snapshots. Error: {0}".format(
+                res.errors[0].message
             )
-    except Exception:
-        return None
+        )
+    all_snaps = list(res.items)
+    if not all_snaps[0].destroyed:
+        return all_snaps[0].name
+    module.fail_json(
+        msg="Latest snapshot {0} is destroyed."
+        " Eradicate or recover this first.".format(all_snaps[0].name)
+    )
+    return None
 
 
 def get_fssnapshot(module, blade):
     """Return Snapshot or None"""
-    try:
-        filt = (
-            "source='"
-            + module.params["name"]
-            + "' and suffix='"
-            + module.params["suffix"]
-            + "'"
-        )
-        res = blade.file_system_snapshots.list_file_system_snapshots(filter=filt)
-        return res.items[0]
-    except Exception:
-        return None
+    filt = (
+        "source='"
+        + module.params["name"]
+        + "' and suffix='"
+        + module.params["suffix"]
+        + "'"
+    )
+    res = blade.get_file_system_snapshots(filter=filt)
+    if res.status_code == 200:
+        return list(res.items)[0]
+    return None
 
 
 def create_snapshot(module, blade):
     """Create Snapshot"""
     changed = False
-    source = []
     # Special case as we have changed 'target' to be a string not a list of one string
     # so this provides backwards compatability
-    source.append(module.params["name"])
-    if module.params["now"]:
-        target = (
-            module.params["target"].replace("[", "").replace("'", "").replace("]", "")
+    target = module.params["target"].replace("[", "").replace("'", "").replace("]", "")
+    blade_exists = False
+    connected_blades = blade.array_connections.list_array_connections().items
+    for rem_blade in range(0, len(connected_blades)):
+        if (
+            target == connected_blades[rem_blade].remote.name
+            and connected_blades[rem_blade].status == "connected"
+        ):
+            blade_exists = True
+            break
+    if not blade_exists:
+        module.fail_json(msg="Selected target is not a correctly connected system")
+    changed = True
+    if not module.check_mode:
+        res = blade.post_file_system_snapshots(
+            source_names=[module.params["name"]],
+            send=module.params["now"],
+            targets=[target],
+            file_system_snapshot=FileSystemSnapshotPost(suffix=module.params["suffix"]),
         )
-        blade2 = get_system(module)
-        blade_exists = False
-        connected_blades = blade.array_connections.list_array_connections().items
-        for blade in range(0, len(connected_blades)):
-            if (
-                target == connected_blades[blade].remote.name
-                and connected_blades[blade].status == "connected"
-            ):
-                blade_exists = True
-                break
-        if not blade_exists:
-            module.fail_json(msg="Selected target is not a correctly connected system")
-        changed = True
-        if not module.check_mode:
-            res = blade2.post_file_system_snapshots(
-                source_names=source,
-                send=True,
-                targets=[target],
-                file_system_snapshot=FileSystemSnapshotPost(
-                    suffix=module.params["suffix"]
-                ),
-            )
-            if res.status_code != 200:
-                module.fail_json(
-                    msg="Failed to create remote snapshot. Error: {0}".format(
-                        res.errors[0].message
-                    )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create remote snapshot. Error: {0}".format(
+                    res.errors[0].message
                 )
-    else:
-        changed = True
-        if not module.check_mode:
-            blade.file_system_snapshots.create_file_system_snapshots(
-                sources=source, suffix=SnapshotSuffix(module.params["suffix"])
             )
     module.exit_json(changed=changed)
 
@@ -249,17 +233,19 @@ def restore_snapshot(module, blade):
     snapname = get_latest_fssnapshot(module, blade)
     if snapname is not None:
         if not module.check_mode:
-            fs_attr = FileSystem(
-                name=module.params["name"], source=Reference(name=snapname)
+            res = blade.post_file_systems(
+                overwrite=True,
+                discard_non_snapshotted_data=True,
+                file_system=FileSystemPost(
+                    name=module.params["name"], source=Reference(name=snapname)
+                ),
             )
-            try:
-                blade.file_systems.create_file_systems(
-                    overwrite=True,
-                    discard_non_snapshotted_data=True,
-                    file_system=fs_attr,
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to restore snapshot {0} to filesystem {1}. Error: {2}".format(
+                        snapname, module.params["name"], res.errors[0].message
+                    )
                 )
-            except Exception:
-                changed = False
     else:
         module.fail_json(
             msg="Filesystem {0} has no snapshots to restore from.".format(
@@ -274,13 +260,15 @@ def recover_snapshot(module, blade):
     changed = True
     if not module.check_mode:
         snapname = module.params["name"] + "." + module.params["suffix"]
-        new_attr = FileSystemSnapshot(destroyed=False)
-        try:
-            blade.file_system_snapshots.update_file_system_snapshots(
-                name=snapname, attributes=new_attr
+        res = blade.patch_file_system_snapshots(
+            name=snapname, file_system_snapshot=FileSystemSnapshot(destroyed=False)
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to recover snapshot {0} for filesystem {1}. Error: {2}".format(
+                    snapname, module.params["name"], res.errors[0].message
+                )
             )
-        except Exception:
-            changed = False
     module.exit_json(changed=changed)
 
 
@@ -351,8 +339,6 @@ def main():
         argument_spec, required_if=required_if, supports_check_mode=True
     )
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
     if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
@@ -363,9 +349,8 @@ def main():
         module.params["suffix"] = suffix.replace(".", "")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    blade2 = get_system(module)
-    versions = blade.api_version.list_versions().versions
+    blade = get_system(module)
+    versions = list(blade.get_versions().items)
 
     if SNAP_NOW_API not in versions and module.params["now"]:
         module.fail_json(
@@ -373,8 +358,6 @@ def main():
                 SNAP_NOW_API
             )
         )
-    if SNAP_NOW_API in versions and not HAS_PYPURECLIENT:
-        module.fail_json(msg="py-pure-client sdk is required for this module")
     filesystem = get_fs(module, blade)
     snap = get_fssnapshot(module, blade)
 
@@ -403,9 +386,9 @@ def main():
     elif state == "restore" and filesystem:
         restore_snapshot(module, blade)
     elif state == "absent" and snap and not snap.destroyed:
-        delete_snapshot(module, blade2)
+        delete_snapshot(module, blade)
     elif state == "absent" and snap and snap.destroyed:
-        eradicate_snapshot(module, blade2)
+        eradicate_snapshot(module, blade)
     elif state == "absent" and not snap:
         module.exit_json(changed=False)
     else:
