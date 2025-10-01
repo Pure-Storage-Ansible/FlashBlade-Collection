@@ -78,12 +78,9 @@ RETURN = r"""
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
-
-
-MIN_REQUIRED_API_VERSION = "1.9"
 
 
 def delete_certgrp(module, blade):
@@ -107,29 +104,24 @@ def create_certgrp(module, blade):
     """Create certifcate group"""
     changed = True
     if not module.check_mode:
-        try:
-            blade.certificate_groups.create_certificate_groups(
-                names=[module.params["name"]]
-            )
-        except Exception:
+        res = blade.post_certificate_groups(names=[module.params["name"]])
+        if res.sttaus_code != 200:
             module.fail_json(
-                msg="Failed to create certificate group {0}.".format(
-                    module.params["name"]
+                msg="Failed to create certificate group {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
             )
         if module.params["certificates"]:
-            try:
-                blade.certificate_groups.add_certificate_group_certificates(
-                    certificate_names=module.params["certificates"],
-                    certificate_group_names=[module.params["name"]],
-                )
-            except Exception:
-                blade.certificate_groups.delete_certificate_groups(
-                    names=[module.params["name"]]
-                )
+            res = blade.post_certificate_groups_certificates(
+                certificate_names=module.params["certificates"],
+                certificate_group_names=[module.params["name"]],
+            )
+            if res.status_code != 200:
+                blade.delete_certificate_groups(names=[module.params["name"]])
                 module.fail_json(
-                    msg="Failed to add certifcates {0}. "
-                    "Please check they all exist".format(module.params["certificates"])
+                    msg="Failed to add certifcates {0}. Error: {1}".format(
+                        module.params["certificates"], res.errors[0].message
+                    )
                 )
     module.exit_json(changed=changed)
 
@@ -137,66 +129,66 @@ def create_certgrp(module, blade):
 def update_certgrp(module, blade):
     """Update certificate group"""
     changed = False
-    try:
-        certs = blade.certificate_groups.list_certificate_group_certificates(
-            certificate_group_names=[module.params["name"]]
-        )
-    except Exception:
+    res = blade.get_certificate_group_certificates(
+        certificate_group_names=[module.params["name"]]
+    )
+    if res.status_code != 200:
         module.fail_json(
-            msg="Failed to get certifates list for group {0}.".format(
-                module.params["name"]
+            msg="Failed to get certifates list for group {0}. Error: {1}".format(
+                module.params["name"], res.errors[0].message
             )
         )
-    if not certs:
+    certs = list(res.items)
+    if certs:
         if module.params["state"] == "present":
             changed = True
             if not module.check_mode:
-                try:
-                    blade.certificate_groups.add_certificate_group_certificates(
-                        certificate_names=module.params["certificates"],
-                        certificate_group_names=[module.params["name"]],
-                    )
-                except Exception:
+                res = blade.post_certificate_group_certificates(
+                    certificate_names=module.params["certificates"],
+                    certificate_group_names=[module.params["name"]],
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to add certifcates {0}. "
-                        "Please check they all exist".format(
-                            module.params["certificates"]
+                        msg="Failed to add certifcates {0}. Error: {1}".format(
+                            module.params["certificates"], res.errors[0].message
                         )
                     )
     else:
         current = []
-        for cert in range(0, len(certs.items)):
-            current.append(certs.items[cert].member.name)
+        for cert in range(0, len(certs)):
+            current.append(certs[cert].member.name)
         for new_cert in range(0, len(module.params["certificates"])):
             certificate = module.params["certificates"][new_cert]
             if certificate in current:
                 if module.params["state"] == "absent":
                     changed = True
                     if not module.check_mode:
-                        try:
-                            blade.certificate_groups.remove_certificate_group_certificates(
-                                certificate_names=[certificate],
-                                certificate_group_names=[module.params["name"]],
-                            )
-                        except Exception:
+                        res = blade.delete_certificate_group_certificates(
+                            certificate_names=[certificate],
+                            certificate_group_names=[module.params["name"]],
+                        )
+                        if res.status_code != 200:
                             module.fail_json(
-                                msg="Failed to delete certifcate {0} from group {1}.".format(
-                                    certificate, module.params["name"]
+                                msg="Failed to delete certifcate {0} from group {1}. Error: {2}".format(
+                                    certificate,
+                                    module.params["name"],
+                                    res.errors[0].message,
                                 )
                             )
             else:
                 if module.params["state"] == "present":
                     changed = True
                     if not module.check_mode:
-                        try:
-                            blade.certificate_groups.add_certificate_group_certificates(
-                                certificate_names=[certificate],
-                                certificate_group_names=[module.params["name"]],
-                            )
-                        except Exception:
+                        res = blade.post_certificate_group_certificates(
+                            certificate_names=[certificate],
+                            certificate_group_names=[module.params["name"]],
+                        )
+                        if res.status_code != 200:
                             module.fail_json(
-                                msg="Failed to add certifcate {0} to group {1}".format(
-                                    certificate, module.params["name"]
+                                msg="Failed to add certifcate {0} to group {1}. Error: {2}".format(
+                                    certificate,
+                                    module.params["name"],
+                                    res.errors[0].message,
                                 )
                             )
     module.exit_json(changed=changed)
@@ -215,22 +207,11 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     state = module.params["state"]
-    blade = get_blade(module)
-    versions = blade.api_version.list_versions().versions
+    blade = get_system(module)
 
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
-
-    try:
-        certgrp = blade.certificate_groups.list_certificate_groups(
-            names=[module.params["name"]]
-        ).items[0]
-    except Exception:
-        certgrp = None
+    certgrp = bool(
+        blade.get_certificate_groups(names=[module.params["name"]]).status_code == 200
+    )
 
     if certgrp and state == "present" and module.params["certificates"]:
         update_certgrp(module, blade)
