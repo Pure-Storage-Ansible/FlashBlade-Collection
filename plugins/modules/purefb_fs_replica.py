@@ -95,15 +95,12 @@ RETURN = """
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import FileSystemReplicaLink, LocationReference
+    from pypureclient.flashblade import FileSystemReplicaLink, LocationReference
 except ImportError:
     HAS_PURITY_FB = False
 
-MIN_REQUIRED_API_VERSION = "1.9"
-
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
@@ -113,37 +110,36 @@ DELETE_RL_API_VERSION = "2.10"
 
 def get_local_fs(module, blade):
     """Return Filesystem or None"""
-    try:
-        res = blade.file_systems.list_file_systems(names=[module.params["name"]])
+    res = blade.get_file_systems(names=[module.params["name"]])
+    if res.status_code == 200:
         return res.items[0]
-    except Exception:
-        return None
+    return None
 
 
 def get_local_rl(module, blade):
     """Return Filesystem Replica Link or None"""
-    try:
-        res = blade.file_system_replica_links.list_file_system_replica_links(
-            local_file_system_names=[module.params["name"]]
-        )
+    res = blade.file_system_replica_links.list_file_system_replica_links(
+        local_file_system_names=[module.params["name"]]
+    )
+    if res.status_code == 200:
         return res.items[0]
-    except Exception:
-        return None
+    return None
 
 
 def _check_connected(module, blade):
-    connected_blades = blade.array_connections.list_array_connections()
-    for target in range(0, len(connected_blades.items)):
+    res = blade.get_array_connections()
+    connected_blades = list(res.items)
+    for target in range(0, len(connected_blades)):
         if (
-            connected_blades.items[target].remote.name == module.params["target_array"]
-            or connected_blades.items[target].management_address
+            connected_blades[target].remote.name == module.params["target_array"]
+            or connected_blades[target].management_address
             == module.params["target_array"]
-        ) and connected_blades.items[target].status in [
+        ) and connected_blades[target].status in [
             "connected",
             "connecting",
             "partially_connected",
         ]:
-            return connected_blades.items[target]
+            return connected_blades[target]
     return None
 
 
@@ -151,36 +147,36 @@ def create_rl(module, blade):
     """Create Filesystem Replica Link"""
     changed = True
     if not module.check_mode:
-        try:
-            remote_array = _check_connected(module, blade)
-            if remote_array:
-                if not module.params["target_fs"]:
-                    module.params["target_fs"] = module.params["name"]
-                if not module.params["policy"]:
-                    blade.file_system_replica_links.create_file_system_replica_links(
-                        local_file_system_names=[module.params["name"]],
-                        remote_file_system_names=[module.params["target_fs"]],
-                        remote_names=[remote_array.remote.name],
-                    )
-                else:
-                    blade.file_system_replica_links.create_file_system_replica_links(
-                        local_file_system_names=[module.params["name"]],
-                        remote_file_system_names=[module.params["target_fs"]],
-                        remote_names=[remote_array.remote.name],
-                        file_system_replica_link=FileSystemReplicaLink(
-                            policies=[LocationReference(name=module.params["policy"])]
-                        ),
-                    )
+        remote_array = _check_connected(module, blade)
+        if remote_array:
+            if not module.params["target_fs"]:
+                module.params["target_fs"] = module.params["name"]
+            if not module.params["policy"]:
+                res = blade.post_file_system_replica_links(
+                    local_file_system_names=[module.params["name"]],
+                    remote_file_system_names=[module.params["target_fs"]],
+                    remote_names=[remote_array.remote.name],
+                    file_system_replica_link=FileSystemReplicaLink(),
+                )
             else:
+                res = blade.post_file_system_replica_links(
+                    local_file_system_names=[module.params["name"]],
+                    remote_file_system_names=[module.params["target_fs"]],
+                    remote_names=[remote_array.remote.name],
+                    file_system_replica_link=FileSystemReplicaLink(
+                        policies=[LocationReference(name=module.params["policy"])]
+                    ),
+                )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Target array {0} is not connected".format(
-                        module.params["target_array"]
+                    msg="Failed to create filesystem replica link for {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
                     )
                 )
-        except Exception:
+        else:
             module.fail_json(
-                msg="Failed to create filesystem replica link for {0}.".format(
-                    module.params["name"]
+                msg="Target array {0} is not connected".format(
+                    module.params["target_array"]
                 )
             )
     module.exit_json(changed=changed)
@@ -190,36 +186,38 @@ def add_rl_policy(module, blade):
     """Add Policy to Filesystem Replica Link"""
     changed = False
     if not module.params["target_array"]:
-        module.params["target_array"] = (
-            blade.file_system_replica_links.list_file_system_replica_links(
-                local_file_system_names=[module.params["name"]]
-            )
-            .items[0]
-            .remote.name
+        res = blade.get_file_system_replica_links(
+            local_file_system_names=[module.params["name"]]
         )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to get replica link for {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+        module.params["target_array"] = list(res.items)[0].remote.name
     remote_array = _check_connected(module, blade)
-    try:
-        already_a_policy = (
-            blade.file_system_replica_links.list_file_system_replica_link_policies(
-                local_file_system_names=[module.params["name"]],
+    res = blade.get_file_system_replica_links_policies(
+        local_file_system_names=[module.params["name"]],
+        policy_names=[module.params["policy"]],
+        remote_names=[remote_array.remote.name],
+    )
+    if res.status_code != 200:
+        changed = True
+        if not module.check_mode:
+            res = blade.post_file_system_replica_links_policies(
                 policy_names=[module.params["policy"]],
+                local_file_system_names=[module.params["name"]],
                 remote_names=[remote_array.remote.name],
             )
-        )
-        if not already_a_policy.items:
-            changed = True
-            if not module.check_mode:
-                blade.file_system_replica_links.create_file_system_replica_link_policies(
-                    policy_names=[module.params["policy"]],
-                    local_file_system_names=[module.params["name"]],
-                    remote_names=[remote_array.remote.name],
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Failed to add policy {0} to replica link {1}. Error: {2}".format(
+                        module.params["policy"],
+                        module.params["name"],
+                        res.errors[0].message,
+                    )
                 )
-    except Exception:
-        module.fail_json(
-            msg="Failed to add policy {0} to replica link {1}.".format(
-                module.params["policy"], module.params["name"]
-            )
-        )
     module.exit_json(changed=changed)
 
 
@@ -227,23 +225,23 @@ def delete_rl_policy(module, blade):
     """Delete Policy from Filesystem Replica Link"""
     changed = True
     if not module.check_mode:
-        current_policy = (
-            blade.file_system_replica_links.list_file_system_replica_link_policies(
-                local_file_system_names=[module.params["name"]],
-                policy_names=[module.params["policy"]],
-            )
+        res = blade.get_file_system_replica_links_policies(
+            local_file_system_names=[module.params["name"]],
+            policy_names=[module.params["policy"]],
         )
-        if current_policy.items:
-            try:
-                blade.file_system_replica_links.delete_file_system_replica_link_policies(
-                    policy_names=[module.params["policy"]],
-                    local_file_system_names=[module.params["name"]],
-                    remote_names=[current_policy.items[0].link.remote.name],
-                )
-            except Exception:
+        if res.status_code != 200:
+            current_policy = list(res.items)[0]
+            res = blade.delete_file_system_replica_links_policies(
+                policy_names=[module.params["policy"]],
+                local_file_system_names=[module.params["name"]],
+                remote_names=[current_policy.link.remote.name],
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to remove policy {0} from replica link {1}.".format(
-                        module.params["policy"], module.params["name"]
+                    msg="Failed to remove policy {0} from replica link {1}. Error: {2}".format(
+                        module.params["policy"],
+                        module.params["name"],
+                        res.errors[0].message,
                     )
                 )
         else:
@@ -255,13 +253,11 @@ def delete_rl(module, blade):
     """Delete filesystem replica link"""
     changed = True
     if not module.check_mode:
-        res = list(
-            blade.delete_file_system_replica_links(
-                local_file_system_names=[module.params["name"]],
-                remote_file_system_names=[module.params["target_fs"]],
-                remote_names=[module.params["target_array"]],
-                cancel_in_progress_transfers=module.params["in_progress"],
-            )
+        res = blade.delete_file_system_replica_links(
+            local_file_system_names=[module.params["name"]],
+            remote_file_system_names=[module.params["target_fs"]],
+            remote_names=[module.params["target_array"]],
+            cancel_in_progress_transfers=module.params["in_progress"],
         )
         if res.status_code != 200:
             module.fail_json(
@@ -298,15 +294,8 @@ def main():
         module.fail_json(msg="purity_fb sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    versions = blade.api_version.list_versions().versions
-
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
+    blade = get_system(module)
+    versions = list(blade.get_versions().items)
 
     local_fs = get_local_fs(module, blade)
     local_replica_link = get_local_rl(module, blade)
@@ -318,10 +307,12 @@ def main():
             )
         )
 
+    policy = True
     if module.params["policy"]:
-        try:
-            policy = blade.policies.list_policies(names=[module.params["policy"]])
-        except Exception:
+        res = blade.get_file_system_replica_links_policies(
+            policy_names=[module.params["policy"]]
+        )
+        if res.status_code != 200:
             module.fail_json(
                 msg="Selected policy {0} does not exist.".format(
                     module.params["policy"]
@@ -335,8 +326,7 @@ def main():
         if DELETE_RL_API_VERSION not in versions:
             module.fail_json("Deleting a replica link requires REST 2.10 or higher")
         else:
-            bladev6 = get_system(module)
-            delete_rl(module, bladev6)
+            delete_rl(module, blade)
     elif state == "present" and local_replica_link and policy:
         add_rl_policy(module, blade)
     elif state == "absent" and policy:
