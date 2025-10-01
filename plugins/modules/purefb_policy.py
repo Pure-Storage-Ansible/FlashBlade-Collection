@@ -633,7 +633,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.common impo
     convert_time_to_millisecs,
 )
 
-ACCESS_POLICY_API_VERSION = "2.2"
 NFS_POLICY_API_VERSION = "2.3"
 NFS_RENAME_API_VERSION = "2.4"
 SMB_POLICY_API_VERSION = "2.10"
@@ -3937,14 +3936,6 @@ def main():
     blade = get_system(module)
     versions = list(blade.get_versions().items)
     if module.params["policy_type"] == "access":
-        if ACCESS_POLICY_API_VERSION not in versions:
-            module.fail_json(
-                msg=(
-                    "Minimum FlashBlade REST version required: {0}".format(
-                        ACCESS_POLICY_API_VERSION
-                    )
-                )
-            )
         if not HAS_PYPURECLIENT:
             module.fail_json(msg="py-pure-client sdk is required for this module")
         blade = get_system(module)

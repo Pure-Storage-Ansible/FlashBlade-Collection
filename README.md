@@ -13,9 +13,7 @@ The Pure Storage FlashBlade collection consists of the latest versions of the Fl
 ## Requirements
 
 - Ansible 2.15 or later
-- Pure Storage FlashBlade system running Purity//FB 2.1.2 or later
-    - some modules require higher versions of Purity//FB
-- purity-fb >=v1.12.2
+- Pure Storage FlashBlade system running Purity//FB 3.3.3 or later
 - py-pure-client >=v1.67.2
 - python >=3.9
 - netaddr

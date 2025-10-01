@@ -160,7 +160,6 @@ options:
     description:
       - The access control style that is utilized for client actions such
         as setting file and directory ACLs.
-      - Only available from Purity//FB 3.1.1
     type: str
     default: shared
     choices: [ 'nfs', 'smb', 'shared', 'independent', 'mode-bits' ]
@@ -169,14 +168,12 @@ options:
       - Safeguards ACLs on a filesystem.
       - Performs different roles depending on the filesystem protocol enabled.
       - See Purity//FB documentation for detailed description.
-      - Only available from Purity//FB 3.1.1
     type: bool
     default: true
   export_policy:
     description:
     - Name of NFS export policy to assign to filesystem
     - Overrides I(nfs_rules)
-    - Only valid for Purity//FB 3.3.0 or higher
     type: str
     version_added: "1.9.0"
   share_policy:

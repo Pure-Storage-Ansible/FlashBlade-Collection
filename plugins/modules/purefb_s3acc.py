@@ -123,7 +123,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
-QUOTA_API_VERSION = "2.1"
 PUBLIC_API_VERSION = "2.12"
 
 
@@ -366,12 +365,6 @@ def main():
     if module.params["quota"] or module.params["default_quota"]:
         if not HAS_PURESTORAGE:
             module.fail_json(msg="py-pure-client sdk is required for to set quotas")
-        if QUOTA_API_VERSION not in versions:
-            module.fail_json(
-                msg="Quotas require minimum FlashBlade REST version: {0}".format(
-                    QUOTA_API_VERSION
-                )
-            )
 
     upper = False
     for element in module.params["name"]:
