@@ -94,6 +94,7 @@ def _create_time_window(window):
         return WEEK * multiple
     if period == "y":
         return YEAR * multiple
+    return None
 
 
 def main():
@@ -152,13 +153,12 @@ def main():
     else:
         state = " and state='" + module.params["state"] + "'"
     filter_string = "notified>" + since_time + state + flagged + severity
-    try:
-        res = blade.get_alerts(filter=filter_string)
-        alerts = list(res.items)
-    except Exception:
+    res = blade.get_alerts(filter=filter_string)
+    if res.status_code != 200:
         module.fail_json(
             msg="Failed to get alert messages. Error: {0}".format(res.errors[0].message)
         )
+    alerts = list(res.items)
     for message in range(0, len(alerts)):
         name = alerts[message].name
         messages[name] = {

@@ -97,14 +97,13 @@ def delete_proxy(module, blade):
 
 def create_proxy(module, blade):
     """Set proxy settings"""
-    changed = True
-    current_proxy = list(blade.get_support().items)[0].proxy
     if module.params["secure"]:
         protocol = "https://"
     else:
         protocol = "http://"
+    changed = True
+    new_proxy = protocol + module.params["host"] + ":" + str(module.params["port"])
     if not module.check_mode:
-        new_proxy = protocol + module.params["host"] + ":" + str(module.params["port"])
         res = blade.patch_support(support=Support(proxy=new_proxy))
         if res.status_code != 200:
             module.fail_json(

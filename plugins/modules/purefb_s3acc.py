@@ -132,8 +132,7 @@ def get_s3acc(module, blade):
     res = blade.get_object_store_accounts(names=[module.params["name"]])
     if res.status_code == 200:
         return list(res.items)[0]
-    else:
-        return None
+    return None
 
 
 def update_s3acc(module, blade):

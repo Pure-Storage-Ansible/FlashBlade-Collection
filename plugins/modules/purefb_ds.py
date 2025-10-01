@@ -449,9 +449,7 @@ def main():
     blade = get_blade(module)
     api_version = blade.api_version.list_versions().versions
     if NO_SMB_VERSION in api_version and module.params["dstype"] == "smb":
-        module.warn(
-            msg="Directory Service for SMB no " "longer supported by FlashBlade"
-        )
+        module.warn("Directory Service for SMB no longer supported by FlashBlade")
         module.exit_json(changed=False)
     ds_configured = False
     dirserv = blade.directory_services.list_directory_services(

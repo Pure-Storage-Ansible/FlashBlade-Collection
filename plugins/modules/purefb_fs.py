@@ -348,8 +348,7 @@ def get_fs(module, blade):
         res = blade.get_file_systems(names=[module.params["name"]])
     if res.status_code == 200:
         return list(res.items)[0]
-    else:
-        return None
+    return None
 
 
 def create_fs(module, blade):

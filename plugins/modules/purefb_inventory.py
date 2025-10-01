@@ -57,11 +57,10 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
-MIN_API_VERSION = "2.1"
 PART_NUMBER_API_VERSION = "2.8"
 
 
-def generate_hardware_dict(module, blade):
+def generate_hardware_dict(blade):
     api_version = list(blade.get_versions().items)
     hw_info = {
         "modules": {},
@@ -208,7 +207,7 @@ def main():
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
     blade = get_system(module)
-    module.exit_json(changed=False, purefb_info=generate_hardware_dict(module, blade))
+    module.exit_json(changed=False, purefb_info=generate_hardware_dict(blade))
 
 
 if __name__ == "__main__":

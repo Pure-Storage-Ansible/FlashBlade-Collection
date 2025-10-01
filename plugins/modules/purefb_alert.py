@@ -205,12 +205,16 @@ def main():
     blade = get_system(module)
 
     exists = False
-    try:
-        emails = blade.alert_watchers.list_alert_watchers()
-    except Exception:
-        module.fail_json(msg="Failed to get exisitng email list")
-    for email in range(0, len(emails.items)):
-        if emails.items[email].name == module.params["address"]:
+    res = blade.get_alert_watchers()
+    if res.status_code != 200:
+        module.fail_json(
+            msg="Failed to get exisitng email list. Error: {0}".format(
+                res.errors[0].message
+            )
+        )
+    emails = list(res.items)
+    for email in range(0, len(emails)):
+        if emails[email].name == module.params["address"]:
             exists = True
             break
     if module.params["state"] == "present" and not exists:

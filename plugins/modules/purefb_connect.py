@@ -139,34 +139,35 @@ FAN_OUT_MAXIMUM = 5
 THROTTLE_API_VERSION = "2.3"
 
 
-def _convert_to_millisecs(hour):
-    if hour[-2:] == "AM" and hour[:2] == "12":
-        return 0
-    elif hour[-2:] == "AM":
-        return int(hour[:-2]) * 3600000
-    elif hour[-2:] == "PM" and hour[:2] == "12":
-        return 43200000
-    return (int(hour[:-2]) + 12) * 3600000
+def _convert_to_millisecs(hour_str: str) -> int:
+    """Convert a 12-hour formatted time string (e.g., '02AM', '12PM') to milliseconds since midnight."""
+    time_part = int(hour_str[:-2])
+    period = hour_str[-2:]
+
+    if period == "AM":
+        return 0 if time_part == 12 else time_part * 3600000
+    else:  # PM
+        return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
 
 
 def _check_connected(module, blade):
     connected_blades = list(blade.get_array_connections().items)
     for target in range(0, len(connected_blades)):
         if connected_blades[target].management_address is None:
-            try:
-                remote_system = Client(
-                    target=module.params["target_url"],
-                    api_token=module.params["target_api"],
-                )
-                remote_array = list(remote_system.get_arrays().items)[0].name
-                if connected_blades[target].remote.name == remote_array:
-                    return connected_blades[target]
-            except Exception:
+            remote_system = Client(
+                target=module.params["target_url"],
+                api_token=module.params["target_api"],
+            )
+            res = remote_system.get_arrays()
+            if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to connect to remote array {0}.".format(
                         module.params["target_url"]
                     )
                 )
+            remote_array = list(res.items)[0].name
+            if connected_blades[target].remote.name == remote_array:
+                return connected_blades[target]
         if connected_blades[target].management_address == module.params[
             "target_url"
         ] and connected_blades[target].status in [
@@ -434,7 +435,6 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    versions = list(blade.get_versions().items)
 
     if module.params["default_limit"]:
         if (
