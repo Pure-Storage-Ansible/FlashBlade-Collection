@@ -120,9 +120,8 @@ MIN_REQUIRED_API_VERSION = "2.0"
 def delete_client(module, blade):
     changed = True
     if not module.check_mode:
-        try:
-            blade.delete_api_clients(names=[module.params["name"]])
-        except Exception:
+        res = blade.delete_api_clients(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete API Client {0}".format(module.params["name"])
             )

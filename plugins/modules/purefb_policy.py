@@ -643,14 +643,15 @@ WORM_POLICY_API_VERSION = "2.15"
 CONTEXT_API_VERSION = "2.17"
 
 
-def _convert_to_millisecs(hour):
-    if hour[-2:] == "AM" and hour[:2] == "12":
-        return 0
-    elif hour[-2:] == "AM":
-        return int(hour[:-2]) * 3600000
-    elif hour[-2:] == "PM" and hour[:2] == "12":
-        return 43200000
-    return (int(hour[:-2]) + 12) * 3600000
+def _convert_to_millisecs(hour_str: str) -> int:
+    """Convert a 12-hour formatted time string (e.g., '02AM', '12PM') to milliseconds since midnight."""
+    time_part = int(hour_str[:-2])
+    period = hour_str[-2:]
+
+    if period == "AM":
+        return 0 if time_part == 12 else time_part * 3600000
+    else:  # PM
+        return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
 
 
 def _findstr(text, match):
@@ -962,7 +963,6 @@ def update_smb_share_policy(module, blade):
                     )
         else:
             rules = list(current_policy_rule.items)
-            cli_count = None
             old_policy_rule = rules[0]
             current_rule = {
                 "principal": sorted(old_policy_rule.principal),
@@ -2179,7 +2179,7 @@ def delete_worm_data_policy(module, blade):
     module.exit_json(changed=changed)
 
 
-def rename_worm_data_policy(module, blade):
+def rename_worm_data_policy(module):
     """Rename WORM Data Policy"""
 
     changed = False
@@ -4228,7 +4228,7 @@ def main():
         elif (
             state == "present" and module.params["rename"] and policy and not new_policy
         ):
-            rename_worm_data_policy(module, blade)
+            rename_worm_data_policy(blade)
         elif state == "present" and not policy and not module.params["rename"]:
             create_worm_data_policy(module, blade)
         elif state == "absent" and policy:

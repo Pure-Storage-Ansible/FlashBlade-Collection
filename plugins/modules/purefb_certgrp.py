@@ -87,11 +87,8 @@ def delete_certgrp(module, blade):
     """Delete certifcate group"""
     changed = True
     if not module.check_mode:
-        try:
-            blade.certificate_groups.delete_certificate_groups(
-                names=[module.params["name"]]
-            )
-        except Exception:
+        res = blade.delete_certificate_groups(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete certifcate group {0}.".format(
                     module.params["name"]

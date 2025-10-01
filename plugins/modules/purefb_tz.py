@@ -67,8 +67,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-MIN_REQUIRED_API_VERSION = "2.0"
-
 
 def _findstr(text, match):
     for line in text.splitlines():
@@ -90,14 +88,13 @@ def _get_local_tz(module, timezone="UTC"):
     if platform.system() == "Linux":
         timedatectl = get_bin_path("timedatectl")
         if timedatectl is not None:
-            rcode, stdout, stderr = module.run_command(timedatectl)
+            rcode, stdout, _stderr = module.run_command(timedatectl)
             if rcode == 0 and stdout:
                 line = _findstr(stdout, "Time zone")
                 full_tz = line.split(":", 1)[1].rstrip()
                 timezone = full_tz.split()[0]
                 return timezone
-            else:
-                module.warn("Incorrect timedatectl output. Timezone will be set to UTC")
+            module.warn("Incorrect timedatectl output. Timezone will be set to UTC")
         else:
             if os.path.exists("/etc/timezone"):
                 timezone = get_file_content("/etc/timezone")
@@ -116,7 +113,7 @@ def _get_local_tz(module, timezone="UTC"):
     elif re.match("^Darwin", platform.platform()):
         systemsetup = get_bin_path("systemsetup")
         if systemsetup is not None:
-            rcode, stdout, stderr = module.execute(systemsetup, "-gettimezone")
+            rcode, stdout, _stderr = module.execute(systemsetup, "-gettimezone")
             if rcode == 0 and stdout:
                 timezone = stdout.split(":", 1)[1].lstrip()
             else:
@@ -180,13 +177,7 @@ def main():
         module.fail_json(msg="pytz is required for this module")
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
 
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="FlashBlade REST version not supported. "
-            "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
-        )
     if not module.params["timezone"]:
         module.params["timezone"] = _get_local_tz(module)
         if module.params["timezone"] not in pytz.all_timezones_set:

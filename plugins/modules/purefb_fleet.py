@@ -169,10 +169,12 @@ def add_fleet_members(module, blade):
     existing = False
     if not module.params["member_url"] and not module.params["member_api"]:
         module.fail_json(msg="missing required arguments: member_api, member_url")
-    try:
-        fleet_key = list(blade.post_fleets_fleet_key().items)[0].fleet_key
-    except Exception:
-        module.fail_json(msg="Fleet key generation failed")
+    res = blade.post_fleets_fleet_key()
+    if res.status_code != 200:
+        module.fail_json(
+            msg="Fleet key generation failed. Error: {0}".format(res.errors[0].message)
+        )
+    fleet_key = list(res.items)[0].fleet_key
     if HAS_URLLIB3 and module.params["disable_warnings"]:
         urllib3.disable_warnings()
     if HAS_DISTRO:
@@ -346,7 +348,7 @@ def main():
             "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
         )
     state = module.params["state"]
-
+    fleet = True
     fleet_res = blade.get_fleets()
     if fleet_res.status_code == 404:
         module.fail_json(
@@ -354,9 +356,7 @@ def main():
             "Please speak to Pure Support to enable this feature"
         )
     else:
-        try:
-            fleet = list(fleet_res.items)
-        except Exception:
+        if not list(fleet_res.items):
             fleet = False
 
     if state == "create" and not fleet:

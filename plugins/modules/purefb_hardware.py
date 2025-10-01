@@ -88,8 +88,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-MIN_REQUIRED_API_VERSION = "2.2"
-
 
 def main():
     argument_spec = purefb_argument_spec()
@@ -115,15 +113,9 @@ def main():
     blade = get_system(module)
     api_version = list(blade.get_versions().items)
 
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="FlashBlade REST version not supported. "
-            "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
-        )
     if module.params["speed"]:
         speed = module.params["speed"] * 1000000000
     changed = False
-    change_connector = False
     hardware = None
     res = blade.get_hardware(names=[module.params["name"]])
     if res.status_code == 200:
@@ -145,40 +137,35 @@ def main():
                     )
     res = blade.get_hardware_connectors(names=[module.params["name"]])
     if res.status_code == 200:
-        if res.status_code == 200:
-            connector = list(res.items)[0]
-            if connector.port_count != module.params["ports"]:
-                new_port = module.params["ports"]
-                changed = True
-                if not module.check_mode:
-                    res = blade.patch_hardware_connectors(
-                        names=[module.params["name"]],
-                        hardware_connector=flashblade.HardwareConnector(
-                            port_count=module.params["ports"]
-                        ),
-                    )
-                    if res.status_code != 200:
-                        module.fail_json(
-                            msg="Failed to change connector port count {0}. Error: Invalid port count".format(
-                                module.params["name"]
-                            )
+        connector = list(res.items)[0]
+        if connector.port_count != module.params["ports"]:
+            changed = True
+            if not module.check_mode:
+                res = blade.patch_hardware_connectors(
+                    names=[module.params["name"]],
+                    hardware_connector=flashblade.HardwareConnector(
+                        port_count=module.params["ports"]
+                    ),
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to change connector port count {0}. Error: Invalid port count".format(
+                            module.params["name"]
                         )
-            if connector.lane_speed != speed:
-                new_speed = speed
-                changed = True
-                if not module.check_mode:
-                    res = blade.patch_hardware_connectors(
-                        names=[module.params["name"]],
-                        hardware_connector=flashblade.HardwareConnector(
-                            lane_speed=speed
-                        ),
                     )
-                    if res.status_code != 200:
-                        module.fail_json(
-                            msg="Failed to change connector lane speed {0}. Error: Invalid lane speed".format(
-                                module.params["name"]
-                            )
+        if connector.lane_speed != speed:
+            changed = True
+            if not module.check_mode:
+                res = blade.patch_hardware_connectors(
+                    names=[module.params["name"]],
+                    hardware_connector=flashblade.HardwareConnector(lane_speed=speed),
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to change connector lane speed {0}. Error: Invalid lane speed".format(
+                            module.params["name"]
                         )
+                    )
 
     module.exit_json(changed=changed)
 

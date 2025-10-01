@@ -171,8 +171,7 @@ def get_s3acc(module, blade):
     res = blade.get_object_store_accounts(names=[module.params["account"]])
     if res.status_code == 200:
         return list(res.items)[0]
-    else:
-        return None
+    return None
 
 
 def get_s3user(module, blade):
@@ -181,8 +180,7 @@ def get_s3user(module, blade):
     res = blade.get_object_store_users(names=[full_user])
     if res.status_code == 200:
         return list(res.items)[0]
-    else:
-        return None
+    return None
 
 
 def update_s3user(module, blade):
@@ -430,9 +428,8 @@ def delete_s3user(module, blade, internal=False):
     changed = True
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
-        try:
-            blade.delete_object_store_users(names=[user])
-        except Exception:
+        res = blade.delete_object_store_users(names=[user])
+        if res.status_code != 200:
             module.fail_json(
                 msg="Object Store Account {0}: Deletion failed".format(
                     module.params["name"]

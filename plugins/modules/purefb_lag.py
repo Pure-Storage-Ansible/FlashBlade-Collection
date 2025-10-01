@@ -152,9 +152,9 @@ def update_lag(module, blade):
                     current_ports.append(current_lags[lag].ports[port].name)
             for current_lag_port in range(0, len(current_ports)):
                 if (
-                    module.params["ports"][lag_port].split(".")[0].upper()
+                    module.params["ports"][current_lag_port].split(".")[0].upper()
                     + ".FM1."
-                    + module.params["ports"][lag_port].split(".")[1].upper()
+                    + module.params["ports"][current_lag_port].split(".")[1].upper()
                 ) in current_ports:
                     module.fail_json(
                         msg="Selected port {0} is currently in use by another LAG.".format(
