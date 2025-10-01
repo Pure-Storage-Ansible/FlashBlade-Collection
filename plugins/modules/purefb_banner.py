@@ -59,35 +59,34 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import PureArray
+    from pypureclient.flashblade import Array
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
-
-
-MIN_REQUIRED_API_VERSION = "1.10"
 
 
 def set_banner(module, blade):
     """Set MOTD banner text"""
     changed = True
     if not module.check_mode:
-        try:
-            if not module.params["banner"]:
-                module.fail_json(msg="Invalid MOTD banner given")
-            blade_settings = PureArray(banner=module.params["banner"])
-            blade.arrays.update_arrays(array_settings=blade_settings)
-        except Exception:
-            module.fail_json(msg="Failed to set MOTD banner text")
-
+        if not module.params["banner"]:
+            module.fail_json(msg="Invalid MOTD banner given")
+        blade_settings = Array(banner=module.params["banner"])
+        res = blade.patch_arrays(array=blade_settings)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to set MOTD banner text. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -95,11 +94,14 @@ def delete_banner(module, blade):
     """Delete MOTD banner text"""
     changed = True
     if not module.check_mode:
-        try:
-            blade_settings = PureArray(banner="")
-            blade.arrays.update_arrays(array_settings=blade_settings)
-        except Exception:
-            module.fail_json(msg="Failed to delete current MOTD banner text")
+        blade_settings = Array(banner="")
+        res = blade.patch_arrays(array=blade_settings)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to delete current MOTD banner text. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -117,15 +119,12 @@ def main():
     module = AnsibleModule(
         argument_spec, required_if=required_if, supports_check_mode=True
     )
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
-    current_banner = blade.login_banner.list_login_banner().login_banner
+    blade = get_system(module)
+    current_banner = list(blade.get_arrays().items)[0].banner
 
     # set banner if empty value or value differs
     if state == "present" and (
