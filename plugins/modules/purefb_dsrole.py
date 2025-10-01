@@ -89,13 +89,13 @@ RETURN = r"""
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import DirectoryServiceRole
+    from pypureclient.flashblade import DirectoryServiceRole
 except ImportError:
     HAS_PURITY_FB = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
@@ -103,26 +103,30 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 def update_role(module, blade):
     """Update Directory Service Role"""
     changed = False
-    role = blade.directory_services.list_directory_services_roles(
-        names=[module.params["role"]]
-    )
+    res = blade.get_directory_services_roles(names=[module.params["role"]])
+    if res.status_code != 200:
+        module.fail_json(
+            msg="fetch Directory Service Role {0} failed. Error: {1}".format(
+                module.params["role"], res.errors[0].message
+            )
+        )
+    role = list(res.items)[0]
     if (
-        role.items[0].group_base != module.params["group_base"]
-        or role.items[0].group != module.params["group"]
+        role.group_base != module.params["group_base"]
+        or role.group != module.params["group"]
     ):
         changed = True
         if not module.check_mode:
-            try:
-                role = DirectoryServiceRole(
-                    group_base=module.params["group_base"], group=module.params["group"]
-                )
-                blade.directory_services.update_directory_services_roles(
-                    names=[module.params["role"]], directory_service_role=role
-                )
-            except Exception:
+            role = DirectoryServiceRole(
+                group_base=module.params["group_base"], group=module.params["group"]
+            )
+            res = blade.patch_directory_services_roles(
+                names=[module.params["role"]], directory_service_role=role
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Update Directory Service Role {0} failed".format(
-                        module.params["role"]
+                    msg="Update Directory Service Role {0} failed. Error: {1}".format(
+                        module.params["role"], res.errors[0].message
                     )
                 )
     module.exit_json(changed=changed)
@@ -132,15 +136,14 @@ def delete_role(module, blade):
     """Delete Directory Service Role"""
     changed = True
     if not module.check_mode:
-        try:
-            role = DirectoryServiceRole(group_base="", group="")
-            blade.directory_services.update_directory_services_roles(
-                names=[module.params["role"]], directory_service_role=role
-            )
-        except Exception:
+        role = DirectoryServiceRole(group_base="", group="")
+        res = blade.patch_directory_services_roles(
+            names=[module.params["role"]], directory_service_role=role
+        )
+        if res.status_code != 200:
             module.fail_json(
-                msg="Delete Directory Service Role {0} failed".format(
-                    module.params["role"]
+                msg="Delete Directory Service Role {0} failed. Error: {1}".format(
+                    module.params["role"], res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -150,17 +153,16 @@ def create_role(module, blade):
     """Create Directory Service Role"""
     changed = True
     if not module.check_mode:
-        try:
-            role = DirectoryServiceRole(
-                group_base=module.params["group_base"], group=module.params["group"]
-            )
-            blade.directory_services.update_directory_services_roles(
-                names=[module.params["role"]], directory_service_role=role
-            )
-        except Exception:
+        role = DirectoryServiceRole(
+            group_base=module.params["group_base"], group=module.params["group"]
+        )
+        res = blade.patch_directory_services_roles(
+            names=[module.params["role"]], directory_service_role=role
+        )
+        if res.status_code != 200:
             module.fail_json(
-                msg="Create Directory Service Role {0} failed".format(
-                    module.params["role"]
+                msg="Create Directory Service Role {0} failed. Error: {1}".format(
+                    module.params["role"], res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -188,15 +190,13 @@ def main():
     )
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
+    blade = get_system(module)
     role_configured = False
-    role = blade.directory_services.list_directory_services_roles(
-        names=[module.params["role"]]
-    )
-    if role.items[0].group is not None:
+    res = blade.get_directory_services_roles(names=[module.params["role"]])
+    if res.status_code == 200:
         role_configured = True
 
     if state == "absent" and role_configured:
