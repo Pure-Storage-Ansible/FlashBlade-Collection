@@ -353,7 +353,7 @@ def generate_config_dict(module, blade):
                 "domain": dns_configs[config].domain,
             }
             config_info["dns"][dns_configs[config].name]["source"] = getattr(
-                dns_configs[config].source, "name", None
+                dns_configs[config].sources, "name", None
             )
     else:
         config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
