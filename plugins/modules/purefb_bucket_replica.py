@@ -66,6 +66,14 @@ options:
     type: bool
     default: false
     version_added: "1.14.0"
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -99,24 +107,21 @@ EXAMPLES = """
 RETURN = """
 """
 
-HAS_PURITY_FB = True
-try:
-    from purity_fb import BucketReplicaLink, ObjectStoreRemoteCredentials
-except ImportError:
-    HAS_PURITY_FB = False
+CONTEXT_API_VERSION = "2.17"
 
 HAS_PYPURECLIENT = True
 try:
-    from pypureclient import flashblade
+    from pypureclient.flashblade import (
+        BucketReplicaLink,
+        ReferenceWritable,
+        BucketReplicaLinkPost,
+    )
 except ImportError:
     HAS_PYPURECLIENT = False
 
-MIN_REQUIRED_API_VERSION = "1.9"
-CASCADE_API_VERSION = "2.2"
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
@@ -124,39 +129,59 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 def get_local_bucket(module, blade):
     """Return Bucket or None"""
-    try:
-        res = blade.buckets.list_buckets(names=[module.params["name"]])
-        return res.items[0]
-    except Exception:
-        return None
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_buckets(
+            context_names=[module.params["context"]],
+            names=[module.params["name"]],
+        )
+    else:
+        res = blade.get_buckets(names=[module.params["name"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    return None
 
 
 def get_remote_cred(module, blade, target):
     """Return Remote Credential or None"""
-    try:
-        res = (
-            blade.object_store_remote_credentials.list_object_store_remote_credentials(
-                names=[target + "/" + module.params["credential"]]
-            )
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_object_store_remote_credentials(
+            names=[target + "/" + module.params["credential"]],
+            context_names=[module.params["context"]],
         )
+    else:
+        res = blade.get_object_store_remote_credentials(
+            names=[target + "/" + module.params["credential"]]
+        )
+    if res.status_code == 200:
         return res.items[0]
-    except Exception:
-        return None
+    return None
 
 
 def get_local_rl(module, blade):
     """Return Bucket Replica Link or None"""
-    try:
-        res = blade.bucket_replica_links.list_bucket_replica_links(
-            local_bucket_names=[module.params["name"]]
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_bucket_replica_links(
+            local_bucket_names=[module.params["name"]],
+            context_names=[module.params["context"]],
         )
+    else:
+        res = blade.get_bucket_replica_links(local_bucket_names=[module.params["name"]])
+    if res.status_code == 200:
         return res.items[0]
-    except Exception:
-        return None
+    return None
 
 
 def get_connected(module, blade):
-    connected_blades = blade.array_connections.list_array_connections()
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        connected_blades = blade.get_array_connections(
+            context_names=[module.params["context"]]
+        )
+    else:
+        connected_blades = blade.get_array_connections()
     for target in range(0, len(connected_blades.items)):
         if (
             connected_blades.items[target].remote.name == module.params["target"]
@@ -168,7 +193,10 @@ def get_connected(module, blade):
             "partially_connected",
         ]:
             return connected_blades.items[target].remote.name
-    connected_targets = blade.targets.list_targets()
+    if CONTEXT_API_VERSION in api_version:
+        connected_targets = blade.get_targets(context_names=[module.params["context"]])
+    else:
+        connected_targets = blade.get_targets()
     for target in range(0, len(connected_targets.items)):
         if connected_targets.items[target].name == module.params[
             "target"
@@ -184,93 +212,115 @@ def get_connected(module, blade):
 def create_rl(module, blade, remote_cred):
     """Create Bucket Replica Link"""
     changed = True
-    api_version = blade.api_version.list_versions().versions
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         if not module.params["target_bucket"]:
             module.params["target_bucket"] = module.params["name"]
         else:
             module.params["target_bucket"] = module.params["target_bucket"].lower()
-        if CASCADE_API_VERSION in api_version:
-            bladev2 = get_system(module)
-            new_rl = flashblade.BucketReplicaLinkPost(
-                cascading_enabled=module.params["cascading"],
-                paused=module.params["paused"],
+        new_rl = BucketReplicaLinkPost(
+            cascading_enabled=module.params["cascading"],
+            paused=module.params["paused"],
+        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_bucket_replica_links(
+                local_bucket_names=[module.params["name"]],
+                remote_bucket_names=[module.params["target_bucket"]],
+                remote_credentials_names=[remote_cred.name],
+                bucket_replica_link=new_rl,
+                context_names=[module.params["context"]],
             )
-            res = bladev2.post_bucket_replica_links(
+        else:
+            res = blade.post_bucket_replica_links(
                 local_bucket_names=[module.params["name"]],
                 remote_bucket_names=[module.params["target_bucket"]],
                 remote_credentials_names=[remote_cred.name],
                 bucket_replica_link=new_rl,
             )
-            if res.status_code != 200:
-                module.fail_json(
-                    msg="Failed to create bucket replica link {0}.".format(
-                        module.params["name"]
-                    )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to create bucket replica link {0}.".format(
+                    module.params["name"]
                 )
-        else:
-            try:
-                blade.bucket_replica_links.create_bucket_replica_links(
-                    local_bucket_names=[module.params["name"]],
-                    remote_bucket_names=[module.params["target_bucket"]],
-                    remote_credentials_names=[remote_cred.name],
-                    bucket_replica_link=BucketReplicaLink(
-                        paused=module.params["paused"]
-                    ),
-                )
-            except Exception:
-                module.fail_json(
-                    msg="Failed to create bucket replica link {0}.".format(
-                        module.params["name"]
-                    )
-                )
+            )
     module.exit_json(changed=changed)
 
 
 def update_rl_policy(module, blade, local_replica_link):
     """Update Bucket Replica Link"""
+    api_version = list(blade.get_versions().items)
     changed = False
     new_cred = local_replica_link.remote.name + "/" + module.params["credential"]
-    if (
-        local_replica_link.paused != module.params["paused"]
-        or local_replica_link.remote_credentials.name != new_cred
-    ):
+    if local_replica_link.paused != module.params["paused"]:
+        paused = module.params["paused"]
         changed = True
-        if not module.check_mode:
-            try:
-                module.warn("{0}".format(local_replica_link))
-                blade.bucket_replica_links.update_bucket_replica_links(
-                    local_bucket_names=[module.params["name"]],
-                    remote_bucket_names=[local_replica_link.remote_bucket.name],
-                    remote_names=[local_replica_link.remote.name],
-                    bucket_replica_link=BucketReplicaLink(
-                        paused=module.params["paused"],
-                        remote_credentials=ObjectStoreRemoteCredentials(name=new_cred),
-                    ),
+    else:
+        paused = local_replica_link.paused
+    if local_replica_link.remote_credentials.name != new_cred:
+        new_rl_cred = new_cred
+        changed = True
+    else:
+        new_rl_cred = local_replica_link.remote_credentials.name
+    if local_replica_link.cascading_enabled != module.params["cascading"]:
+        cascading = module.params["cascading"]
+        changed = True
+    else:
+        cascading = local_replica_link.cascading_enabled
+    if not module.check_mode and changed:
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.patch_bucket_replica_links(
+                local_bucket_names=[module.params["name"]],
+                remote_bucket_names=[local_replica_link.remote_bucket.name],
+                remote_names=[local_replica_link.remote.name],
+                bucket_replica_link=BucketReplicaLink(
+                    paused=paused,
+                    remote_credentials=ReferenceWritable(name=new_rl_cred),
+                    cascading_enabled=cascading,
+                ),
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.patch_bucket_replica_links(
+                local_bucket_names=[module.params["name"]],
+                remote_bucket_names=[local_replica_link.remote_bucket.name],
+                remote_names=[local_replica_link.remote.name],
+                bucket_replica_link=BucketReplicaLink(
+                    paused=paused,
+                    remote_credentials=ReferenceWritable(name=new_rl_cred),
+                    cascading_enabled=cascading,
+                ),
+            )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to update bucket replica link {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
-            except Exception:
-                module.fail_json(
-                    msg="Failed to update bucket replica link {0}.".format(
-                        module.params["name"]
-                    )
-                )
+            )
     module.exit_json(changed=changed)
 
 
 def delete_rl_policy(module, blade, local_replica_link):
     """Delete Bucket Replica Link"""
+    api_version = list(blade.get_versions().items)
     changed = True
     if not module.check_mode:
-        try:
-            blade.bucket_replica_links.delete_bucket_replica_links(
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.bucket_replica_links.delete_bucket_replica_links(
+                remote_names=[local_replica_link.remote.name],
+                local_bucket_names=[module.params["name"]],
+                remote_bucket_names=[local_replica_link.remote_bucket.name],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.bucket_replica_links.delete_bucket_replica_links(
                 remote_names=[local_replica_link.remote.name],
                 local_bucket_names=[module.params["name"]],
                 remote_bucket_names=[local_replica_link.remote_bucket.name],
             )
-        except Exception:
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to delete bucket replica link {0}.".format(
-                    module.params["name"]
+                msg="Failed to delete bucket replica link {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -287,25 +337,18 @@ def main():
             cascading=dict(type="bool", default=False),
             credential=dict(type="str"),
             state=dict(default="present", choices=["present", "absent"]),
+            context=dict(type="str", default=""),
         )
     )
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
     module.params["name"] = module.params["name"].lower()
-    blade = get_blade(module)
-    versions = blade.api_version.list_versions().versions
-
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
+    blade = get_system(module)
 
     local_bucket = get_local_bucket(module, blade)
     local_replica_link = get_local_rl(module, blade)
