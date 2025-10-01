@@ -64,27 +64,24 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITYFB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import TargetPost, Target
+    from pypureclient.flashblade import TargetPost, Target
 except ImportError:
-    HAS_PURITYFB = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
 
-MINIMUM_API_VERSION = "1.9"
-
-
 def _check_replication_configured(module, blade):
-    interfaces = blade.network_interfaces.list_network_interfaces()
+    interfaces = list(blade.get_network_interfaces().items)
     repl_ok = False
-    for link in range(0, len(interfaces.items)):
-        if "replication" in interfaces.items[link].services:
+    for link in range(0, len(interfaces)):
+        if "replication" in interfaces[link].services:
             repl_ok = True
     if not repl_ok:
         module.fail_json(
@@ -93,10 +90,10 @@ def _check_replication_configured(module, blade):
 
 
 def _check_connected(module, blade):
-    connected_targets = blade.targets.list_targets()
-    for target in range(0, len(connected_targets.items)):
-        if connected_targets.items[target].name == module.params["name"]:
-            return connected_targets.items[target]
+    connected_targets = list(blade.get_targets().items)
+    for target in range(0, len(connected_targets)):
+        if connected_targets[target].name == module.params["name"]:
+            return connected_targets[target]
     return None
 
 
@@ -104,11 +101,12 @@ def break_connection(module, blade):
     """Break connection to remote target"""
     changed = True
     if not module.check_mode:
-        try:
-            blade.targets.delete_targets(names=[module.params["name"]])
-        except Exception:
+        res = blade.delete_targets(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to disconnect target {0}.".format(module.params["name"])
+                msg="Failed to disconnect target {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
             )
     module.exit_json(changed=changed)
 
@@ -117,19 +115,19 @@ def create_connection(module, blade):
     """Create connection to remote target"""
     changed = True
     if not module.check_mode:
-        connected_targets = blade.targets.list_targets()
-        for target in range(0, len(connected_targets.items)):
-            if connected_targets.items[target].address == module.params["address"]:
+        connected_targets = list(blade.get_targets().items)
+        for target in range(0, len(connected_targets)):
+            if connected_targets[target].address == module.params["address"]:
                 module.fail_json(
                     msg="Target already exists with same connection address"
                 )
-        try:
-            target = TargetPost(address=module.params["address"])
-            blade.targets.create_targets(names=[module.params["name"]], target=target)
-        except Exception:
+
+        target = TargetPost(address=module.params["address"])
+        res = blade.post_targets(names=[module.params["name"]], target=target)
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to connect to remote target {0}.".format(
-                    module.params["name"]
+                msg="Failed to connect to remote target {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -138,11 +136,11 @@ def create_connection(module, blade):
 def update_connection(module, blade, connection):
     """Update target connection address"""
     changed = False
-    connected_targets = blade.targets.list_targets()
-    for target in range(0, len(connected_targets.items)):
+    connected_targets = list(blade.get_targets().items)
+    for target in range(0, len(connected_targets)):
         if (
-            connected_targets.items[target].address == module.params["address"]
-            and connected_targets.items[target].name != module.params["name"]
+            connected_targets[target].address == module.params["address"]
+            and connected_targets[target].name != module.params["name"]
         ):
             module.fail_json(msg="Target already exists with same connection address")
     if module.params["address"] != connection.address:
@@ -151,14 +149,13 @@ def update_connection(module, blade, connection):
             new_address = Target(
                 name=module.params["name"], address=module.params["address"]
             )
-            try:
-                blade.targets.update_targets(
-                    names=[connection.name], target=new_address
-                )
-            except Exception:
+            res = blade.targets.update_targets(
+                names=[connection.name], target=new_address
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to change address for target {0}.".format(
-                        module.params["name"]
+                    msg="Failed to change address for target {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
                     )
                 )
     module.exit_json(changed=changed)
@@ -180,11 +177,11 @@ def main():
         argument_spec, required_if=required_if, supports_check_mode=True
     )
 
-    if not HAS_PURITYFB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
+    blade = get_system(module)
     _check_replication_configured(module, blade)
     target = _check_connected(module, blade)
     if state == "present" and not target:
