@@ -22,7 +22,7 @@ module: purefb_userquota
 version_added: "1.7.0"
 short_description:  Manage filesystem user quotas
 description:
-    - This module manages user quotas for filesystems on Pure Storage FlashBlade.
+    - This module manages user hard quotas for filesystems on Pure Storage FlashBlade.
 author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
@@ -52,6 +52,14 @@ options:
       - The user name on which the quota is enforced.
       - Cannot be combined with I(uid)
     type: str
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
     - purestorage.flashblade.purestorage.fb
 """
@@ -113,81 +121,116 @@ EXAMPLES = """
 RETURN = """
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
-    from purity_fb import QuotasUser
+    from pypureclient.flashblade import UserQuotaPost, UserQuotaPatch
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
 
-
-MIN_REQUIRED_API_VERSION = "1.6"
+CONTEXT_API_VERSION = "2.17"
 
 
 def get_fs(module, blade):
     """Return Filesystem or None"""
-    fsys = []
-    fsys.append(module.params["name"])
-    try:
-        res = blade.file_systems.list_file_systems(names=fsys)
-        return res.items[0]
-    except Exception:
-        return None
+    versions = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in versions:
+        res = blade.get_file_systems(
+            names=[module.params["name"]], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_file_systems(names=[module.params["name"]])
+    if res.status_code == 200:
+        return list(res.items)[0]
+    return None
 
 
 def get_quota(module, blade):
     """Return Filesystem User Quota or None"""
-    fsys = []
-    fsys.append(module.params["name"])
-    try:
-        if module.params["uid"]:
-            res = blade.quotas_users.list_user_quotas(
-                file_system_names=fsys, filter="user.id=" + str(module.params["uid"])
+    versions = list(blade.get_versions().items)
+    if module.params["uid"]:
+        if CONTEXT_API_VERSION in versions:
+            res = blade.get_quotas_users(
+                file_system_names=[module.params["name"]],
+                filter="user.id=" + str(module.params["uid"]),
+                context_names=[module.params["context"]],
             )
         else:
-            res = blade.quotas_users.list_user_quotas(
-                file_system_names=fsys,
+            res = blade.get_quotas_users(
+                file_system_names=[module.params["name"]],
+                filter="user.id=" + str(module.params["uid"]),
+            )
+    else:
+        if CONTEXT_API_VERSION in versions:
+            res = blade.get_quotas_users(
+                file_system_names=[module.params["name"]],
+                filter="user.name='" + module.params["uname"] + "'",
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_quotas_users(
+                file_system_names=[module.params["name"]],
                 filter="user.name='" + module.params["uname"] + "'",
             )
+    if res.status_code == 200:
         return res.items[0]
-    except Exception:
-        return None
+    return None
 
 
 def create_quota(module, blade):
     """Create Filesystem User Quota"""
     changed = True
+    versions = list(blade.get_versions().items)
     quota = int(human_to_bytes(module.params["quota"]))
     if not module.check_mode:
-        try:
-            if module.params["uid"]:
-                blade.quotas_users.create_user_quotas(
+        if module.params["uid"]:
+            if CONTEXT_API_VERSION in versions:
+                res = blade.post_quotas_users(
                     file_system_names=[module.params["name"]],
                     uids=[module.params["uid"]],
-                    quota=QuotasUser(quota=quota),
+                    quota=UserQuotaPost(quota=quota),
+                    context_names=[module.params["context"]],
                 )
             else:
-                blade.quotas_users.create_user_quotas(
+                res = blade.post_quotas_users(
+                    file_system_names=[module.params["name"]],
+                    uids=[module.params["uid"]],
+                    quota=UserQuotaPost(quota=quota),
+                )
+        else:
+            if CONTEXT_API_VERSION in versions:
+                res = blade.post_quotas_users(
                     file_system_names=[module.params["name"]],
                     user_names=[module.params["uname"]],
-                    quota=QuotasUser(quota=quota),
+                    quota=UserQuotaPost(quota=quota),
+                    context_names=[module.params["context"]],
                 )
-        except Exception:
+            else:
+                res = blade.post_quotas_users(
+                    file_system_names=[module.params["name"]],
+                    user_names=[module.params["uname"]],
+                    quota=UserQuotaPost(quota=quota),
+                )
+        if res.status_code != 200:
             if module.params["uid"]:
                 module.fail_json(
-                    msg="Failed to create quote for UID {0} on filesystem {1}.".format(
-                        module.params["uid"], module.params["name"]
+                    msg="Failed to create quote for UID {0} on filesystem {1}. Error: {2}".format(
+                        module.params["uid"],
+                        module.params["name"],
+                        res.errors[0].message,
                     )
                 )
             else:
                 module.fail_json(
-                    msg="Failed to create quote for username {0} on filesystem {1}.".format(
-                        module.params["uname"], module.params["name"]
+                    msg="Failed to create quote for username {0} on filesystem {1}. Error: {2}".format(
+                        module.params["uname"],
+                        module.params["name"],
+                        res.errors[0].message,
                     )
                 )
     module.exit_json(changed=changed)
@@ -196,35 +239,54 @@ def create_quota(module, blade):
 def update_quota(module, blade):
     """Upodate Filesystem User Quota"""
     changed = False
+    versions = list(blade.get_versions().items)
     current_quota = get_quota(module, blade)
     quota = int(human_to_bytes(module.params["quota"]))
     if current_quota.quota != quota:
         changed = True
         if not module.check_mode:
             if module.params["uid"]:
-                try:
-                    blade.quotas_users.update_user_quotas(
+                if CONTEXT_API_VERSION in versions:
+                    res = blade.patch_quotas_users(
                         file_system_names=[module.params["name"]],
                         uids=[module.params["uid"]],
-                        quota=QuotasUser(quota=quota),
+                        quota=UserQuotaPatch(quota=quota),
+                        context_names=[module.params["context"]],
                     )
-                except Exception:
+                else:
+                    res = blade.patch_quotas_users(
+                        file_system_names=[module.params["name"]],
+                        uids=[module.params["uid"]],
+                        quota=UserQuotaPatch(quota=quota),
+                    )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to update quota for UID {0} on filesystem {1}.".format(
-                            module.params["uid"], module.params["name"]
+                        msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
+                            module.params["uid"],
+                            module.params["name"],
+                            res.errors[0].message,
                         )
                     )
             else:
-                try:
-                    blade.quotas_users.update_user_quotas(
+                if CONTEXT_API_VERSION in versions:
+                    res = blade.patch_quotas_users(
                         file_system_names=[module.params["name"]],
                         user_names=[module.params["uname"]],
-                        quota=QuotasUser(quota=quota),
+                        quota=UserQuotaPatch(quota=quota),
+                        context_names=[module.params["context"]],
                     )
-                except Exception:
+                else:
+                    res = blade.patch_quotas_users(
+                        file_system_names=[module.params["name"]],
+                        user_names=[module.params["uname"]],
+                        quota=UserQuotaPatch(quota=quota),
+                    )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to update quota for UID {0} on filesystem {1}.".format(
-                            module.params["uname"], module.params["name"]
+                        msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
+                            module.params["uname"],
+                            module.params["name"],
+                            res.errors[0].message,
                         )
                     )
     module.exit_json(changed=changed)
@@ -233,29 +295,47 @@ def update_quota(module, blade):
 def delete_quota(module, blade):
     """Delete Filesystem User Quota"""
     changed = True
+    versions = list(blade.get_versions().items)
     if not module.check_mode:
-        try:
-            if module.params["uid"]:
-                blade.quotas_users.delete_user_quotas(
+        if module.params["uid"]:
+            if CONTEXT_API_VERSION in versions:
+                res = blade.delete_quotas_users(
+                    file_system_names=[module.params["name"]],
+                    uids=[module.params["uid"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_quotas_users(
                     file_system_names=[module.params["name"]],
                     uids=[module.params["uid"]],
                 )
+        else:
+            if CONTEXT_API_VERSION in versions:
+                res = blade.delete_quotas_users(
+                    file_system_names=[module.params["name"]],
+                    user_names=[module.params["uname"]],
+                    context_names=[module.params["context"]],
+                )
             else:
-                blade.quotas_users.delete_user_quotas(
+                res = blade.delete_quotas_users(
                     file_system_names=[module.params["name"]],
                     user_names=[module.params["uname"]],
                 )
-        except Exception:
+        if res.status_code != 200:
             if module.params["uid"]:
                 module.fail_json(
-                    msg="Failed to delete quota for UID {0} on filesystem {1}.".format(
-                        module.params["uid"], module.params["name"]
+                    msg="Failed to delete quota for UID {0} on filesystem {1}. Error: {2}".format(
+                        module.params["uid"],
+                        module.params["name"],
+                        res.errors[0].message,
                     )
                 )
             else:
                 module.fail_json(
-                    msg="Failed to delete quota for username {0} on filesystem {1}.".format(
-                        module.params["uname"], module.params["name"]
+                    msg="Failed to delete quota for username {0} on filesystem {1}. Error: {2}".format(
+                        module.params["uname"],
+                        module.params["name"],
+                        res.errors[0].message,
                     )
                 )
     module.exit_json(changed=changed)
@@ -270,6 +350,7 @@ def main():
             uname=dict(type="str"),
             state=dict(default="present", choices=["present", "absent"]),
             quota=dict(type="str"),
+            context=dict(type="str", default=""),
         )
     )
 
@@ -282,19 +363,11 @@ def main():
         supports_check_mode=True,
     )
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    versions = blade.api_version.list_versions().versions
-
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
+    blade = get_system(module)
     fsys = get_fs(module, blade)
     if not fsys:
         module.fail_json(
