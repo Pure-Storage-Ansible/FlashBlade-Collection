@@ -68,19 +68,16 @@ RETURN = r"""
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import PureArray
+    from pypureclient.flashblade import Array
 except ImportError:
     HAS_PURITY_FB = False
 
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
-
-
-MIN_REQUIRED_API_VERSION = "1.3"
 
 
 def remove(duplicate):
@@ -95,12 +92,14 @@ def delete_ntp(module, blade):
     """Delete NTP Servers"""
     changed = True
     if not module.check_mode:
-        if blade.arrays.list_arrays().items[0].ntp_servers != []:
-            try:
-                blade_settings = PureArray(ntp_servers=[])
-                blade.arrays.update_arrays(array_settings=blade_settings)
-            except Exception:
-                module.fail_json(msg="Deletion of NTP servers failed")
+        if list(blade.get_arrays().items)[0].ntp_servers != []:
+            res = blade.patch_arrays(array_settings=Array(ntp_servers=[]))
+            if res.status_code != 200:
+                module.fail_json(
+                    msg="Deletion of NTP servers failed. Error: {0}".format(
+                        res.errors[0].message
+                    )
+                )
     module.exit_json(changed=changed)
 
 
@@ -110,11 +109,15 @@ def create_ntp(module, blade):
     if not module.check_mode:
         if not module.params["ntp_servers"]:
             module.params["ntp_servers"] = ["0.pool.ntp.org"]
-        try:
-            blade_settings = PureArray(ntp_servers=module.params["ntp_servers"][0:4])
-            blade.arrays.update_arrays(array_settings=blade_settings)
-        except Exception:
-            module.fail_json(msg="Update of NTP servers failed")
+        res = blade.patch_arrays(
+            array_settings=Array(ntp_servers=module.params["ntp_servers"][0:4])
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Update of NTP servers failed. Error: {0}".format(
+                    res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
@@ -136,17 +139,13 @@ def main():
     if not HAS_PURITY_FB:
         module.fail_json(msg="purity_fb sdk is required for this module")
 
-    blade = get_blade(module)
-
-    api_version = blade.api_version.list_versions().versions
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
+    blade = get_system(module)
 
     if module.params["state"] == "absent":
         delete_ntp(module, blade)
     else:
         module.params["ntp_servers"] = remove(module.params["ntp_servers"])
-        if sorted(blade.arrays.list_arrays().items[0].ntp_servers) != sorted(
+        if sorted(list(blade.get_arrays().items)[0].ntp_servers) != sorted(
             module.params["ntp_servers"][0:4]
         ):
             create_ntp(module, blade)
