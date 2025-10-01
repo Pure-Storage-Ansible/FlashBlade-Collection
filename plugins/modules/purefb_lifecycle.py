@@ -80,15 +80,7 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Create a lifecycle rule called bar for bucket foo (pre-Purity//FB 3.2.3)
-  purestorage.flashblade.purefb_lifecycle:
-    name: bar
-    bucket: foo
-    keep_previous_for: 2d
-    prefix: test
-    fb_url: 10.10.10.2
-    api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-- name: Create a lifecycle rule called bar for bucket foo (post-Purity//FB 3.2.3)
+- name: Create a lifecycle rule called bar for bucket foo
   purestorage.flashblade.purefb_lifecycle:
     name: bar
     bucket: foo
@@ -98,7 +90,7 @@ EXAMPLES = r"""
     prefix: test
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-- name: Modify a lifecycle rule (post-Purity//FB 3.2.3)
+- name: Modify a lifecycle rule
   purestorage.flashblade.purefb_lifecycle:
     name: bar
     bucket: foo

@@ -119,7 +119,6 @@ HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import (
         Client,
-        ArrayConnection,
         ArrayConnectionPost,
         TimeWindow,
         Throttle,
@@ -136,7 +135,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 FAN_IN_MAXIMUM = 5
 FAN_OUT_MAXIMUM = 5
-THROTTLE_API_VERSION = "2.3"
 
 
 def _convert_to_millisecs(hour_str: str) -> int:
@@ -230,47 +228,37 @@ def create_connection(module, blade):
     ].connection_key
 
     if module.params["default_limit"] or module.params["window_limit"]:
-        if THROTTLE_API_VERSION in list(blade.get_versions().items):
-            if THROTTLE_API_VERSION not in list(remote_system.get_versions().items):
-                module.fail_json(msg="Remote array does not support throttling")
-            if module.params["window_limit"]:
-                if not module.params["window_start"]:
-                    module.params["window_start"] = "12AM"
-                if not module.params["window_end"]:
-                    module.params["window_end"] = "12AM"
-                window = TimeWindow(
-                    start=_convert_to_millisecs(module.params["window_start"]),
-                    end=_convert_to_millisecs(module.params["window_end"]),
-                )
-            if module.params["window_limit"] and module.params["default_limit"]:
-                throttle = Throttle(
-                    default_limit=human_to_bytes(module.params["default_limit"]),
-                    window_limit=human_to_bytes(module.params["window_limit"]),
-                    window=window,
-                )
-            elif module.params["window_limit"] and not module.params["default_limit"]:
-                throttle = Throttle(
-                    window_limit=human_to_bytes(module.params["window_limit"]),
-                    window=window,
-                )
-            else:
-                throttle = Throttle(
-                    default_limit=human_to_bytes(module.params["default_limit"]),
-                )
-            connection_info = ArrayConnectionPost(
-                management_address=module.params["target_url"],
-                replication_addresses=module.params["target_repl"],
-                encrypted=module.params["encrypted"],
-                connection_key=connection_key,
-                throttle=throttle,
+        if module.params["window_limit"]:
+            if not module.params["window_start"]:
+                module.params["window_start"] = "12AM"
+            if not module.params["window_end"]:
+                module.params["window_end"] = "12AM"
+            window = TimeWindow(
+                start=_convert_to_millisecs(module.params["window_start"]),
+                end=_convert_to_millisecs(module.params["window_end"]),
+            )
+        if module.params["window_limit"] and module.params["default_limit"]:
+            throttle = Throttle(
+                default_limit=human_to_bytes(module.params["default_limit"]),
+                window_limit=human_to_bytes(module.params["window_limit"]),
+                window=window,
+            )
+        elif module.params["window_limit"] and not module.params["default_limit"]:
+            throttle = Throttle(
+                window_limit=human_to_bytes(module.params["window_limit"]),
+                window=window,
             )
         else:
-            connection_info = ArrayConnectionPost(
-                management_address=module.params["target_url"],
-                replication_addresses=module.params["target_repl"],
-                encrypted=module.params["encrypted"],
-                connection_key=connection_key,
+            throttle = Throttle(
+                default_limit=human_to_bytes(module.params["default_limit"]),
             )
+        connection_info = ArrayConnectionPost(
+            management_address=module.params["target_url"],
+            replication_addresses=module.params["target_repl"],
+            encrypted=module.params["encrypted"],
+            connection_key=connection_key,
+            throttle=throttle,
+        )
     else:
         connection_info = ArrayConnectionPost(
             management_address=module.params["target_url"],
@@ -327,13 +315,12 @@ def update_connection(module, blade):
             module.fail_json(
                 msg="Cannot set throttle when bucket replica links already exist"
             )
-    if THROTTLE_API_VERSION in versions:
-        current_connection["throttle"] = {
-            "default_limit": remote_connection.throttle.default_limit,
-            "window_limit": remote_connection.throttle.window_limit,
-            "start": remote_connection.throttle.window.start,
-            "end": remote_connection.throttle.window.end,
-        }
+    current_connection["throttle"] = {
+        "default_limit": remote_connection.throttle.default_limit,
+        "window_limit": remote_connection.throttle.window_limit,
+        "start": remote_connection.throttle.window.start,
+        "end": remote_connection.throttle.window.end,
+    }
     if module.params["encrypted"]:
         encryption = module.params["encrypted"]
     else:
@@ -366,36 +353,29 @@ def update_connection(module, blade):
         "replication_addresses": target_repl,
         "throttle": [],
     }
-    if THROTTLE_API_VERSION in versions:
-        new_connection["throttle"] = {
-            "default_limit": default_limit,
-            "window_limit": window_limit,
-            "start": start,
-            "end": end,
-        }
+    new_connection["throttle"] = {
+        "default_limit": default_limit,
+        "window_limit": window_limit,
+        "start": start,
+        "end": end,
+    }
     if new_connection != current_connection:
         changed = True
         if not module.check_mode:
-            if THROTTLE_API_VERSION in versions:
-                window = TimeWindow(
-                    start=new_connection["throttle"]["start"],
-                    end=new_connection["throttle"]["end"],
-                )
-                throttle = Throttle(
-                    default_limit=new_connection["throttle"]["default_limit"],
-                    window_limit=new_connection["throttle"]["window_limit"],
-                    window=window,
-                )
-                connection_info = ArrayConnectionPost(
-                    replication_addresses=new_connection["replication_addresses"],
-                    encrypted=new_connection["encrypted"],
-                    throttle=throttle,
-                )
-            else:
-                connection_info = ArrayConnection(
-                    replication_addresses=new_connection["replication_addresses"],
-                    encrypted=new_connection["encrypted"],
-                )
+            window = TimeWindow(
+                start=new_connection["throttle"]["start"],
+                end=new_connection["throttle"]["end"],
+            )
+            throttle = Throttle(
+                default_limit=new_connection["throttle"]["default_limit"],
+                window_limit=new_connection["throttle"]["window_limit"],
+                window=window,
+            )
+            connection_info = ArrayConnectionPost(
+                replication_addresses=new_connection["replication_addresses"],
+                encrypted=new_connection["encrypted"],
+                throttle=throttle,
+            )
             res = blade.patch_array_connections(
                 remote_names=[remote_name], array_connection=connection_info
             )

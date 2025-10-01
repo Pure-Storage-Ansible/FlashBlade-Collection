@@ -58,7 +58,6 @@ options:
   mode:
     description:
       - The type of bucket to be created. Also referred to a VSO Mode.
-      - Requires Purity//FB 3.3.3 or higher
       - I(multi-site-writable) type can only be used after feature is
         enabled by Pure Technical Support
     type: str
