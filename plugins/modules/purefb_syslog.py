@@ -33,10 +33,10 @@ options:
     required: true
   state:
     description:
-    - Create or delete syslog servers configuration
+    - Create update, delete or test syslog servers configuration
     default: present
     type: str
-    choices: [ absent, present ]
+    choices: [ absent, present, test ]
   protocol:
     description:
     - Protocol which server uses
@@ -89,12 +89,6 @@ RETURN = r"""
 """
 
 
-HAS_PURITY_FB = True
-try:
-    from purity_fb import SyslogServerPostOrPatch
-except ImportError:
-    HAS_PURITY_FB = False
-
 HAS_PURESTORAGE = True
 try:
     from pypureclient.flashblade import SyslogServerPost, SyslogServerPatch
@@ -104,36 +98,32 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
 
 
-MIN_REQUIRED_API_VERSION = "1.10"
 SYSLOG_SERVICES_API = "2.14"
+CONTEXT_API_VERSION = "2.17"
 
 
 def delete_syslog(module, blade):
     """Delete Syslog Server"""
-    changed = False
-    try:
-        server = blade.syslog.list_syslog_servers(names=[module.params["name"]])
-    except Exception:
-        server = None
-
-    if server:
-        changed = True
-        if not module.check_mode:
-            try:
-                blade.syslog.delete_syslog_servers(names=[module.params["name"]])
-                changed = True
-            except Exception:
-                module.fail_json(
-                    msg="Failed to remove syslog server: {0}".format(
-                        module.params["name"]
-                    )
+    changed = True
+    api_version = list(blade.get_versions().items)
+    if not module.check_mode:
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.delete_syslog_servers(
+                names=[module.params["name"]], context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.delete_syslog_servers(names=[module.params["name"]])
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Failed to remove syslog server {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
+            )
 
     module.exit_json(changed=changed)
 
@@ -147,18 +137,26 @@ def add_syslog(module, blade):
         full_address = noport_address + ":" + module.params["port"]
     else:
         full_address = noport_address
-    api_version = blade.api_version.list_versions().versions
+    api_version = list(blade.get_versions().items)
 
     changed = True
     if not module.check_mode:
         if SYSLOG_SERVICES_API in api_version:
-            bladev2 = get_system(module)
-            res = bladev2.post_syslog_servers(
-                names=[module.params["name"]],
-                syslog_server=SyslogServerPost(
-                    uri=full_address, services=module.params["services"]
-                ),
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_syslog_servers(
+                    context_names=[module.params["context"]],
+                    names=[module.params["name"]],
+                    syslog_server=SyslogServerPost(
+                        uri=full_address, services=module.params["services"]
+                    ),
+                )
+            else:
+                res = blade.post_syslog_servers(
+                    names=[module.params["name"]],
+                    syslog_server=SyslogServerPost(
+                        uri=full_address, services=module.params["services"]
+                    ),
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to add syslog server. Error: {0}".format(
@@ -166,15 +164,14 @@ def add_syslog(module, blade):
                     )
                 )
         else:
-            try:
-                attr = SyslogServerPostOrPatch(uri=full_address)
-                blade.syslog.create_syslog_servers(
-                    syslog=attr, names=[module.params["name"]]
-                )
-            except Exception:
+            res = blade.post_syslog_servers(
+                syslog_server=SyslogServerPost(uri=full_address),
+                names=[module.params["name"]],
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to add syslog server {0} - {1}".format(
-                        module.params["name"], full_address
+                    msg="Failed to add syslog server {0} - {1}. Error: {2}".format(
+                        module.params["name"], full_address, res.errors[0].message
                     )
                 )
 
@@ -184,14 +181,21 @@ def add_syslog(module, blade):
 def update_syslog(module, blade):
     """Update Syslog Server"""
     changed = False
-    api_version = blade.api_version.list_versions().versions
+    api_version = list(blade.get_versions().items)
     if SYSLOG_SERVICES_API not in api_version:
-        module.exit_json(changed=changed)
+        module.exit_json(
+            msg="Purity//FB needs upgrading to support modifiation of existing syslog server"
+        )
+    if CONTEXT_API_VERSION in api_version:
+        syslog_config = list(
+            blade.get_syslog_servers(
+                names=[module.params["name"]], context_names=[module.params["context"]]
+            ).items
+        )[0]
     else:
-        bladev2 = get_system(module)
-    syslog_config = list(
-        bladev2.get_syslog_servers(names=[module.params["name"]]).items
-    )[0]
+        syslog_config = list(
+            blade.get_syslog_servers(names=[module.params["name"]]).items
+        )[0]
     noport_address = module.params["protocol"] + "://" + module.params["address"]
 
     if module.params["port"]:
@@ -207,10 +211,17 @@ def update_syslog(module, blade):
         changed = True
         new_services = module.params["services"]
     if changed and not module.check_mode:
-        res = bladev2.patch_syslog_servers(
-            names=[module.params["name"]],
-            syslog_server=SyslogServerPatch(uri=new_uri, services=new_services),
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.patch_syslog_servers(
+                names=[module.params["name"]],
+                syslog_server=SyslogServerPatch(uri=new_uri, services=new_services),
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.patch_syslog_servers(
+                names=[module.params["name"]],
+                syslog_server=SyslogServerPatch(uri=new_uri, services=new_services),
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Updating syslog server {0} failed. Error: {1}".format(
@@ -218,6 +229,43 @@ def update_syslog(module, blade):
                 )
             )
     module.exit_json(changed=changed)
+
+
+def test_syslog(module, blade):
+    """Test syslog configuration"""
+    api_version = list(blade.get_versions().items)
+    test_response = []
+    if CONTEXT_API_VERSION in api_version:
+        response = list(
+            blade.get_syslog_servers_test(
+                context_names=[module.params["context"]]
+            ).items
+        )
+    else:
+        response = list(blade.get_syslog_servers_test().items)
+    for component in range(0, len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_address": response[component].component_address,
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "result_details": getattr(response[component], "result_details", ""),
+                "success": success,
+                "test_type": response[component].test_type,
+                "resource_name": response[component].resource.name,
+            }
+        )
+    module.exit_json(changed=True, test_response=test_response)
 
 
 def main():
@@ -234,7 +282,9 @@ def main():
                 choices=["management", "data-audit"],
                 default=["management"],
             ),
-            state=dict(type="str", default="present", choices=["absent", "present"]),
+            state=dict(
+                type="str", default="present", choices=["absent", "present", "test"]
+            ),
         )
     )
 
@@ -244,33 +294,25 @@ def main():
         argument_spec, required_if=required_if, supports_check_mode=True
     )
 
-    if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+    blade = get_system(module)
+    api_version = list(blade.get_versions().items)
 
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
-
-    address_list = blade.syslog.list_syslog_servers()
-    if len(address_list.items) == 3:
-        module.fail_json(msg="Maximum number of syslog servers (3) already configured.")
-    exists = False
-
-    if not HAS_PURESTORAGE and SYSLOG_SERVICES_API in api_version:
-        module.fail_json(msg="py-pure-client sdk is required for to set quotas")
-
-    if address_list:
-        for address in range(0, len(address_list.items)):
-            if address_list.items[address].name == module.params["name"]:
-                exists = True
-                break
-    if module.params["state"] == "absent":
-        delete_syslog(module, blade)
-    elif not exists:
-        add_syslog(module, blade)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_syslog_servers(
+            names=[module.params["name"]], context_names=[module.params["context"]]
+        )
     else:
+        res = blade.get_syslog_servers(names=[module.params["name"]])
+    exists = bool(res.status_code == 200)
+
+    if module.params["state"] == "absent" and exists:
+        delete_syslog(module, blade)
+    elif module.params["state"] == "present" and exists:
         update_syslog(module, blade)
+    elif module.params["state"] == "present" and not exists:
+        add_syslog(module, blade)
+    elif module.params["state"] == "test" and exists:
+        test_syslog(module, blade)
 
     module.exit_json(changed=False)
 
