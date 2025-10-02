@@ -85,36 +85,33 @@ RETURN = r"""
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import SnmpAgent, SnmpV2c, SnmpV3
+    from pypureclient.flashblade import SnmpAgent, SnmpV2c, SnmpV3
 except ImportError:
     HAS_PURITY_FB = False
 
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
-
-
-MIN_REQUIRED_API_VERSION = "1.9"
 
 
 def update_agent(module, blade):
     """Update SNMP Agent"""
     changed = False
-    try:
-        agent = blade.snmp_agents.list_snmp_agents()
-    except Exception:
+    res = blade.get_snmp_agents()
+    if res.status_code != 200:
         module.fail_json(msg="Failed to get configuration for SNMP agent.")
+    agent = list(res.items)[0]
     current_attr = {
-        "community": agent.items[0].v2c.community,
-        "version": agent.items[0].version,
-        "auth_passphrase": agent.items[0].v3.auth_passphrase,
-        "auth_protocol": agent.items[0].v3.auth_protocol,
-        "privacy_passphrase": agent.items[0].v3.privacy_passphrase,
-        "privacy_protocol": agent.items[0].v3.privacy_protocol,
-        "user": agent.items[0].v3.user,
+        "community": agent.v2c.community,
+        "version": agent.version,
+        "auth_passphrase": agent.v3.auth_passphrase,
+        "auth_protocol": agent.v3.auth_protocol,
+        "privacy_passphrase": agent.v3.privacy_passphrase,
+        "privacy_protocol": agent.v3.privacy_protocol,
+        "user": agent.v3.user,
     }
     new_attr = {
         "community": module.params["community"],
@@ -131,11 +128,13 @@ def update_agent(module, blade):
             if new_attr["version"] == "v2c":
                 updated_v2c_attrs = SnmpV2c(community=new_attr["community"])
                 updated_v2c_agent = SnmpAgent(version="v2c", v2c=updated_v2c_attrs)
-                try:
-                    blade.snmp_agents.update_snmp_agents(snmp_agent=updated_v2c_agent)
-                    changed = True
-                except Exception:
-                    module.fail_json(msg="Failed to update v2c SNMP agent.")
+                res = blade.patch_snmp_agents(snmp_agent=updated_v2c_agent)
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to update v2c SNMP agent. Error: {0}".format(
+                            res.errors[0].message
+                        )
+                    )
             else:
                 updated_v3_attrs = SnmpV3(
                     auth_protocol=new_attr["auth_protocol"],
@@ -145,11 +144,13 @@ def update_agent(module, blade):
                     user=new_attr["user"],
                 )
                 updated_v3_agent = SnmpAgent(version="v3", v3=updated_v3_attrs)
-                try:
-                    blade.snmp_agents.update_snmp_agents(snmp_agent=updated_v3_agent)
-                    changed = True
-                except Exception:
-                    module.fail_json(msg="Failed to update v3 SNMP agent.")
+                res = blade.patch_snmp_agents(snmp_agent=updated_v3_agent)
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to update v3 SNMP agent. Error: {0}".format(
+                            res.errors[0].message
+                        )
+                    )
 
     module.exit_json(changed=changed)
 
@@ -181,14 +182,10 @@ def main():
         supports_check_mode=True,
     )
 
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
+    blade = get_system(module)
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb SDK is required for this module")
+        module.fail_json(msg="py-pure-client SDK is required for this module")
 
     if module.params["version"] == "v3":
         if module.params["auth_passphrase"] and (
