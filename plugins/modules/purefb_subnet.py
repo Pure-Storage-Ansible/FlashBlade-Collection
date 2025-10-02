@@ -108,7 +108,7 @@ RETURN = """
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import Subnet, Reference
+    from pypureclient.flashblade import Subnet, Reference
 except ImportError:
     HAS_PURITY_FB = False
 
@@ -121,23 +121,19 @@ except ImportError:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
-
-
-MINIMUM_API_VERSION = "1.3"
 
 
 def get_subnet(module, blade):
     """Return Subnet or None"""
     subnet = []
     subnet.append(module.params["name"])
-    try:
-        res = blade.subnets.list_subnets(names=subnet)
-        return res.items[0]
-    except Exception:
-        return None
+    res = blade.subnets.get_subnets(names=subnet)
+    if res.status_code == 200:
+        return list(res.items)[0]
+    return None
 
 
 def create_subnet(module, blade):
@@ -146,34 +142,31 @@ def create_subnet(module, blade):
     if not module.params["prefix"]:
         module.fail_json(msg="prefix is required for subnet creation")
     if not module.check_mode:
-        subnet = []
-        subnet.append(module.params["name"])
-        try:
-            if module.params["gateway"]:
-                blade.subnets.create_subnets(
-                    names=subnet,
-                    subnet=Subnet(
-                        prefix=module.params["prefix"],
-                        vlan=module.params["vlan"],
-                        mtu=module.params["mtu"],
-                        gateway=module.params["gateway"],
-                        link_aggregation_group=Reference(name=module.params["lag"]),
-                    ),
-                )
-            else:
-                blade.subnets.create_subnets(
-                    names=subnet,
-                    subnet=Subnet(
-                        prefix=module.params["prefix"],
-                        vlan=module.params["vlan"],
-                        mtu=module.params["mtu"],
-                        link_aggregation_group=Reference(name=module.params["lag"]),
-                    ),
-                )
-        except Exception:
+        if module.params["gateway"]:
+            res = blade.post__subnets(
+                names=[module.params["name"]],
+                subnet=Subnet(
+                    prefix=module.params["prefix"],
+                    vlan=module.params["vlan"],
+                    mtu=module.params["mtu"],
+                    gateway=module.params["gateway"],
+                    link_aggregation_group=Reference(name=module.params["lag"]),
+                ),
+            )
+        else:
+            res = blade.post_subnets(
+                names=[module.params["name"]],
+                subnet=Subnet(
+                    prefix=module.params["prefix"],
+                    vlan=module.params["vlan"],
+                    mtu=module.params["mtu"],
+                    link_aggregation_group=Reference(name=module.params["lag"]),
+                ),
+            )
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to create subnet {0}. Confirm supplied parameters".format(
-                    module.params["name"]
+                msg="Failed to create subnet {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -183,64 +176,68 @@ def modify_subnet(module, blade):
     """Modify Subnet settings"""
     changed = False
     subnet = get_subnet(module, blade)
-    subnet_new = []
-    subnet_new.append(module.params["name"])
     if module.params["prefix"]:
         if module.params["prefix"] != subnet.prefix:
             changed = True
             if not module.check_mode:
-                try:
-                    blade.subnets.update_subnets(
-                        names=subnet_new, subnet=Subnet(prefix=module.params["prefix"])
-                    )
-                except Exception:
+                res = blade.patch_subnets(
+                    names=[module.params["name"]],
+                    subnet=Subnet(prefix=module.params["prefix"]),
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to change subnet {0} prefix to {1}".format(
-                            module.params["name"], module.params["prefix"]
+                        msg="Failed to change subnet {0} prefix to {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["prefix"],
+                            res.errors[0].message,
                         )
                     )
     if module.params["vlan"]:
         if module.params["vlan"] != subnet.vlan:
             changed = True
             if not module.check_mode:
-                try:
-                    blade.subnets.update_subnets(
-                        names=subnet_new, subnet=Subnet(vlan=module.params["vlan"])
-                    )
-                except Exception:
+                res = blade.patch_subnets(
+                    names=[module.params["name"]],
+                    subnet=Subnet(vlan=module.params["vlan"]),
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to change subnet {0} VLAN to {1}".format(
-                            module.params["name"], module.params["vlan"]
+                        msg="Failed to change subnet {0} VLAN to {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["vlan"],
+                            res.errors[0].message,
                         )
                     )
     if module.params["gateway"]:
         if module.params["gateway"] != subnet.gateway:
             changed = True
             if not module.check_mode:
-                try:
-                    blade.subnets.update_subnets(
-                        names=subnet_new,
-                        subnet=Subnet(gateway=module.params["gateway"]),
-                    )
-                except Exception:
+                res = blade.subnets.update_subnets(
+                    names=[module.params["name"]],
+                    subnet=Subnet(gateway=module.params["gateway"]),
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to change subnet {0} gateway to {1}".format(
-                            module.params["name"], module.params["gateway"]
+                        msg="Failed to change subnet {0} gateway to {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["gateway"],
+                            res.errors[0].message,
                         )
                     )
     if module.params["mtu"]:
         if module.params["mtu"] != subnet.mtu:
             changed = True
             if not module.check_mode:
-                try:
-                    blade.subnets.update_subnets(
-                        names=subnet_new, subnet=Subnet(mtu=module.params["mtu"])
-                    )
-                    changed = True
-                except Exception:
+                res = blade.subnets.update_subnets(
+                    names=[module.params["name"]],
+                    subnet=Subnet(mtu=module.params["mtu"]),
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to change subnet {0} MTU to {1}".format(
-                            module.params["name"], module.params["mtu"]
+                        msg="Failed to change subnet {0} MTU to {1}. Error: {2}".format(
+                            module.params["name"],
+                            module.params["mtu"],
+                            res.errors[0].message,
                         )
                     )
     module.exit_json(changed=changed)
@@ -250,13 +247,12 @@ def delete_subnet(module, blade):
     """Delete Subnet"""
     changed = True
     if not module.check_mode:
-        subnet = []
-        subnet.append(module.params["name"])
-        try:
-            blade.subnets.delete_subnets(names=subnet)
-        except Exception:
+        res = blade.delete_subnets(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
-                msg="Failed to delete subnet {0}".format(module.params["name"])
+                msg="Failed to delete subnet {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
             )
     module.exit_json(changed=changed)
 
@@ -281,22 +277,16 @@ def main():
     )
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     if not HAS_NETADDR:
         module.fail_json(msg="netaddr module is required")
 
     state = module.params["state"]
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-    if MINIMUM_API_VERSION not in api_version:
-        module.fail_json(msg="Upgrade Purity//FB to enable this module")
+    blade = get_system(module)
     subnet = get_subnet(module, blade)
-    try:
-        blade.link_aggregation_groups.list_link_aggregation_groups(
-            names=[module.params["lag"]]
-        )
-    except Exception:
+    res = blade.get_link_aggregation_groups(names=[module.params["lag"]])
+    if res.status_code != 200:
         module.fail_json(msg="LAG {0} does not exist.".format(module.params["lag"]))
 
     if state == "present":
@@ -317,20 +307,20 @@ def main():
                 module.params["prefix"]
             ):
                 module.fail_json(msg="Gateway and subnet are not compatible.")
-        subnets = blade.subnets.list_subnets()
+        subnets = list(blade.get_subnets().items)
         nrange = netaddr.IPSet([module.params["prefix"]])
-        for sub in range(0, len(subnets.items)):
+        for sub in range(0, len(subnets)):
             if (
-                subnets.items[sub].vlan == module.params["vlan"]
-                and subnets.items[sub].name != module.params["name"]
-                and hasattr(subnets.items[sub].link_aggregation_group, "name")
+                subnets[sub].vlan == module.params["vlan"]
+                and subnets[sub].name != module.params["name"]
+                and hasattr(subnets[sub].link_aggregation_group, "name")
             ):
                 module.fail_json(
                     msg="VLAN ID {0} is already in use.".format(module.params["vlan"])
                 )
             if (
-                nrange & netaddr.IPSet([subnets.items[sub].prefix])
-                and subnets.items[sub].name != module.params["name"]
+                nrange & netaddr.IPSet([subnets[sub].prefix])
+                and subnets[sub].name != module.params["name"]
             ):
                 module.fail_json(msg="Prefix CIDR overlaps with existing subnet.")
 
