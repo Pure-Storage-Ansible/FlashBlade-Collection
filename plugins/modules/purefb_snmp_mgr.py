@@ -122,42 +122,38 @@ RETURN = r"""
 
 HAS_PURITY_FB = True
 try:
-    from purity_fb import SnmpManager, SnmpV2c, SnmpV3
+    from pypureclient.flashblade import SnmpManager, SnmpV2c, SnmpV3
 except ImportError:
     HAS_PURITY_FB = False
 
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
+    get_system,
     purefb_argument_spec,
 )
-
-
-MIN_REQUIRED_API_VERSION = "1.9"
 
 
 def update_manager(module, blade):
     """Update SNMP Manager"""
     changed = False
-    try:
-        mgr = blade.snmp_managers.list_snmp_managers(names=[module.params["name"]])
-    except Exception:
+    mgr = list(blade.get_snmp_managers(names=[module.params["name"]]).items)[0]
+    if mgr.status_code != 200:
         module.fail_json(
-            msg="Failed to get configuration for SNMP manager {0}.".format(
-                module.params["name"]
+            msg="Failed to get configuration for SNMP manager {0}. Error: {1}".format(
+                module.params["name"], mgr.errors[0].message
             )
         )
     current_attr = {
-        "community": mgr.items[0].v2c.community,
-        "notification": mgr.items[0].notification,
-        "host": mgr.items[0].host,
-        "version": mgr.items[0].version,
-        "auth_passphrase": mgr.items[0].v3.auth_passphrase,
-        "auth_protocol": mgr.items[0].v3.auth_protocol,
-        "privacy_passphrase": mgr.items[0].v3.privacy_passphrase,
-        "privacy_protocol": mgr.items[0].v3.privacy_protocol,
-        "user": mgr.items[0].v3.user,
+        "community": getattr(mgr.v2c, "community", None),
+        "notification": mgr.notification,
+        "host": mgr.host,
+        "version": mgr.version,
+        "auth_passphrase": getattr(mgr.v3, "auth_passphrase", None),
+        "auth_protocol": getattr(mgr.v3, "auth_protocol", None),
+        "privacy_passphrase": getattr(mgr.v3i, "privacy_passphrase", None),
+        "privacy_protocol": getattr(mgr.v3, "privacy_protocol", None),
+        "user": getattr(mgr.v3, "user", None),
     }
     new_attr = {
         "community": module.params["community"],
@@ -181,14 +177,13 @@ def update_manager(module, blade):
                     version="v2c",
                     v2c=updated_v2c_attrs,
                 )
-                try:
-                    blade.snmp_managers.update_snmp_managers(
-                        names=[module.params["name"]], snmp_manager=updated_v2c_manager
-                    )
-                except Exception:
+                res = blade.patch_snmp_managers(
+                    names=[module.params["name"]], snmp_manager=updated_v2c_manager
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to update v2c SNMP manager {0}.".format(
-                            module.params["name"]
+                        msg="Failed to update v2c SNMP manager {0}. Error: {1}".format(
+                            module.params["name"], res.errors[0].message
                         )
                     )
             else:
@@ -205,14 +200,13 @@ def update_manager(module, blade):
                     version="v3",
                     v3=updated_v3_attrs,
                 )
-                try:
-                    blade.snmp_managers.update_snmp_managers(
-                        names=[module.params["name"]], snmp_manager=updated_v3_manager
-                    )
-                except Exception:
+                res = blade.patch_snmp_managers(
+                    names=[module.params["name"]], snmp_manager=updated_v3_manager
+                )
+                if res.status_code != 200:
                     module.fail_json(
-                        msg="Failed to update v3 SNMP manager {0}.".format(
-                            module.params["name"]
+                        msg="Failed to update v3 SNMP manager {0}. Error: {1}".format(
+                            module.params["name"], res.errors[0].message
                         )
                     )
 
@@ -223,11 +217,12 @@ def delete_manager(module, blade):
     """Delete SNMP Manager"""
     changed = True
     if not module.check_mode:
-        try:
-            blade.snmp_managers.delete_snmp_managers(names=[module.params["name"]])
-        except Exception:
+        res = blade.delete_snmp_managers(names=[module.params["name"]])
+        if res.status_code != 200:
             module.fail_json(
-                msg="Delete SNMP manager {0} failed".format(module.params["name"])
+                msg="Delete SNMP manager {0} failed. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
             )
     module.exit_json(changed=changed)
 
@@ -246,14 +241,13 @@ def create_manager(module, blade):
                 version="v2c",
                 v2c=v2_attrs,
             )
-            try:
-                blade.snmp_managers.create_snmp_managers(
-                    names=[module.params["name"]], snmp_manager=new_v2_manager
-                )
-            except Exception:
+            res = blade.post_snmp_managers(
+                names=[module.params["name"]], snmp_manager=new_v2_manager
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to create v2c SNMP manager {0}.".format(
-                        module.params["name"]
+                    msg="Failed to create v2c SNMP manager {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
                     )
                 )
         else:
@@ -270,14 +264,13 @@ def create_manager(module, blade):
                 version="v3",
                 v3=v3_attrs,
             )
-            try:
-                blade.snmp_managers.create_snmp_managers(
-                    names=[module.params["name"]], snmp_manager=new_v3_manager
-                )
-            except Exception:
+            res = blade.post_snmp_managers(
+                names=[module.params["name"]], snmp_manager=new_v3_manager
+            )
+            if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to create v3 SNMP manager {0}.".format(
-                        module.params["name"]
+                    msg="Failed to create v3 SNMP manager {0}. Error: {1}".format(
+                        module.params["name"], res.errors[0].message
                     )
                 )
     module.exit_json(changed=changed)
@@ -318,19 +311,15 @@ def main():
     )
 
     state = module.params["state"]
-    blade = get_blade(module)
-    api_version = blade.api_version.list_versions().versions
-
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(msg="Purity//FB must be upgraded to support this module.")
+    blade = get_system(module)
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb SDK is required for this module")
+        module.fail_json(msg="py-pure-client SDK is required for this module")
 
     mgr_configured = False
-    mgrs = blade.snmp_managers.list_snmp_managers()
-    for mgr in range(0, len(mgrs.items)):
-        if mgrs.items[mgr].name == module.params["name"]:
+    mgrs = list(blade.get_snmp_managers().items)
+    for mgr in range(0, len(mgrs)):
+        if mgrs[mgr].name == module.params["name"]:
             mgr_configured = True
             break
     if module.params["version"] == "v3":
