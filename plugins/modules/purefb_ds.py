@@ -31,10 +31,10 @@ author:
 options:
   state:
     description:
-    - Create or delete directory service configuration
+    - Create, delete or test directory service configuration
     default: present
     type: str
-    choices: [ absent, present ]
+    choices: [ absent, present, test ]
   dstype:
     description:
     - The type of directory service to work on
@@ -403,6 +403,37 @@ def create_ds(module, blade):
     module.exit_json(changed=changed)
 
 
+def test_ds(module, blade):
+    """Test directory services configuration"""
+    test_response = []
+    response = list(
+        blade.get_directory_services_test(names=[module.params["dstype"]]).items
+    )
+    for component in range(0, len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_address": response[component].component_address,
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "result_details": getattr(response[component], "result_details", ""),
+                "success": success,
+                "test_type": response[component].test_type,
+                "resource_name": response[component].resource.name,
+            }
+        )
+    module.exit_json(changed=False, test_response=test_response)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
@@ -411,10 +442,12 @@ def main():
             dstype=dict(
                 required=True, type="str", choices=["management", "nfs", "smb"]
             ),
-            state=dict(type="str", default="present", choices=["absent", "present"]),
+            state=dict(
+                type="str", default="present", choices=["absent", "present", "test"]
+            ),
             enable=dict(type="bool", default=False),
             bind_password=dict(type="str", no_log=True),
-            force_bind_password=dict(type="bool", default=True),
+            force_bind_password=dict(type="bool", default=True, no_log=False),
             bind_user=dict(type="str"),
             base_dn=dict(type="str"),
             join_ou=dict(type="str"),
@@ -477,6 +510,8 @@ def main():
         update_ds(module, blade)
     elif not ds_configured and state == "present":
         create_ds(module, blade)
+    elif state == "test":
+        test_ds(module, blade)
     else:
         module.exit_json(changed=False)
 
