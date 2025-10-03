@@ -34,10 +34,10 @@ options:
     type: str
   state:
     description:
-    - Create or delete SNMP manager
+    - Create, delete or test SNMP manager
     type: str
     default: present
-    choices: [ absent, present ]
+    choices: [ absent, present, test ]
   auth_passphrase:
     type: str
     description:
@@ -276,13 +276,44 @@ def create_manager(module, blade):
     module.exit_json(changed=changed)
 
 
+def test_manager(module, blade):
+    """Test SNMP manager configuration"""
+    test_response = []
+    response = list(blade.get_snmp_managers_test(names=[module.params["name"]]).items)
+    for component in range(0, len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_address": response[component].component_address,
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "result_details": getattr(response[component], "result_details", ""),
+                "success": success,
+                "test_type": response[component].test_type,
+                "resource_name": response[component].resource.name,
+            }
+        )
+    module.exit_json(changed=False, test_response=test_response)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
             name=dict(type="str", required=True),
             host=dict(type="str"),
-            state=dict(type="str", default="present", choices=["absent", "present"]),
+            state=dict(
+                type="str", default="present", choices=["absent", "present", "test"]
+            ),
             user=dict(type="str"),
             notification=dict(type="str", choices=["inform", "trap"], default="trap"),
             auth_passphrase=dict(type="str", no_log=True),
@@ -338,6 +369,12 @@ def main():
         update_manager(module, blade)
     elif not mgr_configured and state == "present":
         create_manager(module, blade)
+    elif state == "test" and mgr_configured:
+        test_manager(module, blade)
+    elif state == "test" and not mgr_configured:
+        module.fail_json(
+            msg="SNMP Manager {0} not configured".format(module.params["name"])
+        )
     else:
         module.exit_json(changed=False)
 

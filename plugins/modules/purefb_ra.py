@@ -31,7 +31,7 @@ options:
       I(debug) module.
     type: str
     default: present
-    choices: [ present, absent ]
+    choices: [ present, absent, test ]
   duration:
     description:
     - Specifies the duration of the remote-assist session in hours
@@ -111,11 +111,41 @@ def disable_ra(module, blade):
     module.exit_json(changed=changed)
 
 
+def test_ra(module, blade):
+    """Test support/remote assist configuration"""
+    test_response = []
+    response = list(blade.get_support_test(test_type="remote-assist").items)
+    for component in range(0, len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_address": response[component].component_address,
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "result_details": getattr(response[component], "result_details", ""),
+                "success": success,
+                "test_type": response[component].test_type,
+            }
+        )
+    module.exit_json(changed=False, test_response=test_response)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
-            state=dict(type="str", default="present", choices=["present", "absent"]),
+            state=dict(
+                type="str", default="present", choices=["present", "absent", "test"]
+            ),
             duration=dict(type="int", default=24),
         )
     )
@@ -131,6 +161,8 @@ def main():
         enable_ra(module, blade)
     elif module.params["state"] == "absent" and active:
         disable_ra(module, blade)
+    elif module.params["state"] == "test":
+        test_ra(module, blade)
     module.exit_json(changed=False)
 
 

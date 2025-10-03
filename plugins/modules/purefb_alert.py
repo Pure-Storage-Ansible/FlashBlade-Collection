@@ -29,9 +29,9 @@ options:
   state:
     type: str
     description:
-    - Create or delete alert email
+    - Create, delete or test alert email
     default: present
-    choices: [ absent, present ]
+    choices: [ absent, present, test ]
   address:
     type: str
     description:
@@ -180,6 +180,37 @@ def delete_alert(module, blade):
     module.exit_json(changed=changed)
 
 
+def test_alert(module, blade):
+    """Test alert watchers"""
+    test_response = []
+    response = list(
+        blade.get_alert_watchers_test(names=[module.params["address"]]).items
+    )
+    for component in range(0, len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_address": response[component].component_address,
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "result_details": getattr(response[component], "result_details", ""),
+                "success": success,
+                "test_type": response[component].test_type,
+                "resource_name": response[component].resource.name,
+            }
+        )
+    module.exit_json(changed=False, test_response=test_response)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
@@ -189,7 +220,9 @@ def main():
             severity=dict(
                 type="str", default="info", choices=["info", "warning", "critical"]
             ),
-            state=dict(type="str", default="present", choices=["absent", "present"]),
+            state=dict(
+                type="str", default="present", choices=["absent", "present", "test"]
+            ),
         )
     )
 
@@ -223,6 +256,8 @@ def main():
         update_alert(module, blade)
     elif module.params["state"] == "absent" and exists:
         delete_alert(module, blade)
+    elif module.params["state"] == "test":
+        test_alert(module, blade)
 
     module.exit_json(changed=False)
 
