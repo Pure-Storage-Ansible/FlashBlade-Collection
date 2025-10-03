@@ -117,6 +117,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_info - get information about the configuration of a FlashBlade
 - purefb_inventory - get information about the hardware inventory of a FlashBlade
 - purefb_keytabs - manage FlashBlade Kerberos keytabs
+- purefb_kmip - manage FlashBlade KMIP servers
 - purefb_lag - manage FlashBlade Link Aggregation Groups
 - purefb_lifecycle - manage FlashBlade Bucket Lifecycle Rules
 - purefb_messages - list FlashBlade alert messages
