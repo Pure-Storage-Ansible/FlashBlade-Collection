@@ -87,24 +87,12 @@ purefb_info:
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
-    get_blade,
     get_system,
     purefb_argument_spec,
 )
 from datetime import datetime, timezone
 
 
-MIN_REQUIRED_API_VERSION = "1.3"
-HARD_LIMIT_API_VERSION = "1.4"
-POLICIES_API_VERSION = "1.5"
-CERT_GROUPS_API_VERSION = "1.8"
-REPLICATION_API_VERSION = "1.9"
-MULTIPROTOCOL_API_VERSION = "1.11"
-MIN_32_API = "2.0"
-LIFECYCLE_API_VERSION = "2.1"
-SMB_MODE_API_VERSION = "2.2"
-NFS_POLICY_API_VERSION = "2.3"
-VSO_VERSION = "2.4"
 DRIVES_API_VERSION = "2.5"
 SECURITY_API_VERSION = "2.7"
 BUCKET_API_VERSION = "2.8"
@@ -139,327 +127,327 @@ def _bytes_to_human(bytes_number):
 
 def generate_default_dict(module, blade):
     default_info = {}
-    defaults = blade.arrays.list_arrays().items[0]
+    api_version = list(blade.get_versions().items)[0]
+    defaults = list(blade.get_arrays().items)[0]
     default_info["flashblade_name"] = defaults.name
     default_info["purity_version"] = defaults.version
-    default_info["filesystems"] = len(blade.file_systems.list_file_systems().items)
-    default_info["snapshots"] = len(
-        blade.file_system_snapshots.list_file_system_snapshots().items
+    default_info["filesystems"] = blade.get_file_systems().total_item_count
+    default_info["snapshots"] = blade.get_file_system_snapshots().total_item_count
+    default_info["buckets"] = blade.get_buckets().total_item_count
+    default_info["object_store_users"] = blade.get_object_store_users().total_item_count
+    default_info["object_store_accounts"] = (
+        blade.get_object_store_accounts().totol_item_count
     )
-    default_info["buckets"] = len(blade.buckets.list_buckets().items)
-    default_info["object_store_users"] = len(
-        blade.object_store_users.list_object_store_users().items
-    )
-    default_info["object_store_accounts"] = len(
-        blade.object_store_accounts.list_object_store_accounts().items
-    )
-    default_info["blades"] = len(blade.blade.list_blades().items)
-    default_info["certificates"] = len(blade.certificates.list_certificates().items)
-    default_info["total_capacity"] = blade.arrays.list_arrays_space().items[0].capacity
-    api_version = blade.api_version.list_versions().versions
+    default_info["blades"] = blade.get_blades().total_item_count
+    default_info["certificates"] = blade.get_certificates().total_item_count
+    default_info["total_capacity"] = list(blade.get_arrays_space().items)[0].capacity
     default_info["api_versions"] = api_version
-    if POLICIES_API_VERSION in api_version:
-        default_info["policies"] = len(blade.policies.list_policies().items)
-    if CERT_GROUPS_API_VERSION in api_version:
-        default_info["certificate_groups"] = len(
-            blade.certificate_groups.list_certificate_groups().items
+    default_info["policies"] = blade.get_policies().total_item_count
+    default_info["certificate_groups"] = blade.get_certificate_groups().total_item_count
+    default_info["fs_replicas"] = blade.get_file_system_replica_links().total_item_count
+    default_info["remote_credentials"] = (
+        blade.get_object_store_remote_credentials().total_item_count
+    )
+    default_info["bucket_replicas"] = blade.get_bucket_replica_links().total_item_count
+    default_info["connected_arrays"] = blade.get_array_connections().total_item_count
+    default_info["targets"] = blade.get_targets().total_item_count
+    default_info["kerberos_keytabs"] = blade.get_keytabs().total_item_count
+    default_info["syslog_servers"] = len(blade.get_syslog_servers().items)
+    default_info["object_store_virtual_hosts"] = len(
+        blade.get_object_store_virtual_hosts().items
+    )
+    default_info["api_clients"] = len(blade.get_api_clients().items)
+    default_info["idle_timeout"] = int(defaults.idle_timeout / 60000)
+    if list(blade.get_arrays_eula().items)[0].signature.accepted:
+        default_info["EULA"] = "Signed"
+    else:
+        default_info["EULA"] = "Not Signed"
+    admin_settings = list(blade.get_admins_settings().items)[0]
+    default_info["max_login_attempts"] = admin_settings.max_login_attempts
+    default_info["min_password_length"] = admin_settings.min_password_length
+    if admin_settings.lockout_duration:
+        default_info["lockout_duration"] = (
+            str(admin_settings.lockout_duration / 1000) + " seconds"
         )
-    if REPLICATION_API_VERSION in api_version:
-        default_info["fs_replicas"] = len(
-            blade.file_system_replica_links.list_file_system_replica_links().items
-        )
-        default_info["remote_credentials"] = len(
-            blade.object_store_remote_credentials.list_object_store_remote_credentials().items
-        )
-        default_info["bucket_replicas"] = len(
-            blade.bucket_replica_links.list_bucket_replica_links().items
-        )
-        default_info["connected_arrays"] = len(
-            blade.array_connections.list_array_connections().items
-        )
-        default_info["targets"] = len(blade.targets.list_targets().items)
-        default_info["kerberos_keytabs"] = len(blade.keytabs.list_keytabs().items)
-    # This section is just for REST 2.x features
-    if MIN_32_API in api_version:
-        blade = get_system(module)
-        blade_info = list(blade.get_arrays().items)[0]
-        default_info["syslog_servers"] = len(blade.get_syslog_servers().items)
-        default_info["object_store_virtual_hosts"] = len(
-            blade.get_object_store_virtual_hosts().items
-        )
-        default_info["api_clients"] = len(blade.get_api_clients().items)
-        default_info["idle_timeout"] = int(blade_info.idle_timeout / 60000)
-        if list(blade.get_arrays_eula().items)[0].signature.accepted:
-            default_info["EULA"] = "Signed"
-        else:
-            default_info["EULA"] = "Not Signed"
-        if NFS_POLICY_API_VERSION in api_version:
-            admin_settings = list(blade.get_admins_settings().items)[0]
-            default_info["max_login_attempts"] = admin_settings.max_login_attempts
-            default_info["min_password_length"] = admin_settings.min_password_length
-            if admin_settings.lockout_duration:
-                default_info["lockout_duration"] = (
-                    str(admin_settings.lockout_duration / 1000) + " seconds"
-                )
-        if NFS_POLICY_API_VERSION in api_version:
-            default_info["smb_mode"] = getattr(blade_info, "smb_mode", None)
-        if VSO_VERSION in api_version:
-            default_info["timezone"] = blade_info.time_zone
-        if DRIVES_API_VERSION in api_version:
-            default_info["product_type"] = getattr(
-                blade_info, "product_type", "Unknown"
-            )
-        if SECURITY_API_VERSION in api_version:
-            dar = blade_info.encryption.data_at_rest
-            default_info["encryption"] = {
-                "data_at_rest_enabled": dar.enabled,
-                "data_at_rest_algorithms": dar.algorithms,
-                "data_at_rest_entropy_source": dar.entropy_source,
-            }
-            keys = list(blade.get_support_verification_keys().items)
-            default_info["support_keys"] = {}
-            for key in range(0, len(keys)):
-                keyname = keys[key].name
-                default_info["support_keys"][keyname] = {keys[key].verification_key}
-            default_info["security_update"] = getattr(
-                blade_info, "security_update", None
-            )
-        if NAP_API_VERSION in api_version:
-            default_info["network_access_protocol"] = getattr(
-                blade_info.network_access_policy, "name", "None"
-            )
-        ra_info = list(blade.get_support().items)[0]
-        if ra_info.remote_assist_active:
-            ra_expires = datetime.fromtimestamp(
-                int(ra_info.remote_assist_expires) / 1000
-            ).strftime("%Y-%m-%d %H:%M:%S")
-            ra_opened = datetime.fromtimestamp(
-                int(ra_info.remote_assist_opened) / 1000
-            ).strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            ra_expires = ra_opened = None
-        default_info["remote_assist"] = {
-            "phonehome_enabled": ra_info.phonehome_enabled,
-            "proxy": ra_info.proxy,
-            "ra_active": ra_info.remote_assist_active,
-            "ra_expires": ra_expires,
-            "ra_opened": ra_opened,
-            "ra_status": ra_info.remote_assist_status,
+    default_info["smb_mode"] = getattr(defaults, "smb_mode", None)
+    default_info["timezone"] = defaults.time_zone
+    if DRIVES_API_VERSION in api_version:
+        default_info["product_type"] = getattr(defaults, "product_type", "Unknown")
+    if SECURITY_API_VERSION in api_version:
+        dar = defaults.encryption.data_at_rest
+        default_info["encryption"] = {
+            "data_at_rest_enabled": dar.enabled,
+            "data_at_rest_algorithms": dar.algorithms,
+            "data_at_rest_entropy_source": dar.entropy_source,
         }
-        if RA_DURATION_API_VERSION in api_version:
-            default_info["remote_assist"][
-                "ra_duration"
-            ] = ra_info.remote_assist_duration
+        keys = list(blade.get_support_verification_keys().items)
+        default_info["support_keys"] = {}
+        for key in range(len(keys)):
+            keyname = keys[key].name
+            default_info["support_keys"][keyname] = {keys[key].verification_key}
+        default_info["security_update"] = getattr(defaults, "security_update", None)
+    if NAP_API_VERSION in api_version:
+        default_info["network_access_protocol"] = getattr(
+            defaults.network_access_policy, "name", "None"
+        )
+    ra_info = list(blade.get_support().items)[0]
+    if ra_info.remote_assist_active:
+        ra_expires = datetime.fromtimestamp(
+            int(ra_info.remote_assist_expires) / 1000
+        ).strftime("%Y-%m-%d %H:%M:%S")
+        ra_opened = datetime.fromtimestamp(
+            int(ra_info.remote_assist_opened) / 1000
+        ).strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        ra_expires = ra_opened = None
+    default_info["remote_assist"] = {
+        "phonehome_enabled": ra_info.phonehome_enabled,
+        "proxy": ra_info.proxy,
+        "ra_active": ra_info.remote_assist_active,
+        "ra_expires": ra_expires,
+        "ra_opened": ra_opened,
+        "ra_status": ra_info.remote_assist_status,
+    }
+    if RA_DURATION_API_VERSION in api_version:
+        default_info["remote_assist"]["ra_duration"] = ra_info.remote_assist_duration
     return default_info
 
 
 def generate_perf_dict(blade):
     perf_info = {}
-    total_perf = blade.arrays.list_arrays_performance()
-    http_perf = blade.arrays.list_arrays_performance(protocol="http")
-    s3_perf = blade.arrays.list_arrays_performance(protocol="s3")
-    nfs_perf = blade.arrays.list_arrays_performance(protocol="nfs")
+    api_version = list(blade.get_versions().items)[0]
+    total_perf = list(get_arrays_performance().items)[0]
+    http_perf = list(blade.get_arrays_performance(protocol="http").items)[0]
+    s3_perf = list(blade.get_arrays_performance(protocol="s3").items)[0]
+    nfs_perf = list(blade.get_arrays_performance(protocol="nfs").items)[0]
     perf_info["aggregate"] = {
-        "bytes_per_op": total_perf.items[0].bytes_per_op,
-        "bytes_per_read": total_perf.items[0].bytes_per_read,
-        "bytes_per_write": total_perf.items[0].bytes_per_write,
-        "read_bytes_per_sec": total_perf.items[0].read_bytes_per_sec,
-        "reads_per_sec": total_perf.items[0].reads_per_sec,
-        "usec_per_other_op": total_perf.items[0].usec_per_other_op,
-        "usec_per_read_op": total_perf.items[0].usec_per_read_op,
-        "usec_per_write_op": total_perf.items[0].usec_per_write_op,
-        "write_bytes_per_sec": total_perf.items[0].write_bytes_per_sec,
-        "writes_per_sec": total_perf.items[0].writes_per_sec,
+        "bytes_per_op": total_perf.bytes_per_op,
+        "bytes_per_read": total_perf.bytes_per_read,
+        "bytes_per_write": total_perf.bytes_per_write,
+        "read_bytes_per_sec": total_perf.read_bytes_per_sec,
+        "reads_per_sec": total_perf.reads_per_sec,
+        "usec_per_other_op": total_perf.usec_per_other_op,
+        "usec_per_read_op": total_perf.usec_per_read_op,
+        "usec_per_write_op": total_perf.usec_per_write_op,
+        "write_bytes_per_sec": total_perf.write_bytes_per_sec,
+        "writes_per_sec": total_perf.writes_per_sec,
     }
     perf_info["http"] = {
-        "bytes_per_op": http_perf.items[0].bytes_per_op,
-        "bytes_per_read": http_perf.items[0].bytes_per_read,
-        "bytes_per_write": http_perf.items[0].bytes_per_write,
-        "read_bytes_per_sec": http_perf.items[0].read_bytes_per_sec,
-        "reads_per_sec": http_perf.items[0].reads_per_sec,
-        "usec_per_other_op": http_perf.items[0].usec_per_other_op,
-        "usec_per_read_op": http_perf.items[0].usec_per_read_op,
-        "usec_per_write_op": http_perf.items[0].usec_per_write_op,
-        "write_bytes_per_sec": http_perf.items[0].write_bytes_per_sec,
-        "writes_per_sec": http_perf.items[0].writes_per_sec,
+        "bytes_per_op": http_perf.bytes_per_op,
+        "bytes_per_read": http_perf.bytes_per_read,
+        "bytes_per_write": http_perf.bytes_per_write,
+        "read_bytes_per_sec": http_perf.read_bytes_per_sec,
+        "reads_per_sec": http_perf.reads_per_sec,
+        "usec_per_other_op": http_perf.usec_per_other_op,
+        "usec_per_read_op": http_perf.usec_per_read_op,
+        "usec_per_write_op": http_perf.usec_per_write_op,
+        "write_bytes_per_sec": http_perf.write_bytes_per_sec,
+        "writes_per_sec": http_perf.writes_per_sec,
     }
     perf_info["s3"] = {
-        "bytes_per_op": s3_perf.items[0].bytes_per_op,
-        "bytes_per_read": s3_perf.items[0].bytes_per_read,
-        "bytes_per_write": s3_perf.items[0].bytes_per_write,
-        "read_bytes_per_sec": s3_perf.items[0].read_bytes_per_sec,
-        "reads_per_sec": s3_perf.items[0].reads_per_sec,
-        "usec_per_other_op": s3_perf.items[0].usec_per_other_op,
-        "usec_per_read_op": s3_perf.items[0].usec_per_read_op,
-        "usec_per_write_op": s3_perf.items[0].usec_per_write_op,
-        "write_bytes_per_sec": s3_perf.items[0].write_bytes_per_sec,
-        "writes_per_sec": s3_perf.items[0].writes_per_sec,
+        "bytes_per_op": s3_perf.bytes_per_op,
+        "bytes_per_read": s3_perf.bytes_per_read,
+        "bytes_per_write": s3_perf.bytes_per_write,
+        "read_bytes_per_sec": s3_perf.read_bytes_per_sec,
+        "reads_per_sec": s3_perf.reads_per_sec,
+        "usec_per_other_op": s3_perf.usec_per_other_op,
+        "usec_per_read_op": s3_perf.usec_per_read_op,
+        "usec_per_write_op": s3_perf.usec_per_write_op,
+        "write_bytes_per_sec": s3_perf.write_bytes_per_sec,
+        "writes_per_sec": s3_perf.writes_per_sec,
     }
     perf_info["nfs"] = {
-        "bytes_per_op": nfs_perf.items[0].bytes_per_op,
-        "bytes_per_read": nfs_perf.items[0].bytes_per_read,
-        "bytes_per_write": nfs_perf.items[0].bytes_per_write,
-        "read_bytes_per_sec": nfs_perf.items[0].read_bytes_per_sec,
-        "reads_per_sec": nfs_perf.items[0].reads_per_sec,
-        "usec_per_other_op": nfs_perf.items[0].usec_per_other_op,
-        "usec_per_read_op": nfs_perf.items[0].usec_per_read_op,
-        "usec_per_write_op": nfs_perf.items[0].usec_per_write_op,
-        "write_bytes_per_sec": nfs_perf.items[0].write_bytes_per_sec,
-        "writes_per_sec": nfs_perf.items[0].writes_per_sec,
+        "bytes_per_op": nfs_perf.bytes_per_op,
+        "bytes_per_read": nfs_perf.bytes_per_read,
+        "bytes_per_write": nfs_perf.bytes_per_write,
+        "read_bytes_per_sec": nfs_perf.read_bytes_per_sec,
+        "reads_per_sec": nfs_perf.reads_per_sec,
+        "usec_per_other_op": nfs_perf.usec_per_other_op,
+        "usec_per_read_op": nfs_perf.usec_per_read_op,
+        "usec_per_write_op": nfs_perf.usec_per_write_op,
+        "write_bytes_per_sec": nfs_perf.write_bytes_per_sec,
+        "writes_per_sec": nfs_perf.writes_per_sec,
     }
-    api_version = blade.api_version.list_versions().versions
-    if REPLICATION_API_VERSION in api_version:
-        file_repl_perf = (
-            blade.array_connections.list_array_connections_performance_replication(
+    if blade.get_array_connections_performance_replication().total_item_count > 0:
+        file_repl_perf = list(
+            blade.get_array_connections_performance_replication(
                 type="file-system"
-            )
-        )
-        obj_repl_perf = (
-            blade.array_connections.list_array_connections_performance_replication(
+            ).items
+        )[0]
+        obj_repl_perf = list(
+            blade.get_array_connections_performance_replication(
                 type="object-store"
-            )
-        )
-        if len(file_repl_perf.total):
-            perf_info["file_replication"] = {
-                "received_bytes_per_sec": file_repl_perf.total[
-                    0
-                ].periodic.received_bytes_per_sec,
-                "transmitted_bytes_per_sec": file_repl_perf.total[
-                    0
-                ].periodic.transmitted_bytes_per_sec,
-            }
-        if len(obj_repl_perf.total):
-            perf_info["object_replication"] = {
-                "received_bytes_per_sec": obj_repl_perf.total[
-                    0
-                ].periodic.received_bytes_per_sec,
-                "transmitted_bytes_per_sec": obj_repl_perf.total[
-                    0
-                ].periodic.transmitted_bytes_per_sec,
-            }
+            ).items
+        )[0]
+        perf_info["file_replication"] = {
+            "received_bytes_per_sec": getattr(
+                file_repl_perf.total[0].periodic, "received_bytes_per_sec", None
+            ),
+            "transmitted_bytes_per_sec": getattr(
+                file_repl_perf.total[0].periodic, "transmitted_bytes_per_sec", None
+            ),
+        }
+        perf_info["object_replication"] = {
+            "received_bytes_per_sec": getattr(
+                obj_repl_perf.total[0].periodic, "received_bytes_per_sec", None
+            ),
+            "transmitted_bytes_per_sec": getattr(
+                obj_repl_perf.total[0].periodic, "transmitted_bytes_per_sec", None
+            ),
+        }
     return perf_info
 
 
 def generate_config_dict(module, blade):
     config_info = {}
-    bladev2 = get_system(module)
-    api_version = blade.api_version.list_versions().versions
-    if SERVERS_API_VERSION in api_version:
-        config_info["dns"] = {}
-        dns_configs = list(bladev2.get_dns().items)
-        for config in range(0, len(dns_configs)):
-            config_info["dns"][dns_configs[config].name] = {
-                "nameservers": dns_configs[config].nameservers,
-                "domain": dns_configs[config].domain,
-            }
+    api_version = list(blade.get_versions().items)
+    config_info["dns"] = {}
+    dns_configs = list(blade.get_dns().items)
+    for config in range(len(dns_configs)):
+        config_info["dns"][dns_configs[config].name] = {
+            "nameservers": dns_configs[config].nameservers,
+            "domain": dns_configs[config].domain,
+            "services": getattr(dns_configs[config], "services", None),
+        }
+        if hasattr(dns_configs[config], "sources"):
             config_info["dns"][dns_configs[config].name]["source"] = getattr(
                 dns_configs[config].sources, "name", None
             )
-    else:
-        config_info["dns"] = blade.dns.list_dns().items[0].to_dict()
-    if SMTP_ENCRYPT_API_VERSION in api_version:
-        snmp_config = list(bladev2.get_smtp_servers().items)[0]
-        config_info["smtp"] = {
-            "relay_host": snmp_config.relay_host,
-            "sender_domain": snmp_config.sender_domain,
-            "encryption_mode": snmp_config.encryption_mode,
-            "name": snmp_config.name,
+    smtp_config = list(blade.get_smtp_servers().items)
+    for config in range(len(smtp_config)):
+        config_info["smtp"][smtp_config[config].name] = {
+            "relay_host": getattr(smtp_config[config], "relay_host", None),
+            "sender_domain": getattr(smtp_config[config], "sender_domain", None),
+            "encryption_mode": getattr(smtp_config[config], "encryption_mode", None),
         }
-    else:
-        config_info["smtp"] = blade.smtp.list_smtp().items[0].to_dict()
-    try:
-        config_info["alert_watchers"] = (
-            blade.alert_watchers.list_alert_watchers().items[0].to_dict()
+    alert_config = list(blade.get_alert_watchers().items)
+    for config in range(len(alert_config)):
+        config_info["alert_watchers"][alert_config[config].name] = {
+            "enabled": alert_config[config].enabled,
+            "minimum_notification_severity": alert_config[
+                config
+            ].minimum_notification_severity,
+        }
+    directory_services = list(blade.get_directory_services().items)
+    for ds_service in range(len(directory_services)):
+        service = directory_services[ds_service]
+        if service.name in {"management", "nfs", "smb"}:
+            key = f"{service.name}_directory_service"
+            config_info[key] = {
+                "base_dn": service.base_dn,
+                "bind_user": service.bind_user,
+                "ca_certificate": service.ca_certificate.name,
+                "ca_certificate_group": service.ca_certificate_group.name,
+                "enabled": service.enabled,
+                "management": {
+                    "user_login_attribute": service.management.user_login_attribute,
+                    "user_object_class": service.management.user_object_class,
+                },
+                "nis_servers": service.nfs.nis_servers,
+                "nis_domains": service.nfs.nis_domains,
+                "services": service.services,
+                "join_ou": service.smb.join_ou,
+                "uris": service.uris,
+            }
+    # Forward backwards compatability
+    config_info["array_management"] = config_info["management_directory_service"]
+
+    config_info["directory_service_roles"] = {}
+    roles = list(blade.get_directory_services_roles().items)
+    for ds_role in range(len(roles)):
+        role_name = roles[ds_role].name
+        config_info["directory_service_roles"][role_name] = {
+            "group": roles.items[ds_role].group,
+            "group_base": roles.items[ds_role].group_base,
+            "role": roles.items[ds_role].role.name,
+        }
+    config_info["ntp"] = list(blade.get_arrays().items)[0].ntp_servers
+    certs = list(blade.get_certificates().items)
+    for cert in range(len(certs)):
+        cert_name = certs[cert].name
+        valid_from = time.strftime(
+            "%a, %d %b %Y %H:%M:%S %Z",
+            time.localtime(certs[cert].valid_from / 1000),
         )
-    except Exception:
-        config_info["alert_watchers"] = ""
-    if HARD_LIMIT_API_VERSION in api_version:
-        config_info["array_management"] = (
-            blade.directory_services.list_directory_services(names=["management"])
-            .items[0]
-            .to_dict()
+        valid_to = time.strftime(
+            "%a, %d %b %Y %H:%M:%S %Z",
+            time.localtime(certs[cert].valid_to / 1000),
         )
-        config_info["directory_service_roles"] = {}
-        roles = blade.directory_services.list_directory_services_roles()
-        for role in range(0, len(roles.items)):
-            role_name = roles.items[role].name
-            config_info["directory_service_roles"][role_name] = {
-                "group": roles.items[role].group,
-                "group_base": roles.items[role].group_base,
-            }
-    config_info["nfs_directory_service"] = (
-        blade.directory_services.list_directory_services(names=["nfs"])
-        .items[0]
-        .to_dict()
-    )
-    try:
-        if SERVERS_API_VERSION not in api_version:
-            config_info["smb_directory_service"] = (
-                blade.directory_services.list_directory_services(names=["smb"])
-                .items[0]
-                .to_dict()
+        config_info["ssl_certs"][cert_name] = {
+            "certificate": getattr(certs[cert], "certificate", None),
+            "certificate_type": getattr(certs[cert], "certificatei_type", None),
+            "common_name": getattr(certs[cert], "common_name", None),
+            "country": getattr(certs[cert], "country", None),
+            "email": getattr(certs[cert], "email", None),
+            "intermediate_certificate": getattr(
+                certs[cert], "intermeadiate_certificate", None
+            ),
+            "issued_by": getattr(certs[cert], "issued_by", None),
+            "issued_to": getattr(certs[cert], "issued_to", None),
+            "key_size": getattr(certs[cert], "key_size", None),
+            "locality": getattr(certs[cert], "locality", None),
+            "organization": getattr(certs[cert], "organization", None),
+            "organizational_unit": getattr(certs[cert], "organizational_unit", None),
+            "state": getattr(certs[cert], "state", None),
+            "status": getattr(certs[cert], "status", None),
+            "subject_alternative_names": getattr(
+                certs[cert], "subject_alternative_names", None
+            ),
+            "valid_from": valid_from,
+            "valid_to": valid_to,
+        }
+    crt_grps = list(blade.get_certificate_groups().items)
+    config_info["certificate_groups"] = []
+    for crt_grp in range(len(crt_grps)):
+        config_info["certificate_groups"].append(crt_grps[crt_grp].name)
+    config_info["syslog_servers"] = {}
+    syslog_servers = list(blade.get_syslog_servers().items)
+    for server in range(len(syslog_servers)):
+        server_name = syslog_servers[server].name
+        config_info["syslog_servers"][server_name] = {
+            "uri": syslog_servers[server].uri,
+            "services": getattr(syslog_servers[server], "services", None),
+        }
+    snmp_agent = list(blade.get_snmp_agents().items)
+    config_info["snmp_agents"] = {}
+    for agent in range(len(snmp_agents)):
+        agent_name = snmp_agents[agent].name
+        config_info["snmp_agents"][agent_name] = {
+            "version": snmp_agents[agent].version,
+            "engine_id": snmp_agents[agent].engine_id,
+        }
+        if config_info["snmp_agents"][agent_name]["version"] == "v3":
+            config_info["snmp_agents"][agent_name]["auth_protocol"] = getattr(
+                snmp_agents[agent].v3, "auth_protocol", None
             )
-    except Exception:
-        config_info["smb_directory_service"] = {}
-    config_info["ntp"] = blade.arrays.list_arrays().items[0].ntp_servers
-    config_info["ssl_certs"] = blade.certificates.list_certificates().items[0].to_dict()
-    if CERT_GROUPS_API_VERSION in api_version:
-        try:
-            config_info["certificate_groups"] = (
-                blade.certificate_groups.list_certificate_groups().items[0].to_dict()
+            config_info["snmp_agents"][agent_name]["privacy_protocol"] = getattr(
+                snmp_agents[agent].v3, "privacy_protocol", None
             )
-        except Exception:
-            config_info["certificate_groups"] = ""
-    if RA_DURATION_API_VERSION in api_version:
-        config_info["syslog_servers"] = {}
-        syslog_servers = list(bladev2.get_syslog_servers().items)
-        for server in range(0, len(syslog_servers)):
-            server_name = syslog_servers[server].name
-            config_info["syslog_servers"][server_name] = {
-                "uri": syslog_servers[server].uri,
-                "services": syslog_servers[server].services,
-            }
-    if REPLICATION_API_VERSION in api_version:
-        config_info["snmp_agents"] = {}
-        snmp_agents = blade.snmp_agents.list_snmp_agents()
-        for agent in range(0, len(snmp_agents.items)):
-            agent_name = snmp_agents.items[agent].name
-            config_info["snmp_agents"][agent_name] = {
-                "version": snmp_agents.items[agent].version,
-                "engine_id": snmp_agents.items[agent].engine_id,
-            }
-            if config_info["snmp_agents"][agent_name]["version"] == "v3":
-                config_info["snmp_agents"][agent_name]["auth_protocol"] = (
-                    snmp_agents.items[agent].v3.auth_protocol
-                )
-                config_info["snmp_agents"][agent_name]["privacy_protocol"] = (
-                    snmp_agents.items[agent].v3.privacy_protocol
-                )
-                config_info["snmp_agents"][agent_name]["user"] = snmp_agents.items[
-                    agent
-                ].v3.user
-        config_info["snmp_managers"] = {}
-        snmp_managers = blade.snmp_managers.list_snmp_managers()
-        for manager in range(0, len(snmp_managers.items)):
-            mgr_name = snmp_managers.items[manager].name
-            config_info["snmp_managers"][mgr_name] = {
-                "version": snmp_managers.items[manager].version,
-                "host": snmp_managers.items[manager].host,
-                "notification": snmp_managers.items[manager].notification,
-            }
-            if config_info["snmp_managers"][mgr_name]["version"] == "v3":
-                config_info["snmp_managers"][mgr_name]["auth_protocol"] = (
-                    snmp_managers.items[manager].v3.auth_protocol
-                )
-                config_info["snmp_managers"][mgr_name]["privacy_protocol"] = (
-                    snmp_managers.items[manager].v3.privacy_protocol
-                )
-                config_info["snmp_managers"][mgr_name]["user"] = snmp_managers.items[
-                    manager
-                ].v3.user
+            config_info["snmp_agents"][agent_name]["user"] = getattr(
+                snmp_agents[agent].v3, "user", None
+            )
+    config_info["snmp_managers"] = {}
+    snmp_managers = list(blade.get_snmp_managers().items)
+    for manager in range(len(snmp_managers)):
+        mgr_name = snmp_managers.items[manager].name
+        config_info["snmp_managers"][mgr_name] = {
+            "version": snmp_managers[manager].version,
+            "host": snmp_managers[manager].host,
+            "notification": snmp_managers[manager].notification,
+        }
+        if config_info["snmp_managers"][mgr_name]["version"] == "v3":
+            config_info["snmp_managers"][mgr_name]["auth_protocol"] = getattr(
+                snmp_managers[manager].v3, "auth_protocol", None
+            )
+            config_info["snmp_managers"][mgr_name]["privacy_protocol"] = getattr(
+                snmp_managers.items[manager].v3, "privacy_protocol", None
+            )
+            config_info["snmp_managers"][mgr_name]["user"] = getattr(
+                snmp_managers[manager].v3, "user", None
+            )
     if SMTP_ENCRYPT_API_VERSION in api_version:
         config_info["saml2sso"] = {}
-        saml2 = list(bladev2.get_sso_saml2_idps().items)
+        saml2 = list(blade.get_sso_saml2_idps().items)
         if saml2:
             config_info["saml2sso"] = {
                 "enabled": saml2[0].enabled,
@@ -483,40 +471,40 @@ def generate_config_dict(module, blade):
 
 def generate_subnet_dict(blade):
     sub_info = {}
-    subnets = blade.subnets.list_subnets()
-    for sub in range(0, len(subnets.items)):
-        sub_name = subnets.items[sub].name
-        if subnets.items[sub].enabled:
+    subnets = list(blade.get_subnets().items)
+    for sub in range(len(subnets)):
+        sub_name = subnets[sub].name
+        if subnets[sub].enabled:
             sub_info[sub_name] = {
-                "gateway": subnets.items[sub].gateway,
-                "mtu": subnets.items[sub].mtu,
-                "vlan": subnets.items[sub].vlan,
-                "prefix": subnets.items[sub].prefix,
-                "services": subnets.items[sub].services,
+                "gateway": subnets[sub].gateway,
+                "mtu": subnets[sub].mtu,
+                "vlan": subnets[sub].vlan,
+                "prefix": subnets[sub].prefix,
+                "services": subnets[sub].services,
             }
-            sub_info[sub_name]["lag"] = subnets.items[sub].link_aggregation_group.name
+            sub_info[sub_name]["lag"] = subnets[sub].link_aggregation_group.name
             sub_info[sub_name]["interfaces"] = []
-            for iface in range(0, len(subnets.items[sub].interfaces)):
+            for iface in range(0, len(subnets[sub].interfaces)):
                 sub_info[sub_name]["interfaces"].append(
-                    {"name": subnets.items[sub].interfaces[iface].name}
+                    {"name": subnets[sub].interfaces[iface].name}
                 )
     return sub_info
 
 
 def generate_lag_dict(blade):
     lag_info = {}
-    groups = blade.link_aggregation_groups.list_link_aggregation_groups()
-    for groupcnt in range(0, len(groups.items)):
-        lag_name = groups.items[groupcnt].name
+    groups = list(blade.get_link_aggregation_groups().items)
+    for groupcnt in range(len(groups)):
+        lag_name = groups[groupcnt].name
         lag_info[lag_name] = {
-            "lag_speed": groups.items[groupcnt].lag_speed,
-            "port_speed": groups.items[groupcnt].port_speed,
-            "status": groups.items[groupcnt].status,
+            "lag_speed": groups[groupcnt].lag_speed,
+            "port_speed": groups[groupcnt].port_speed,
+            "status": groups[groupcnt].status,
         }
         lag_info[lag_name]["ports"] = []
-        for port in range(0, len(groups.items[groupcnt].ports)):
+        for port in range(0, len(groups[groupcnt].ports)):
             lag_info[lag_name]["ports"].append(
-                {"name": groups.items[groupcnt].ports[port].name}
+                {"name": groups[groupcnt].ports[port].name}
             )
     return lag_info
 
@@ -524,65 +512,64 @@ def generate_lag_dict(blade):
 def generate_admin_dict(module, blade):
     admin_info = {}
     api_version = blade.api_version.list_versions().versions
-    if MULTIPROTOCOL_API_VERSION in api_version:
-        admins = blade.admins.list_admins()
-        for admin in range(0, len(admins.items)):
-            admin_name = admins.items[admin].name
-            admin_info[admin_name] = {
-                "api_token_timeout": admins.items[admin].api_token_timeout,
-                "public_key": admins.items[admin].public_key,
-                "local": admins.items[admin].is_local,
-            }
+    admins = blade.admins.list_admins()
+    for admin in range(len(admins.items)):
+        admin_name = admins.items[admin].name
+        admin_info[admin_name] = {
+            "api_token_timeout": admins.items[admin].api_token_timeout,
+            "public_key": admins.items[admin].public_key,
+            "local": admins.items[admin].is_local,
+        }
 
-    if MIN_32_API in api_version:
-        bladev2 = get_system(module)
-        admins = list(bladev2.get_admins().items)
-        for admin in range(0, len(admins)):
-            admin_name = admins[admin].name
-            if admins[admin].api_token.expires_at:
-                admin_info[admin_name]["token_expires"] = datetime.fromtimestamp(
-                    admins[admin].api_token.expires_at / 1000
-                ).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                admin_info[admin_name]["token_expires"] = None
-            if admins[admin].api_token.created_at:
-                admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
-                    admins[admin].api_token.created_at / 1000
-                ).strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                admin_info[admin_name]["token_created"] = None
-            admin_info[admin_name]["role"] = admins[admin].role.name
-            if NFS_POLICY_API_VERSION in api_version:
-                admin_info[admin_name]["locked"] = admins[admin].locked
-                admin_info[admin_name]["lockout_remaining"] = admins[
-                    admin
-                ].lockout_remaining
+    bladev2 = get_system(module)
+    admins = list(bladev2.get_admins().items)
+    for admin in range(len(admins)):
+        admin_name = admins[admin].name
+        if admins[admin].api_token.expires_at:
+            admin_info[admin_name]["token_expires"] = datetime.fromtimestamp(
+                admins[admin].api_token.expires_at / 1000
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            admin_info[admin_name]["token_expires"] = None
+        if admins[admin].api_token.created_at:
+            admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
+                admins[admin].api_token.created_at / 1000
+            ).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            admin_info[admin_name]["token_created"] = None
+        admin_info[admin_name]["role"] = admins[admin].role.name
+        admin_info[admin_name]["locked"] = admins[admin].locked
+        admin_info[admin_name]["lockout_remaining"] = admins[admin].lockout_remaining
     return admin_info
 
 
 def generate_targets_dict(blade):
     targets_info = {}
-    targets = blade.targets.list_targets()
-    for target in range(0, len(targets.items)):
-        target_name = targets.items[target].name
+    targets = list(blade.get_targets().items)
+    for target in range(len(targets)):
+        target_name = targets[target].name
         targets_info[target_name] = {
-            "address": targets.items[target].address,
-            "status": targets.items[target].status,
-            "status_details": targets.items[target].status_details,
+            "address": targets[target].address,
+            "status": targets[target].status,
+            "status_details": targets[target].status_details,
+            "ca_certificate_group": getattr(
+                getattr(targets[target], "ca_certificate_group", None), "name", None
+            ),
         }
     return targets_info
 
 
 def generate_remote_creds_dict(blade):
     remote_creds_info = {}
-    remote_creds = (
-        blade.object_store_remote_credentials.list_object_store_remote_credentials()
+    remote_creds = list(
+        blade.get_object_store_remote_credentials().items
     )
-    for cred_cnt in range(0, len(remote_creds.items)):
-        cred_name = remote_creds.items[cred_cnt].name
+    for cred_cnt in range(len(remote_creds)):
+        cred_name = remote_creds[cred_cnt].name
         remote_creds_info[cred_name] = {
-            "access_key": remote_creds.items[cred_cnt].access_key_id,
-            "remote_array": remote_creds.items[cred_cnt].remote.name,
+            "access_key": remote_creds[cred_cnt].access_key_id,
+            "remote_array": remote_creds[cred_cnt].remote.name,
+            "secret_access_key": remote_creds[cred_cnt].secret_access_key,
         }
     return remote_creds_info
 
@@ -625,22 +612,19 @@ def generate_bucket_repl_dict(module, blade):
             "object_backlog": {},
         }
     api_version = blade.api_version.list_versions().versions
-    if SMB_MODE_API_VERSION in api_version:
-        blade = get_system(module)
-        bucket_links = list(blade.get_bucket_replica_links().items)
-        for linkcnt in range(0, len(bucket_links)):
-            bucket_name = bucket_links[linkcnt].local_bucket.name
-            bucket_repl_info[bucket_name]["object_backlog"] = {
-                "bytes_count": bucket_links[linkcnt].object_backlog.bytes_count,
-                "delete_ops_count": bucket_links[
-                    linkcnt
-                ].object_backlog.delete_ops_count,
-                "other_ops_count": bucket_links[linkcnt].object_backlog.other_ops_count,
-                "put_ops_count": bucket_links[linkcnt].object_backlog.put_ops_count,
-            }
-            bucket_repl_info[bucket_name]["cascading_enabled"] = bucket_links[
-                linkcnt
-            ].cascading_enabled
+    blade = get_system(module)
+    bucket_links = list(blade.get_bucket_replica_links().items)
+    for linkcnt in range(0, len(bucket_links)):
+        bucket_name = bucket_links[linkcnt].local_bucket.name
+        bucket_repl_info[bucket_name]["object_backlog"] = {
+            "bytes_count": bucket_links[linkcnt].object_backlog.bytes_count,
+            "delete_ops_count": bucket_links[linkcnt].object_backlog.delete_ops_count,
+            "other_ops_count": bucket_links[linkcnt].object_backlog.other_ops_count,
+            "put_ops_count": bucket_links[linkcnt].object_backlog.put_ops_count,
+        }
+        bucket_repl_info[bucket_name]["cascading_enabled"] = bucket_links[
+            linkcnt
+        ].cascading_enabled
     return bucket_repl_info
 
 
@@ -757,28 +741,25 @@ def generate_snap_dict(blade):
             ).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "time_remaining": getattr(snaps.items[snap], "time_remaining", None),
         }
-        if REPLICATION_API_VERSION in api_version:
-            snap_info[snapshot]["owner"] = snaps.items[snap].owner.name
-            snap_info[snapshot]["owner_destroyed"] = snaps.items[snap].owner_destroyed
-            snap_info[snapshot]["source_display_name"] = snaps.items[
-                snap
-            ].source_display_name
-            snap_info[snapshot]["source_is_local"] = snaps.items[snap].source_is_local
-            snap_info[snapshot]["source_location"] = snaps.items[
-                snap
-            ].source_location.name
-            snap_info[snapshot]["policies"] = []
-            if PUBLIC_API_VERSION in api_version:
-                if hasattr(snaps.items[snap], "policies"):
-                    for policy in range(0, len(snaps.items[snap].policies)):
-                        snap_info[snapshot]["policies"].append(
-                            {
-                                "name": snaps.items[snap].policies[policy].name,
-                                "location": snaps.items[snap]
-                                .policies[policy]
-                                .location.name,
-                            }
-                        )
+        snap_info[snapshot]["owner"] = snaps.items[snap].owner.name
+        snap_info[snapshot]["owner_destroyed"] = snaps.items[snap].owner_destroyed
+        snap_info[snapshot]["source_display_name"] = snaps.items[
+            snap
+        ].source_display_name
+        snap_info[snapshot]["source_is_local"] = snaps.items[snap].source_is_local
+        snap_info[snapshot]["source_location"] = snaps.items[snap].source_location.name
+        snap_info[snapshot]["policies"] = []
+        if PUBLIC_API_VERSION in api_version:
+            if hasattr(snaps.items[snap], "policies"):
+                for policy in range(0, len(snaps.items[snap].policies)):
+                    snap_info[snapshot]["policies"].append(
+                        {
+                            "name": snaps.items[snap].policies[policy].name,
+                            "location": snaps.items[snap]
+                            .policies[policy]
+                            .location.name,
+                        }
+                    )
     return snap_info
 
 
@@ -805,9 +786,8 @@ def generate_array_conn_dict(module, blade):
     arraysv2 = {}
     api_version = blade.api_version.list_versions().versions
     arrays = blade.array_connections.list_array_connections()
-    if NFS_POLICY_API_VERSION in api_version:
-        bladev2 = get_system(module)
-        arraysv2 = list(bladev2.get_array_connections().items)
+    bladev2 = get_system(module)
+    arraysv2 = list(bladev2.get_array_connections().items)
     for arraycnt in range(0, len(arrays.items)):
         array = arrays.items[arraycnt].remote.name
         array_conn_info[array] = {
@@ -893,111 +873,104 @@ def generate_bucket_dict(module, blade):
             "lifecycle_rules": {},
         }
     api_version = blade.api_version.list_versions().versions
-    if LIFECYCLE_API_VERSION in api_version:
-        blade = get_system(module)
-        for bckt in range(0, len(buckets.items)):
-            if buckets.items[bckt].destroyed:
-                # skip processing buckets marked as destroyed
-                continue
-            all_rules = list(
-                blade.get_lifecycle_rules(bucket_ids=[buckets.items[bckt].id]).items
-            )
-            for rule in range(0, len(all_rules)):
-                bucket_name = all_rules[rule].bucket.name
-                rule_id = all_rules[rule].rule_id
-                if all_rules[rule].keep_previous_version_for:
-                    keep_previous_version_for = int(
-                        all_rules[rule].keep_previous_version_for / 86400000
-                    )
-                else:
-                    keep_previous_version_for = None
-                if all_rules[rule].keep_current_version_for:
-                    keep_current_version_for = int(
-                        all_rules[rule].keep_current_version_for / 86400000
-                    )
-                else:
-                    keep_current_version_for = None
-                if all_rules[rule].abort_incomplete_multipart_uploads_after:
-                    abort_incomplete_multipart_uploads_after = int(
-                        all_rules[rule].abort_incomplete_multipart_uploads_after
-                        / 86400000
-                    )
-                else:
-                    abort_incomplete_multipart_uploads_after = None
-                if all_rules[rule].keep_current_version_until:
-                    keep_current_version_until = datetime.fromtimestamp(
-                        all_rules[rule].keep_current_version_until / 1000
-                    ).strftime("%Y-%m-%d")
-                else:
-                    keep_current_version_until = None
-                bucket_info[bucket_name]["lifecycle_rules"][rule_id] = {
-                    "keep_previous_version_for (days)": keep_previous_version_for,
-                    "keep_current_version_for (days)": keep_current_version_for,
-                    "keep_current_version_until": keep_current_version_until,
-                    "prefix": all_rules[rule].prefix,
-                    "enabled": all_rules[rule].enabled,
-                    "abort_incomplete_multipart_uploads_after (days)": abort_incomplete_multipart_uploads_after,
-                    "cleanup_expired_object_delete_marker": all_rules[
-                        rule
-                    ].cleanup_expired_object_delete_marker,
-                }
-        if VSO_VERSION in api_version:
-            buckets = list(blade.get_buckets().items)
-            for bucket in range(0, len(buckets)):
-                bucket_info[buckets[bucket].name]["bucket_type"] = buckets[
+    blade = get_system(module)
+    for bckt in range(0, len(buckets.items)):
+        if buckets.items[bckt].destroyed:
+            # skip processing buckets marked as destroyed
+            continue
+        all_rules = list(
+            blade.get_lifecycle_rules(bucket_ids=[buckets.items[bckt].id]).items
+        )
+        for rule in range(0, len(all_rules)):
+            bucket_name = all_rules[rule].bucket.name
+            rule_id = all_rules[rule].rule_id
+            if all_rules[rule].keep_previous_version_for:
+                keep_previous_version_for = int(
+                    all_rules[rule].keep_previous_version_for / 86400000
+                )
+            else:
+                keep_previous_version_for = None
+            if all_rules[rule].keep_current_version_for:
+                keep_current_version_for = int(
+                    all_rules[rule].keep_current_version_for / 86400000
+                )
+            else:
+                keep_current_version_for = None
+            if all_rules[rule].abort_incomplete_multipart_uploads_after:
+                abort_incomplete_multipart_uploads_after = int(
+                    all_rules[rule].abort_incomplete_multipart_uploads_after / 86400000
+                )
+            else:
+                abort_incomplete_multipart_uploads_after = None
+            if all_rules[rule].keep_current_version_until:
+                keep_current_version_until = datetime.fromtimestamp(
+                    all_rules[rule].keep_current_version_until / 1000
+                ).strftime("%Y-%m-%d")
+            else:
+                keep_current_version_until = None
+            bucket_info[bucket_name]["lifecycle_rules"][rule_id] = {
+                "keep_previous_version_for (days)": keep_previous_version_for,
+                "keep_current_version_for (days)": keep_current_version_for,
+                "keep_current_version_until": keep_current_version_until,
+                "prefix": all_rules[rule].prefix,
+                "enabled": all_rules[rule].enabled,
+                "abort_incomplete_multipart_uploads_after (days)": abort_incomplete_multipart_uploads_after,
+                "cleanup_expired_object_delete_marker": all_rules[
+                    rule
+                ].cleanup_expired_object_delete_marker,
+            }
+    buckets = list(blade.get_buckets().items)
+    for bucket in range(0, len(buckets)):
+        bucket_info[buckets[bucket].name]["bucket_type"] = buckets[bucket].bucket_type
+    if BUCKET_API_VERSION in api_version:
+        for bucket in range(0, len(buckets)):
+            bucket_info[buckets[bucket].name]["retention_lock"] = buckets[
+                bucket
+            ].retention_lock
+            bucket_info[buckets[bucket].name]["quota_limit"] = buckets[
+                bucket
+            ].quota_limit
+            bucket_info[buckets[bucket].name]["object_lock_config"] = {
+                "enabled": buckets[bucket].object_lock_config.enabled,
+                "freeze_locked_objects": buckets[
                     bucket
-                ].bucket_type
-            if BUCKET_API_VERSION in api_version:
-                for bucket in range(0, len(buckets)):
-                    bucket_info[buckets[bucket].name]["retention_lock"] = buckets[
+                ].object_lock_config.freeze_locked_objects,
+            }
+            if buckets[bucket].object_lock_config.enabled:
+                bucket_info[buckets[bucket].name]["object_lock_config"][
+                    "default_retention"
+                ] = getattr(buckets[bucket].object_lock_config, "default_retention", "")
+                bucket_info[buckets[bucket].name]["object_lock_config"][
+                    "default_retention_mode"
+                ] = getattr(
+                    buckets[bucket].object_lock_config,
+                    "default_retention_mode",
+                    "",
+                )
+            bucket_info[buckets[bucket].name]["eradication_config"] = {
+                "eradication_delay": buckets[
+                    bucket
+                ].eradication_config.eradication_delay,
+                "manual_eradication": buckets[
+                    bucket
+                ].eradication_config.manual_eradication,
+            }
+            if NAP_API_VERSION in api_version:
+                bucket_info[buckets[bucket].name]["eradication_config"][
+                    "eradication_mode"
+                ] = buckets[bucket].eradication_config.eradication_mode
+            if PUBLIC_API_VERSION in api_version:
+                bucket_info[buckets[bucket].name]["public_status"] = buckets[
+                    bucket
+                ].public_status
+                bucket_info[buckets[bucket].name]["public_access_config"] = {
+                    "block_new_public_policies": buckets[
                         bucket
-                    ].retention_lock
-                    bucket_info[buckets[bucket].name]["quota_limit"] = buckets[
+                    ].public_access_config.block_new_public_policies,
+                    "block_public_access": buckets[
                         bucket
-                    ].quota_limit
-                    bucket_info[buckets[bucket].name]["object_lock_config"] = {
-                        "enabled": buckets[bucket].object_lock_config.enabled,
-                        "freeze_locked_objects": buckets[
-                            bucket
-                        ].object_lock_config.freeze_locked_objects,
-                    }
-                    if buckets[bucket].object_lock_config.enabled:
-                        bucket_info[buckets[bucket].name]["object_lock_config"][
-                            "default_retention"
-                        ] = getattr(
-                            buckets[bucket].object_lock_config, "default_retention", ""
-                        )
-                        bucket_info[buckets[bucket].name]["object_lock_config"][
-                            "default_retention_mode"
-                        ] = getattr(
-                            buckets[bucket].object_lock_config,
-                            "default_retention_mode",
-                            "",
-                        )
-                    bucket_info[buckets[bucket].name]["eradication_config"] = {
-                        "eradication_delay": buckets[
-                            bucket
-                        ].eradication_config.eradication_delay,
-                        "manual_eradication": buckets[
-                            bucket
-                        ].eradication_config.manual_eradication,
-                    }
-                    if NAP_API_VERSION in api_version:
-                        bucket_info[buckets[bucket].name]["eradication_config"][
-                            "eradication_mode"
-                        ] = buckets[bucket].eradication_config.eradication_mode
-                    if PUBLIC_API_VERSION in api_version:
-                        bucket_info[buckets[bucket].name]["public_status"] = buckets[
-                            bucket
-                        ].public_status
-                        bucket_info[buckets[bucket].name]["public_access_config"] = {
-                            "block_new_public_policies": buckets[
-                                bucket
-                            ].public_access_config.block_new_public_policies,
-                            "block_public_access": buckets[
-                                bucket
-                            ].public_access_config.block_public_access,
-                        }
+                    ].public_access_config.block_public_access,
+                }
 
     return bucket_info
 
@@ -1305,9 +1278,8 @@ def generate_object_store_accounts_dict(blade):
 
 def generate_fs_dict(module, blade):
     api_version = blade.api_version.list_versions().versions
-    if SMB_MODE_API_VERSION in api_version:
-        bladev2 = get_system(module)
-        fsys_v2 = list(bladev2.get_file_systems().items)
+    bladev2 = get_system(module)
+    fsys_v2 = list(bladev2.get_file_systems().items)
     fs_info = {}
     fsys = blade.file_systems.list_file_systems()
     for fsystem in range(0, len(fsys.items)):
@@ -1328,93 +1300,81 @@ def generate_fs_dict(module, blade):
         if fsys.items[fsystem].smb.enabled:
             fs_info[share]["smb_mode"] = fsys.items[fsystem].smb.acl_mode
         api_version = blade.api_version.list_versions().versions
-        if MULTIPROTOCOL_API_VERSION in api_version:
-            fs_info[share]["multi_protocol"] = {
-                "safegaurd_acls": fsys.items[fsystem].multi_protocol.safeguard_acls,
-                "access_control_style": fsys.items[
-                    fsystem
-                ].multi_protocol.access_control_style,
-            }
-        if HARD_LIMIT_API_VERSION in api_version:
-            fs_info[share]["hard_limit"] = fsys.items[fsystem].hard_limit_enabled
-        if REPLICATION_API_VERSION in api_version:
-            fs_info[share]["promotion_status"] = fsys.items[fsystem].promotion_status
-            fs_info[share]["requested_promotion_state"] = fsys.items[
+        fs_info[share]["multi_protocol"] = {
+            "safegaurd_acls": fsys.items[fsystem].multi_protocol.safeguard_acls,
+            "access_control_style": fsys.items[
                 fsystem
-            ].requested_promotion_state
-            fs_info[share]["writable"] = fsys.items[fsystem].writable
-            fs_info[share]["source"] = {
-                "is_local": fsys.items[fsystem].source.is_local,
-                "name": fsys.items[fsystem].source.name,
-            }
-        if SMB_MODE_API_VERSION in api_version:
+            ].multi_protocol.access_control_style,
+        }
+        fs_info[share]["hard_limit"] = fsys.items[fsystem].hard_limit_enabled
+        fs_info[share]["promotion_status"] = fsys.items[fsystem].promotion_status
+        fs_info[share]["requested_promotion_state"] = fsys.items[
+            fsystem
+        ].requested_promotion_state
+        fs_info[share]["writable"] = fsys.items[fsystem].writable
+        fs_info[share]["source"] = {
+            "is_local": fsys.items[fsystem].source.is_local,
+            "name": fsys.items[fsystem].source.name,
+        }
+        for v2fs in range(0, len(fsys_v2)):
+            if fsys_v2[v2fs].name == share:
+                fs_info[share]["default_group_quota"] = fsys_v2[
+                    v2fs
+                ].default_group_quota
+                fs_info[share]["default_user_quota"] = fsys_v2[v2fs].default_user_quota
+                fs_info[share]["export_policy"] = fsys_v2[v2fs].nfs.export_policy.name
+        for v2fs in range(0, len(fsys_v2)):
+            if fsys_v2[v2fs].name == share:
+                try:
+                    fs_groups = True
+                    fs_group_quotas = list(
+                        bladev2.get_quotas_groups(file_system_names=[share]).items
+                    )
+                except Exception:
+                    fs_groups = False
+                try:
+                    fs_users = True
+                    fs_user_quotas = list(
+                        bladev2.get_quotas_users(file_system_names=[share]).items
+                    )
+                except Exception:
+                    fs_users = False
+                if fs_groups:
+                    for group_quota in range(0, len(fs_group_quotas)):
+                        group_name = fs_group_quotas[group_quota].name.rsplit("/")[1]
+                        fs_info[share]["group_quotas"][group_name] = {
+                            "group_id": fs_group_quotas[group_quota].group.id,
+                            "group_name": fs_group_quotas[group_quota].group.name,
+                            "quota": fs_group_quotas[group_quota].quota,
+                            "usage": fs_group_quotas[group_quota].usage,
+                        }
+                if fs_users:
+                    for user_quota in range(0, len(fs_user_quotas)):
+                        user_name = fs_user_quotas[user_quota].name.rsplit("/")[1]
+                        fs_info[share]["user_quotas"][user_name] = {
+                            "user_id": fs_user_quotas[user_quota].user.id,
+                            "user_name": fs_user_quotas[user_quota].user.name,
+                            "quota": fs_user_quotas[user_quota].quota,
+                            "usage": fs_user_quotas[user_quota].usage,
+                        }
+        if PUBLIC_API_VERSION in api_version:
             for v2fs in range(0, len(fsys_v2)):
                 if fsys_v2[v2fs].name == share:
-                    fs_info[share]["default_group_quota"] = fsys_v2[
+                    fs_info[share]["smb_client_policy"] = getattr(
+                        fsys_v2[v2fs].smb.client_policy, "name", None
+                    )
+                    fs_info[share]["smb_share_policy"] = getattr(
+                        fsys_v2[v2fs].smb.share_policy, "name", None
+                    )
+                    fs_info[share]["smb_continuous_availability_enabled"] = fsys_v2[
                         v2fs
-                    ].default_group_quota
-                    fs_info[share]["default_user_quota"] = fsys_v2[
+                    ].smb.continuous_availability_enabled
+                    fs_info[share]["multi_protocol_access_control_style"] = getattr(
+                        fsys_v2[v2fs].multi_protocol, "access_control_style", None
+                    )
+                    fs_info[share]["multi_protocol_safeguard_acls"] = fsys_v2[
                         v2fs
-                    ].default_user_quota
-                    if NFS_POLICY_API_VERSION in api_version:
-                        fs_info[share]["export_policy"] = fsys_v2[
-                            v2fs
-                        ].nfs.export_policy.name
-        if VSO_VERSION in api_version:
-            for v2fs in range(0, len(fsys_v2)):
-                if fsys_v2[v2fs].name == share:
-                    try:
-                        fs_groups = True
-                        fs_group_quotas = list(
-                            bladev2.get_quotas_groups(file_system_names=[share]).items
-                        )
-                    except Exception:
-                        fs_groups = False
-                    try:
-                        fs_users = True
-                        fs_user_quotas = list(
-                            bladev2.get_quotas_users(file_system_names=[share]).items
-                        )
-                    except Exception:
-                        fs_users = False
-                    if fs_groups:
-                        for group_quota in range(0, len(fs_group_quotas)):
-                            group_name = fs_group_quotas[group_quota].name.rsplit("/")[
-                                1
-                            ]
-                            fs_info[share]["group_quotas"][group_name] = {
-                                "group_id": fs_group_quotas[group_quota].group.id,
-                                "group_name": fs_group_quotas[group_quota].group.name,
-                                "quota": fs_group_quotas[group_quota].quota,
-                                "usage": fs_group_quotas[group_quota].usage,
-                            }
-                    if fs_users:
-                        for user_quota in range(0, len(fs_user_quotas)):
-                            user_name = fs_user_quotas[user_quota].name.rsplit("/")[1]
-                            fs_info[share]["user_quotas"][user_name] = {
-                                "user_id": fs_user_quotas[user_quota].user.id,
-                                "user_name": fs_user_quotas[user_quota].user.name,
-                                "quota": fs_user_quotas[user_quota].quota,
-                                "usage": fs_user_quotas[user_quota].usage,
-                            }
-            if PUBLIC_API_VERSION in api_version:
-                for v2fs in range(0, len(fsys_v2)):
-                    if fsys_v2[v2fs].name == share:
-                        fs_info[share]["smb_client_policy"] = getattr(
-                            fsys_v2[v2fs].smb.client_policy, "name", None
-                        )
-                        fs_info[share]["smb_share_policy"] = getattr(
-                            fsys_v2[v2fs].smb.share_policy, "name", None
-                        )
-                        fs_info[share]["smb_continuous_availability_enabled"] = fsys_v2[
-                            v2fs
-                        ].smb.continuous_availability_enabled
-                        fs_info[share]["multi_protocol_access_control_style"] = getattr(
-                            fsys_v2[v2fs].multi_protocol, "access_control_style", None
-                        )
-                        fs_info[share]["multi_protocol_safeguard_acls"] = fsys_v2[
-                            v2fs
-                        ].multi_protocol.safeguard_acls
+                    ].multi_protocol.safeguard_acls
 
     return fs_info
 
@@ -1488,14 +1448,8 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_blade(module)
-    versions = blade.api_version.list_versions().versions
+    versions = list(blade.get_versions().items)
 
-    if MIN_REQUIRED_API_VERSION not in versions:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
     if not module.params["gather_subset"]:
         module.params["gather_subset"] = ["minimum"]
     subset = [test.lower() for test in module.params["gather_subset"]]
@@ -1554,54 +1508,41 @@ def main():
         info["snapshots"] = generate_snap_dict(blade)
     if "buckets" in subset or "all" in subset:
         info["buckets"] = generate_bucket_dict(module, blade)
-    if POLICIES_API_VERSION in api_version:
-        if "policies" in subset or "all" in subset:
-            info["policies"] = generate_policies_dict(blade)
-            info["snapshot_policies"] = generate_policies_dict(blade)
-    if REPLICATION_API_VERSION in api_version:
-        if "arrays" in subset or "all" in subset:
-            info["arrays"] = generate_array_conn_dict(module, blade)
-        if "replication" in subset or "all" in subset:
-            info["file_replication"] = generate_file_repl_dict(blade)
-            info["bucket_replication"] = generate_bucket_repl_dict(module, blade)
-            info["snap_transfers"] = generate_snap_transfer_dict(blade)
-            info["remote_credentials"] = generate_remote_creds_dict(blade)
-            info["targets"] = generate_targets_dict(blade)
-    if MIN_32_API in api_version:
-        # Calls for data only available from Purity//FB 3.2 and higher
-        blade = get_system(module)
-        if "accounts" in subset or "all" in subset:
-            info["accounts"] = generate_object_store_accounts_dict(blade)
-        if "ad" in subset or "all" in subset:
-            info["active_directory"] = generate_ad_dict(blade)
-        if "kerberos" in subset or "all" in subset:
-            info["kerberos"] = generate_kerb_dict(blade)
-        if "policies" in subset or "all" in subset:
-            if SMB_MODE_API_VERSION in api_version:
-                info["access_policies"] = generate_object_store_access_policies_dict(
-                    blade
-                )
-            if PUBLIC_API_VERSION in api_version:
-                info["bucket_access_policies"] = generate_bucket_access_policies_dict(
-                    blade
-                )
-                info["bucket_cross_origin_policies"] = (
-                    generate_bucket_cross_object_policies_dict(blade)
-                )
-            if NFS_POLICY_API_VERSION in api_version:
-                info["export_policies"] = generate_nfs_export_policies_dict(blade)
-            if SMB_CLIENT_API_VERSION in api_version:
-                info["share_policies"] = generate_smb_client_policies_dict(blade)
-            if FLEET_API_VERSION in api_version:
-                info["fleet"] = generate_fleet_dict(blade)
-        if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_version:
-            info["drives"] = generate_drives_dict(blade)
-        if (
-            "servers" in subset
-            or "all" in subset
-            and SERVERS_API_VERSION in api_version
-        ):
-            info["servers"] = generate_servers_dict(blade)
+    if "policies" in subset or "all" in subset:
+        info["policies"] = generate_policies_dict(blade)
+        info["snapshot_policies"] = generate_policies_dict(blade)
+    if "arrays" in subset or "all" in subset:
+        info["arrays"] = generate_array_conn_dict(module, blade)
+    if "replication" in subset or "all" in subset:
+        info["file_replication"] = generate_file_repl_dict(blade)
+        info["bucket_replication"] = generate_bucket_repl_dict(module, blade)
+        info["snap_transfers"] = generate_snap_transfer_dict(blade)
+        info["remote_credentials"] = generate_remote_creds_dict(blade)
+        info["targets"] = generate_targets_dict(blade)
+    # Calls for data only available from Purity//FB 3.2 and higher
+    blade = get_system(module)
+    if "accounts" in subset or "all" in subset:
+        info["accounts"] = generate_object_store_accounts_dict(blade)
+    if "ad" in subset or "all" in subset:
+        info["active_directory"] = generate_ad_dict(blade)
+    if "kerberos" in subset or "all" in subset:
+        info["kerberos"] = generate_kerb_dict(blade)
+    if "policies" in subset or "all" in subset:
+        info["access_policies"] = generate_object_store_access_policies_dict(blade)
+        if PUBLIC_API_VERSION in api_version:
+            info["bucket_access_policies"] = generate_bucket_access_policies_dict(blade)
+            info["bucket_cross_origin_policies"] = (
+                generate_bucket_cross_object_policies_dict(blade)
+            )
+        info["export_policies"] = generate_nfs_export_policies_dict(blade)
+        if SMB_CLIENT_API_VERSION in api_version:
+            info["share_policies"] = generate_smb_client_policies_dict(blade)
+        if FLEET_API_VERSION in api_version:
+            info["fleet"] = generate_fleet_dict(blade)
+    if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_version:
+        info["drives"] = generate_drives_dict(blade)
+    if "servers" in subset or "all" in subset and SERVERS_API_VERSION in api_version:
+        info["servers"] = generate_servers_dict(blade)
     module.exit_json(changed=False, purefb_info=info)
 
 
