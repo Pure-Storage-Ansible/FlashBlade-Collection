@@ -29,7 +29,7 @@ options:
     - Define state of phone home
     type: str
     default: present
-    choices: [ present, absent ]
+    choices: [ present, absent, test ]
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -90,11 +90,41 @@ def disable_ph(module, blade):
     module.exit_json(changed=changed)
 
 
+def test_ph(module, blade):
+    """Test phonehome configuration"""
+    test_response = []
+    response = list(blade.get_support_test(test_type="phonehome").items)
+    for component in range(0, len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_address": response[component].component_address,
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "result_details": getattr(response[component], "result_details", ""),
+                "success": success,
+                "test_type": response[component].test_type,
+            }
+        )
+    module.exit_json(changed=False, test_response=test_response)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
-            state=dict(type="str", default="present", choices=["present", "absent"]),
+            state=dict(
+                type="str", default="present", choices=["present", "absent", "test"]
+            ),
         )
     )
 
@@ -104,11 +134,13 @@ def main():
 
     if not HAS_PURITY_FB:
         module.fail_json(msg="py-pure-client SDK is required for this module")
-    support = list(blade.get_supporti().items)[0].phonehome_enabled
+    support = list(blade.get_support().items)[0].phonehome_enabled
     if module.params["state"] == "present" and not support:
         enable_ph(module, blade)
     elif module.params["state"] == "absent" and support:
         disable_ph(module, blade)
+    elif module.params["state"] == "test":
+        test_ph(module, blade)
     module.exit_json(changed=False)
 
 
