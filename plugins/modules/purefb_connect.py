@@ -82,6 +82,14 @@ options:
     - The time must be set to the hour.
     type: str
     version_added: "1.9.0"
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -133,6 +141,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
+CONTEXT_API_VERSION = "2.17"
 FAN_IN_MAXIMUM = 5
 FAN_OUT_MAXIMUM = 5
 
@@ -144,12 +153,18 @@ def _convert_to_millisecs(hour_str: str) -> int:
 
     if period == "AM":
         return 0 if time_part == 12 else time_part * 3600000
-    else:  # PM
-        return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
+    # PM
+    return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
 
 
 def _check_connected(module, blade):
-    connected_blades = list(blade.get_array_connections().items)
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        connected_blades = list(
+            blade.get_array_connections(context_names=[module.params["context"]]).items
+        )
+    else:
+        connected_blades = list(blade.get_array_connections().items)
     for target in range(0, len(connected_blades)):
         if connected_blades[target].management_address is None:
             remote_system = Client(
@@ -179,14 +194,28 @@ def _check_connected(module, blade):
 
 def break_connection(module, blade, target_blade):
     """Break connection between arrays"""
+    api_version = list(blade.get_versions().items)
     changed = True
     if not module.check_mode:
-        source_blade = blade.get_arrays().items[0].name
+        if CONTEXT_API_VERSION in api_version:
+            source_blade = (
+                blade.get_arrays(context_names=[module.params["context"]]).items[0].name
+            )
+        else:
+            source_blade = blade.get_arrays().items[0].name
         if target_blade.management_address is None:
             module.fail_json(
                 msg="Disconnect can only happen from the array that formed the connection"
             )
-        res = blade.delete_array_connections(remote_names=[target_blade.remote.name])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.delete_array_connections(
+                remote_names=[target_blade.remote.name],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.delete_array_connections(
+                remote_names=[target_blade.remote.name]
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to disconnect {0} from {1}. Error: {2}".format(
@@ -198,8 +227,13 @@ def break_connection(module, blade, target_blade):
 
 def create_connection(module, blade):
     """Create connection between REST 2 capable arrays"""
+    api_version = list(blade.get_versions().items)
     changed = True
-    if blade.get_array_connections().total_item_count >= FAN_OUT_MAXIMUM:
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_array_connections(context_names=[module.params["context"]])
+    else:
+        res = blade.get_array_connections()
+    if res.total_item_count >= FAN_OUT_MAXIMUM:
         module.fail_json(
             msg="FlashBlade fan-out maximum of {0} already reached".format(
                 FAN_OUT_MAXIMUM
@@ -267,7 +301,13 @@ def create_connection(module, blade):
             connection_key=connection_key,
         )
     if not module.check_mode:
-        res = blade.post_array_connections(array_connection=connection_info)
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_array_connections(
+                array_connection=connection_info,
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.post_array_connections(array_connection=connection_info)
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to connect to remote array {0}. Error: {1}".format(
@@ -280,7 +320,7 @@ def create_connection(module, blade):
 def update_connection(module, blade):
     """Update REST 2 based array connection"""
     changed = False
-    versions = list(blade.get_versions().items)
+    api_version = list(blade.get_versions().items)
     remote_blade = Client(
         target=module.params["target_url"], api_token=module.params["target_api"]
     )
@@ -293,10 +333,13 @@ def update_connection(module, blade):
             msg="Update can only happen from the array that formed the connection"
         )
     if module.params["encrypted"] != remote_connection.encrypted:
-        if (
-            module.params["encrypted"]
-            and blade.get_file_system_replica_links().total_item_count != 0
-        ):
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_file_system_replica_links(
+                context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.get_file_system_replica_links()
+        if module.params["encrypted"] and res.total_item_count != 0:
             module.fail_json(
                 msg="Cannot turn array connection encryption on if file system replica links exist"
             )
@@ -309,9 +352,13 @@ def update_connection(module, blade):
         not remote_connection.throttle.default_limit
         and not remote_connection.throttle.window_limit
     ):
+        if CONTEXT_API_VERSION in api_version:
+            blade.get_bucket_replica_links(context_names=[module.params["context"]])
+        else:
+            blade.get_bucket_replica_links()
         if (
             module.params["default_limit"] or module.params["window_limit"]
-        ) and blade.get_bucket_replica_links().total_item_count != 0:
+        ) and res.total_item_count != 0:
             module.fail_json(
                 msg="Cannot set throttle when bucket replica links already exist"
             )
@@ -376,9 +423,16 @@ def update_connection(module, blade):
                 encrypted=new_connection["encrypted"],
                 throttle=throttle,
             )
-            res = blade.patch_array_connections(
-                remote_names=[remote_name], array_connection=connection_info
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_array_connections(
+                    remote_names=[remote_name],
+                    array_connection=connection_info,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_array_connections(
+                    remote_names=[remote_name], array_connection=connection_info
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update connection to remote array {0}. Error: {1}".format(
@@ -401,6 +455,7 @@ def main():
             window_limit=dict(type="str"),
             window_start=dict(type="str"),
             window_end=dict(type="str"),
+            context=dict(type="str", default=""),
         )
     )
 
