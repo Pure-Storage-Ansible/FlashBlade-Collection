@@ -137,6 +137,14 @@ options:
       regardless of their origin or principal.
     type: bool
     default: true
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -194,24 +202,39 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 MIN_API_VERSION = "2.12"
+CONTEXT_API_VERSION = "2.17"
 
 
 def delete_cors_policy(module, blade):
     """Delete cross-origin resource sharing policy or rule"""
-
+    api_version = list(blade.get_versions().items)
     changed = True
     if not module.check_mode:
         if module.params["rule"]:
-            res = blade.get_buckets_cross_origin_resource_sharing_policies_rules(
-                bucket_names=[module.params["name"]], names=[module.params["rule"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_buckets_cross_origin_resource_sharing_policies_rules(
+                    bucket_names=[module.params["name"]],
+                    names=[module.params["rule"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_buckets_cross_origin_resource_sharing_policies_rules(
+                    bucket_names=[module.params["name"]], names=[module.params["rule"]]
+                )
             if res.status_code == 200:
                 changed = False
                 module.exit_json(changed=changed)
 
-            res = blade.delete_buckets_cross_origin_resource_sharing_policies_rules(
-                names=module.params["rule"], bucket_names=module.params["name"]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_buckets_cross_origin_resource_sharing_policies_rules(
+                    names=module.params["rule"],
+                    bucket_names=module.params["name"],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_buckets_cross_origin_resource_sharing_policies_rules(
+                    names=module.params["rule"], bucket_names=module.params["name"]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete CORS rule {0} for bucket {1}. Error: {2}".format(
@@ -221,16 +244,28 @@ def delete_cors_policy(module, blade):
                     )
                 )
         else:
-            res = blade.get_buckets_cross_origin_resource_sharing_policies(
-                bucket_names=[module.params["name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_buckets_cross_origin_resource_sharing_policies(
+                    bucket_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_buckets_cross_origin_resource_sharing_policies(
+                    bucket_names=[module.params["name"]],
+                )
             if res.total_item_count == 0:
                 changed = False
                 module.exit_json(changed=changed)
 
-            res = blade.delete_buckets_cross_origin_resource_sharing_policies(
-                bucket_names=module.params["name"]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_buckets_cross_origin_resource_sharing_policies(
+                    bucket_names=module.params["name"],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_buckets_cross_origin_resource_sharing_policies(
+                    bucket_names=module.params["name"]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete CORS policy for bucket {0}. Error: {1}".format(
@@ -245,18 +280,33 @@ def delete_access_policy(module, blade):
     """Delete bucket access policy or rule"""
 
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         if module.params["rule"]:
-            res = blade.get_buckets_bucket_access_policies_rules(
-                bucket_names=[module.params["name"]], names=[module.params["rule"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_buckets_bucket_access_policies_rules(
+                    bucket_names=[module.params["name"]],
+                    names=[module.params["rule"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_buckets_bucket_access_policies_rules(
+                    bucket_names=[module.params["name"]], names=[module.params["rule"]]
+                )
             if res.status_code != 200:
                 changed = False
                 module.exit_json(changed=changed)
 
-            res = blade.delete_buckets_bucket_access_policies_rules(
-                names=module.params["rule"], bucket_names=module.params["name"]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_buckets_bucket_access_policies_rules(
+                    names=module.params["rule"],
+                    bucket_names=module.params["name"],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_buckets_bucket_access_policies_rules(
+                    names=module.params["rule"], bucket_names=module.params["name"]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete access rule {0} for bucket {1}. Error: {2}".format(
@@ -266,16 +316,28 @@ def delete_access_policy(module, blade):
                     )
                 )
         else:
-            res = blade.get_buckets_bucket_access_policies(
-                bucket_names=[module.params["name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.get_buckets_bucket_access_policies(
+                    bucket_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.get_buckets_bucket_access_policies(
+                    bucket_names=[module.params["name"]]
+                )
             if res.total_item_count == 0:
                 changed = False
                 module.exit_json(changed=changed)
 
-            res = blade.delete_buckets_bucket_access_policies(
-                bucket_names=module.params["name"]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_buckets_bucket_access_policies(
+                    bucket_names=module.params["name"],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_buckets_bucket_access_policies(
+                    bucket_names=module.params["name"]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete access policy for bucket {0}. Error: {1}".format(
@@ -289,14 +351,29 @@ def delete_access_policy(module, blade):
 def create_access_policy(module, blade):
     """Create bucket access policy or rule"""
     changed = False
-    res = blade.get_buckets_bucket_access_policies(bucket_names=[module.params["name"]])
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_buckets_bucket_access_policies(
+            bucket_names=[module.params["name"]],
+            context_names=[module.params["context"]],
+        )
+    else:
+        res = blade.get_buckets_bucket_access_policies(
+            bucket_names=[module.params["name"]]
+        )
     if res.total_item_count == 0:
         # Need to create the policy with its first rule
         changed = True
         if not module.check_mode:
-            res = blade.post_buckets_bucket_access_policies(
-                bucket_names=[module.params["name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_buckets_bucket_access_policies(
+                    bucket_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.post_buckets_bucket_access_policies(
+                    bucket_names=[module.params["name"]]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create initial bucket access policy for {0}. Error: {1}".format(
@@ -306,9 +383,16 @@ def create_access_policy(module, blade):
     # Create a new rule for the policy
     if not module.check_mode:
         changed = True
-        res = blade.get_buckets_bucket_access_policies_rules(
-            bucket_names=[module.params["name"]], names=[module.params["rule"]]
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_buckets_bucket_access_policies_rules(
+                bucket_names=[module.params["name"]],
+                names=[module.params["rule"]],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_buckets_bucket_access_policies_rules(
+                bucket_names=[module.params["name"]], names=[module.params["rule"]]
+            )
         if res.status_code == 200:
             changed = False
             module.exit_json(changed=changed)
@@ -316,18 +400,33 @@ def create_access_policy(module, blade):
         all_resources = []
         for resource in module.params["resources"]:
             all_resources.append(module.params["name"] + "/" + resource)
-        res = blade.post_buckets_bucket_access_policies_rules(
-            bucket_names=[module.params["name"]],
-            names=module.params["rule"],
-            rule=BucketAccessPolicyRulePost(
-                effect=module.params["effect"],
-                resources=all_resources,
-                actions=module.params["actions"],
-                principals=BucketAccessPolicyRulePrincipal(
-                    all=module.params["principals"]
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_buckets_bucket_access_policies_rules(
+                bucket_names=[module.params["name"]],
+                names=module.params["rule"],
+                rule=BucketAccessPolicyRulePost(
+                    effect=module.params["effect"],
+                    resources=all_resources,
+                    actions=module.params["actions"],
+                    principals=BucketAccessPolicyRulePrincipal(
+                        all=module.params["principals"]
+                    ),
                 ),
-            ),
-        )
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.post_buckets_bucket_access_policies_rules(
+                bucket_names=[module.params["name"]],
+                names=module.params["rule"],
+                rule=BucketAccessPolicyRulePost(
+                    effect=module.params["effect"],
+                    resources=all_resources,
+                    actions=module.params["actions"],
+                    principals=BucketAccessPolicyRulePrincipal(
+                        all=module.params["principals"]
+                    ),
+                ),
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create access policy rule {0} "
@@ -341,16 +440,29 @@ def create_access_policy(module, blade):
 def create_cors_policy(module, blade):
     """Create CORS policy or rule"""
     changed = False
-    res = blade.get_buckets_cross_origin_resource_sharing_policies(
-        bucket_names=[module.params["name"]]
-    )
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_buckets_cross_origin_resource_sharing_policies(
+            bucket_names=[module.params["name"]],
+            context_names=[module.params["context"]],
+        )
+    else:
+        res = blade.get_buckets_cross_origin_resource_sharing_policies(
+            bucket_names=[module.params["name"]]
+        )
     if res.total_item_count == 0:
         # Need to create the policy with its first rule
         changed = True
         if not module.check_mode:
-            res = blade.post_buckets_cross_origin_resource_sharing_policies(
-                bucket_names=[module.params["name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_buckets_cross_origin_resource_sharing_policies(
+                    bucket_names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.post_buckets_cross_origin_resource_sharing_policies(
+                    bucket_names=[module.params["name"]]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create initial CORS policy for {0}. Error: {1}".format(
@@ -360,22 +472,41 @@ def create_cors_policy(module, blade):
     # Create a new rule for the policy
     if not module.check_mode:
         changed = True
-        res = blade.get_buckets_cross_origin_resource_sharing_policies_rules(
-            bucket_names=[module.params["name"]], names=[module.params["rule"]]
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_buckets_cross_origin_resource_sharing_policies_rules(
+                bucket_names=[module.params["name"]],
+                names=[module.params["rule"]],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_buckets_cross_origin_resource_sharing_policies_rules(
+                bucket_names=[module.params["name"]], names=[module.params["rule"]]
+            )
         if res.status_code == 200:
             changed = False
             module.exit_json(changed=changed)
 
-        res = blade.post_buckets_cross_origin_resource_sharing_policies_rules(
-            bucket_names=[module.params["name"]],
-            names=module.params["rule"],
-            rule=CrossOriginResourceSharingPolicyRulePost(
-                allowed_methods=module.params["methods"],
-                allowed_origins=module.params["origins"],
-                allowed_headers=module.params["headers"],
-            ),
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_buckets_cross_origin_resource_sharing_policies_rules(
+                bucket_names=[module.params["name"]],
+                names=module.params["rule"],
+                rule=CrossOriginResourceSharingPolicyRulePost(
+                    allowed_methods=module.params["methods"],
+                    allowed_origins=module.params["origins"],
+                    allowed_headers=module.params["headers"],
+                ),
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.post_buckets_cross_origin_resource_sharing_policies_rules(
+                bucket_names=[module.params["name"]],
+                names=module.params["rule"],
+                rule=CrossOriginResourceSharingPolicyRulePost(
+                    allowed_methods=module.params["methods"],
+                    allowed_origins=module.params["origins"],
+                    allowed_headers=module.params["headers"],
+                ),
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create CORS policy rule {0} "
@@ -391,6 +522,7 @@ def main():
     argument_spec.update(
         dict(
             state=dict(type="str", default="present", choices=["absent", "present"]),
+            context=dict(type="str", default=""),
             policy_type=dict(
                 type="str",
                 default="access",
@@ -480,14 +612,21 @@ def main():
     if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client sdk is required for this module")
     blade = get_system(module)
-    versions = list(blade.get_versions().items)
-    if MIN_API_VERSION not in versions:
+    api_version = list(blade.get_versions().items)
+    if MIN_API_VERSION not in api_version:
         module.fail_json(
             msg=(
                 "Minimum FlashBlade REST version required: {0}".format(MIN_API_VERSION)
             )
         )
-    res = blade.get_buckets(names=[module.params["name"]], destroyed=False)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_buckets(
+            names=[module.params["name"]],
+            destroyed=False,
+            context_names=[module.params["context"]],
+        )
+    else:
+        res = blade.get_buckets(names=[module.params["name"]], destroyed=False)
     if res.status_code != 200:
         module.fail_json(
             msg="Bucket {0} does not exist, or is destroyed.".format(
