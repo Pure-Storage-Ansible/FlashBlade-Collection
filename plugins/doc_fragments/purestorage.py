@@ -37,13 +37,11 @@ options:
     default: false
     version_added: '1.18.0'
 notes:
-  - This module requires the C(purity_fb) Python library
   - You must set C(PUREFB_URL) and C(PUREFB_API) environment variables
     if I(fb_url) and I(api_token) arguments are not passed to the module directly
 requirements:
   - python >= 3.9
   - py-pure-client
-  - purity_fb >= 1.12.2
   - netaddr
   - datetime
   - pytz

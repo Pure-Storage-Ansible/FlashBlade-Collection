@@ -137,7 +137,7 @@ def main():
     )
 
     if not HAS_PURITY_FB:
-        module.fail_json(msg="purity_fb sdk is required for this module")
+        module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)
 
