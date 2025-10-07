@@ -75,6 +75,14 @@ options:
     description:
     - Object key prefix identifying one or more objects in the bucket
     type: str
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -127,8 +135,17 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 from datetime import datetime
 
 
+CONTEXT_API_VERSION = "2.17"
+
+
 def _get_bucket(module, blade):
-    res = blade.get_buckets(names=[module.params["bucket"]])
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_buckets(
+            names=[module.params["bucket"]], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_buckets(names=[module.params["bucket"]])
     if res.status_code == 200:
         return list(res.items)[0]
     return None
@@ -171,10 +188,17 @@ def _findstr(text, match):
 def delete_rule(module, blade):
     """Delete lifecycle rule"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        res = blade.delete_lifecycle_rules(
-            names=[module.params["bucket"] + "/" + module.params["name"]]
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.delete_lifecycle_rules(
+                names=[module.params["bucket"] + "/" + module.params["name"]],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.delete_lifecycle_rules(
+                names=[module.params["bucket"] + "/" + module.params["name"]]
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete lifecycle rule {0} for bucket {1}. Error: {2}".format(
@@ -189,6 +213,7 @@ def delete_rule(module, blade):
 def create_rule(module, blade):
     """Create lifecycle policy"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if (
         not module.params["keep_previous_for"]
         and not module.params["keep_current_until"]
@@ -216,9 +241,21 @@ def create_rule(module, blade):
             prefix=module.params["prefix"],
         )
         if attr.keep_current_version_until:
-            res = blade.post_lifecycle_rules(rule=attr, confirm_date=True)
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_lifecycle_rules(
+                    rule=attr,
+                    confirm_date=True,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.post_lifecycle_rules(rule=attr, confirm_date=True)
         else:
-            res = blade.post_lifecycle_rules(rule=attr)
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_lifecycle_rules(
+                    rule=attr, context_names=[module.params["context"]]
+                )
+            else:
+                res = blade.post_lifecycle_rules(rule=attr)
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create lifecycle rule {0} for bucket {1}. Error: {2}".format(
@@ -229,10 +266,17 @@ def create_rule(module, blade):
             )
         if not module.params["enabled"]:
             attr = LifecycleRulePatch(enabled=module.params["enabled"])
-            res = blade.patch_lifecycle_rules(
-                names=[module.params["bucket"] + "/" + module.params["name"]],
-                lifecycle=attr,
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_lifecycle_rules(
+                    names=[module.params["bucket"] + "/" + module.params["name"]],
+                    lifecycle=attr,
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_lifecycle_rules(
+                    names=[module.params["bucket"] + "/" + module.params["name"]],
+                    lifecycle=attr,
+                )
             if res.status_code != 200:
                 module.warn(
                     "Lifecycle Rule {0} did not enable correctly. "
@@ -244,6 +288,7 @@ def create_rule(module, blade):
 def update_rule(module, blade, rule):
     """Update snapshot policy"""
     changed = False
+    api_version = list(blade.get_versions().items)
     current_rule = {
         "prefix": rule.prefix,
         "abort_incomplete_multipart_uploads_after": rule.abort_incomplete_multipart_uploads_after,
@@ -296,16 +341,31 @@ def update_rule(module, blade, rule):
                 enabled=new_rule["enabled"],
             )
             if attr.keep_current_version_until:
-                res = blade.patch_lifecycle_rules(
-                    names=[module.params["bucket"] + "/" + module.params["name"]],
-                    lifecycle=attr,
-                    confirm_date=True,
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_lifecycle_rules(
+                        names=[module.params["bucket"] + "/" + module.params["name"]],
+                        lifecycle=attr,
+                        confirm_date=True,
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_lifecycle_rules(
+                        names=[module.params["bucket"] + "/" + module.params["name"]],
+                        lifecycle=attr,
+                        confirm_date=True,
+                    )
             else:
-                res = blade.patch_lifecycle_rules(
-                    names=[module.params["bucket"] + "/" + module.params["name"]],
-                    lifecycle=attr,
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_lifecycle_rules(
+                        names=[module.params["bucket"] + "/" + module.params["name"]],
+                        lifecycle=attr,
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_lifecycle_rules(
+                        names=[module.params["bucket"] + "/" + module.params["name"]],
+                        lifecycle=attr,
+                    )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update lifecycle rule {0} for bucket {1}. Error: {2}".format(
@@ -332,6 +392,7 @@ def main():
             keep_current_for=dict(type="str"),
             keep_current_until=dict(type="str"),
             abort_uploads_after=dict(type="str"),
+            context=dict(type="str", default=""),
         )
     )
 
@@ -346,6 +407,7 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
+    api_version = list(blade.get_versions().items)
 
     if module.params["keep_previous_for"] and not module.params["keep_previous_for"][
         -1:
@@ -373,9 +435,15 @@ def main():
     rule = None
     if module.params["keep_current_until"]:
         module.params["keep_current_until"] = _convert_date_to_epoch(module)
-    res = blade.get_lifecycle_rules(
-        names=[module.params["bucket"] + "/" + module.params["name"]]
-    )
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_lifecycle_rules(
+            names=[module.params["bucket"] + "/" + module.params["name"]],
+            context_names=[module.params["context"]],
+        )
+    else:
+        res = blade.get_lifecycle_rules(
+            names=[module.params["bucket"] + "/" + module.params["name"]]
+        )
     if res.status_code == 200:
         rule = list(res.items)[0]
 
