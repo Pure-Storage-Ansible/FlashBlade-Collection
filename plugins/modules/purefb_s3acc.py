@@ -74,6 +74,14 @@ options:
       users within the account that bucket belongs to.
     type: bool
     version_added: 1.15.0
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -124,11 +132,18 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 
 PUBLIC_API_VERSION = "2.12"
+CONTEXT_API_VERSION = "2.17"
 
 
 def get_s3acc(module, blade):
     """Return Object Store Account or None"""
-    res = blade.get_object_store_accounts(names=[module.params["name"]])
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_object_store_accounts(
+            names=[module.params["name"]], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_object_store_accounts(names=[module.params["name"]])
     if res.status_code == 200:
         return list(res.items)[0]
     return None
@@ -137,12 +152,19 @@ def get_s3acc(module, blade):
 def update_s3acc(module, blade):
     """Update Object Store Account"""
     changed = False
+    api_version = list(blade.get_versions().items)
     public = False
-    acc_settings = list(
-        blade.get_object_store_accounts(names=[module.params["name"]]).items
-    )[0]
-    versions = list(blade.get_versions().items)
-    if PUBLIC_API_VERSION in versions:
+    if CONTEXT_API_VERSION in api_version:
+        acc_settings = list(
+            blade.get_object_store_accounts(
+                names=[module.params["name"]], context_names=[module.params["context"]]
+            ).items
+        )[0]
+    else:
+        acc_settings = list(
+            blade.get_object_store_accounts(names=[module.params["name"]]).items
+        )[0]
+    if PUBLIC_API_VERSION in api_version:
         public = True
         current_account = {
             "hard_limit": acc_settings.hard_limit_enabled,
@@ -236,9 +258,16 @@ def update_s3acc(module, blade):
                         quota_limit=new_account["default_quota"],
                     ),
                 )
-            res = blade.patch_object_store_accounts(
-                object_store_account=osa, names=[module.params["name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_object_store_accounts(
+                    object_store_account=osa,
+                    names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_object_store_accounts(
+                    object_store_account=osa, names=[module.params["name"]]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update account {0}. "
@@ -251,9 +280,14 @@ def update_s3acc(module, blade):
 def create_s3acc(module, blade):
     """Create Object Store Account"""
     changed = True
-    versions = list(blade.get_versions().items)
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        res = blade.post_object_store_accounts(names=[module.params["name"]])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_object_store_accounts(
+                names=[module.params["name"]], context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.post_object_store_accounts(names=[module.params["name"]])
         if res.status_code != 200:
             module.fail_json(
                 msg="Object Store Account {0} creation failed. Error: {1}".format(
@@ -282,18 +316,31 @@ def create_s3acc(module, blade):
                     quota_limit=default_quota,
                 ),
             )
-            res = blade.patch_object_store_accounts(
-                object_store_account=osa, names=[module.params["name"]]
-            )
-            if res.status_code != 200:
-                blade.object_store_accounts.delete_object_store_accounts(
-                    names=[module.params["name"]]
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_object_store_accounts(
+                    object_store_account=osa,
+                    names=[module.params["name"]],
+                    context_names=[module.params["context"]],
                 )
+            else:
+                res = blade.patch_object_store_accounts(
+                    object_store_account=osa, names=[module.params["name"]]
+                )
+            if res.status_code != 200:
+                if CONTEXT_API_VERSION in api_version:
+                    blade.object_store_accounts.delete_object_store_accounts(
+                        names=[module.params["name"]],
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    blade.object_store_accounts.delete_object_store_accounts(
+                        names=[module.params["name"]]
+                    )
                 module.fail_json(
                     msg="Failed to set quotas correctly for account {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
-        if PUBLIC_API_VERSION in versions:
+        if PUBLIC_API_VERSION in api_version:
             if not module.params["block_new_public_policies"]:
                 module.params["block_new_public_policies"] = False
             if not module.params["block_public_access"]:
@@ -306,9 +353,16 @@ def create_s3acc(module, blade):
                     block_public_access=module.params["block_public_access"],
                 )
             )
-            res = blade.patch_object_store_accounts(
-                object_store_account=osa, names=[module.params["name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.patch_object_store_accounts(
+                    object_store_account=osa,
+                    names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.patch_object_store_accounts(
+                    object_store_account=osa, names=[module.params["name"]]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to Public Access config correctly for account {0}. "
@@ -321,8 +375,15 @@ def create_s3acc(module, blade):
 def delete_s3acc(module, blade):
     """Delete Object Store Account"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        res = blade.get_object_store_users(names=[module.params["name"] + "/*'"])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_object_store_users(
+                names=[module.params["name"] + "/*'"],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_object_store_users(names=[module.params["name"] + "/*'"])
         if res.status_code == 200:
             module.fail_json(
                 msg="Remove all Users from Object Store Account {0} \
@@ -331,7 +392,13 @@ def delete_s3acc(module, blade):
                 )
             )
         else:
-            res = blade.delete_object_store_accounts(names=[module.params["name"]])
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_object_store_accounts(
+                    names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_object_store_accounts(names=[module.params["name"]])
             if res.status_code != 200:
                 module.fail_json(
                     msg="Object Store Account {0} deletion failed. Error: {1}".format(
@@ -353,6 +420,7 @@ def main():
             quota=dict(type="str"),
             default_quota=dict(type="str"),
             state=dict(default="present", choices=["present", "absent"]),
+            context=dict(type="str", default=""),
         )
     )
 
@@ -360,7 +428,6 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    versions = list(blade.get_versions().items)
 
     if module.params["quota"] or module.params["default_quota"]:
         if not HAS_PURESTORAGE:
