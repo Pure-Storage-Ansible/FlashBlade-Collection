@@ -165,7 +165,7 @@ def _check_connected(module, blade):
         )
     else:
         connected_blades = list(blade.get_array_connections().items)
-    for target in range(0, len(connected_blades)):
+    for target in range(len(connected_blades)):
         if connected_blades[target].management_address is None:
             remote_system = Client(
                 target=module.params["target_url"],

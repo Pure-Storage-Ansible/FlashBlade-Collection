@@ -222,7 +222,7 @@ def update_s3user(module, blade):
             )
         else:
             keys = list(blade.get_object_store_access_keys().items)
-        for key in range(0, len(keys)):
+        for key in range(len(keys)):
             if module.params["imported_key"]:
                 if keys[key].name == module.params["imported_key"]:
                     module.warn("Imported key provided already belongs to a user")

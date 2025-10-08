@@ -107,7 +107,7 @@ def update_server(module, blade):
     if module.params["dns"] is not None:
         dns_list = server_info.dns
         current_dns = []
-        for dns in range(0, len(dns_list)):
+        for dns in range(len(dns_list)):
             current_dns.append(getattr(server_info.dns[dns], "name", None))
         if set(module.params["dns"]) != set(current_dns):
             changed = True
@@ -125,7 +125,7 @@ def update_server(module, blade):
     if module.params["directory_service"] is not None:
         ds_list = server_info.directory_services
         current_ds = []
-        for ds in range(0, len(ds_list)):
+        for ds in range(len(ds_list)):
             current_ds.append(getattr(server_info.directory_services[ds], "name", None))
         if set(module.params["directory_service"]) != set(current_ds):
             changed = True
@@ -150,10 +150,10 @@ def add_server(module, blade):
     final_dserv = []
     if not module.check_mode:
         if module.params["dns"]:
-            for dns in range(0, len(module.params["dns"])):
+            for dns in range(len(module.params["dns"])):
                 final_dns.append(Reference(name=module.params["dns"][dns]))
         if module.params["directory_service"]:
-            for dserv in range(0, len(module.params["directory_service"])):
+            for dserv in range(len(module.params["directory_service"])):
                 final_dserv.append(
                     Reference(name=module.params["directory_service"][dserv])
                 )

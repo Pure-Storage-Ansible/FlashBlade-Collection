@@ -243,7 +243,7 @@ def test_syslog(module, blade):
         )
     else:
         response = list(blade.get_syslog_servers_test().items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:

@@ -106,7 +106,7 @@ def test_kmip(module, blade):
     """Test KMIP object configuration"""
     test_response = []
     response = list(blade.get_kmip_test(names=[module.params["name"]]).items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:

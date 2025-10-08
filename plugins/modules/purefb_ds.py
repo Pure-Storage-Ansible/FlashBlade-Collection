@@ -409,7 +409,7 @@ def test_ds(module, blade):
     response = list(
         blade.get_directory_services_test(names=[module.params["dstype"]]).items
     )
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:
@@ -486,11 +486,11 @@ def main():
     ds_enabled = dirserv.enabled
     ldap_uri = False
     set_ldap = False
-    for uri in range(0, len(dirserv.uris)):
+    for uri in range(len(dirserv.uris)):
         if "ldap" in dirserv.uris[uri].lower():
             ldap_uri = True
     if module.params["uri"]:
-        for uri in range(0, len(module.params["uri"])):
+        for uri in range(len(module.params["uri"])):
             if "ldap" in module.params["uri"][uri].lower():
                 set_ldap = True
     if not module.params["uri"] and ldap_uri or module.params["uri"] and set_ldap:

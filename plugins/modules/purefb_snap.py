@@ -234,7 +234,7 @@ def create_snapshot(module, blade):
         ).items
     else:
         connected_blades = blade.array_connections.list_array_connections().items
-    for rem_blade in range(0, len(connected_blades)):
+    for rem_blade in range(len(connected_blades)):
         if (
             target == connected_blades[rem_blade].remote.name
             and connected_blades[rem_blade].status == "connected"

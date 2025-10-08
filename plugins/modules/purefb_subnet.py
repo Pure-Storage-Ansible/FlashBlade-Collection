@@ -309,7 +309,7 @@ def main():
                 module.fail_json(msg="Gateway and subnet are not compatible.")
         subnets = list(blade.get_subnets().items)
         nrange = netaddr.IPSet([module.params["prefix"]])
-        for sub in range(0, len(subnets)):
+        for sub in range(len(subnets)):
             if (
                 subnets[sub].vlan == module.params["vlan"]
                 and subnets[sub].name != module.params["name"]

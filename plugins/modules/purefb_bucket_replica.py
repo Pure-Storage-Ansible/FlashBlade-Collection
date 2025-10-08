@@ -182,7 +182,7 @@ def get_connected(module, blade):
         )
     else:
         connected_blades = blade.get_array_connections()
-    for target in range(0, len(connected_blades.items)):
+    for target in range(len(connected_blades.items)):
         if (
             connected_blades.items[target].remote.name == module.params["target"]
             or connected_blades.items[target].management_address
@@ -197,7 +197,7 @@ def get_connected(module, blade):
         connected_targets = blade.get_targets(context_names=[module.params["context"]])
     else:
         connected_targets = blade.get_targets()
-    for target in range(0, len(connected_targets.items)):
+    for target in range(len(connected_targets.items)):
         if connected_targets.items[target].name == module.params[
             "target"
         ] and connected_targets.items[target].status in [
