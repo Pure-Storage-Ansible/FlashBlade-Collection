@@ -84,6 +84,14 @@ options:
     type: list
     elements: str
     version_added: "1.6.0"
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -165,10 +173,18 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
+CONTEXT_API_VERSION = "2.17"
+
 
 def get_s3acc(module, blade):
     """Return Object Store Account or None"""
-    res = blade.get_object_store_accounts(names=[module.params["account"]])
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_object_store_accounts(
+            names=[module.params["account"]], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_object_store_accounts(names=[module.params["account"]])
     if res.status_code == 200:
         return list(res.items)[0]
     return None
@@ -176,8 +192,14 @@ def get_s3acc(module, blade):
 
 def get_s3user(module, blade):
     """Return Object Store Account or None"""
+    api_version = list(blade.get_versions().items)
     full_user = module.params["account"] + "/" + module.params["name"]
-    res = blade.get_object_store_users(names=[full_user])
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_object_store_users(
+            names=[full_user], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_object_store_users(names=[full_user])
     if res.status_code == 200:
         return list(res.items)[0]
     return None
@@ -186,12 +208,20 @@ def get_s3user(module, blade):
 def update_s3user(module, blade):
     """Update Object Store User"""
     changed = False
+    api_version = list(blade.get_versions().items)
     exists = False
     s3user_facts = {}
     user = module.params["account"] + "/" + module.params["name"]
     if module.params["access_key"] or module.params["imported_key"]:
         key_count = 0
-        keys = list(blade.get_object_store_access_keys().items)
+        if CONTEXT_API_VERSION in api_version:
+            keys = list(
+                blade.get_object_store_access_keys(
+                    context_names=[module.params["context"]]
+                ).items
+            )
+        else:
+            keys = list(blade.get_object_store_access_keys().items)
         for key in range(0, len(keys)):
             if module.params["imported_key"]:
                 if keys[key].name == module.params["imported_key"]:
@@ -209,20 +239,37 @@ def update_s3user(module, blade):
                     ):
                         changed = True
                         if not module.check_mode:
-                            res = blade.post_object_store_access_keys(
-                                object_store_access_key=ObjectStoreAccessKeyPost(
-                                    user={"name": user}
+                            if CONTEXT_API_VERSION in api_version:
+                                res = blade.post_object_store_access_keys(
+                                    object_store_access_key=ObjectStoreAccessKeyPost(
+                                        user={"name": user}
+                                    ),
+                                    context_names=[module.params["context"]],
                                 )
-                            )
+                            else:
+                                res = blade.post_object_store_access_keys(
+                                    object_store_access_key=ObjectStoreAccessKeyPost(
+                                        user={"name": user}
+                                    )
+                                )
                             if res.status_code == 200:
                                 result = list(res.items)[0]
                                 if not module.params["enable_key"]:
-                                    blade.patch_object_store_access_keys(
-                                        names=[result.name],
-                                        object_store_access_key=ObjectStoreAccessKey(
-                                            enabled=False
-                                        ),
-                                    )
+                                    if CONTEXT_API_VERSION in api_version:
+                                        blade.patch_object_store_access_keys(
+                                            names=[result.name],
+                                            object_store_access_key=ObjectStoreAccessKey(
+                                                enabled=False
+                                            ),
+                                            context_names=[module.params["context"]],
+                                        )
+                                    else:
+                                        blade.patch_object_store_access_keys(
+                                            names=[result.name],
+                                            object_store_access_key=ObjectStoreAccessKey(
+                                                enabled=False
+                                            ),
+                                        )
                                 s3user_facts["fb_s3user"] = {
                                     "user": user,
                                     "enabled": module.params["enable_key"],
@@ -240,22 +287,41 @@ def update_s3user(module, blade):
                 else:
                     changed = True
                     if not module.check_mode:
-                        res = blade.post_object_store_access_keys(
-                            names=[module.params["imported_key"]],
-                            object_store_access_key=ObjectStoreAccessKeyPost(
-                                user={"name": user},
-                                secret_access_key=module.params["imported_secret"],
-                            ),
-                        )
+                        if CONTEXT_API_VERSION in api_version:
+                            res = blade.post_object_store_access_keys(
+                                names=[module.params["imported_key"]],
+                                object_store_access_key=ObjectStoreAccessKeyPost(
+                                    user={"name": user},
+                                    secret_access_key=module.params["imported_secret"],
+                                ),
+                                context_names=[module.params["context"]],
+                            )
+                        else:
+                            res = blade.post_object_store_access_keys(
+                                names=[module.params["imported_key"]],
+                                object_store_access_key=ObjectStoreAccessKeyPost(
+                                    user={"name": user},
+                                    secret_access_key=module.params["imported_secret"],
+                                ),
+                            )
                         if res.status_code == 200:
                             result = list(res.items)[0]
                             if not module.params["enable_key"]:
-                                blade.patch_object_store_access_keys(
-                                    names=[result.name],
-                                    object_store_access_key=ObjectStoreAccessKey(
-                                        enabled=False
-                                    ),
-                                )
+                                if CONTEXT_API_VERSION in api_version:
+                                    blade.patch_object_store_access_keys(
+                                        names=[result.name],
+                                        object_store_access_key=ObjectStoreAccessKey(
+                                            enabled=False
+                                        ),
+                                        context_names=[module.params["context"]],
+                                    )
+                                else:
+                                    blade.patch_object_store_access_keys(
+                                        names=[result.name],
+                                        object_store_access_key=ObjectStoreAccessKey(
+                                            enabled=False
+                                        ),
+                                    )
                         else:
                             module.fail_json(
                                 msg="Object Store User {0} access Key creation failed. "
@@ -277,9 +343,15 @@ def create_s3user(module, blade):
     """Create Object Store Account"""
     s3user_facts = {}
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
-        res = blade.post_object_store_users(names=[user])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_object_store_users(
+                names=[user], context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.post_object_store_users(names=[user])
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create account {0}. Error:{1}".format(
@@ -289,16 +361,33 @@ def create_s3user(module, blade):
         if module.params["access_key"] and module.params["imported_key"]:
             module.warn("'access_key: true' overrides imported keys")
         if module.params["access_key"]:
-            res = blade.post_object_store_access_keys(
-                object_store_access_key=ObjectStoreAccessKeyPost(user={"name": user})
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.post_object_store_access_keys(
+                    object_store_access_key=ObjectStoreAccessKeyPost(
+                        user={"name": user}
+                    ),
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.post_object_store_access_keys(
+                    object_store_access_key=ObjectStoreAccessKeyPost(
+                        user={"name": user}
+                    )
+                )
             if res.status_code == 200:
                 result = list(res.items)[0]
                 if not module.params["enable_key"]:
-                    blade.patch_object_store_access_keys(
-                        names=[result.name],
-                        object_store_access_key=ObjectStoreAccessKey(enabled=False),
-                    )
+                    if CONTEXT_API_VERSION in api_version:
+                        blade.patch_object_store_access_keys(
+                            names=[result.name],
+                            object_store_access_key=ObjectStoreAccessKey(enabled=False),
+                            context_names=[module.params["context"]],
+                        )
+                    else:
+                        blade.patch_object_store_access_keys(
+                            names=[result.name],
+                            object_store_access_key=ObjectStoreAccessKey(enabled=False),
+                        )
                 s3user_facts["fb_s3user"] = {
                     "user": user,
                     "enabled": module.params["enable_key"],
@@ -314,20 +403,41 @@ def create_s3user(module, blade):
                 )
         else:
             if module.params["imported_key"]:
-                res = blade.post_object_store_access_keys(
-                    names=[module.params["imported_key"]],
-                    object_store_access_key=ObjectStoreAccessKeyPost(
-                        user={"name": user},
-                        secret_access_key=module.params["imported_secret"],
-                    ),
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.post_object_store_access_keys(
+                        names=[module.params["imported_key"]],
+                        object_store_access_key=ObjectStoreAccessKeyPost(
+                            user={"name": user},
+                            secret_access_key=module.params["imported_secret"],
+                        ),
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.post_object_store_access_keys(
+                        names=[module.params["imported_key"]],
+                        object_store_access_key=ObjectStoreAccessKeyPost(
+                            user={"name": user},
+                            secret_access_key=module.params["imported_secret"],
+                        ),
+                    )
                 if res.status_code == 200:
                     result = list(res.items)[0]
                     if not module.params["enable_key"]:
-                        blade.patch_object_store_access_keys(
-                            names=[result.name],
-                            object_store_access_key=ObjectStoreAccessKey(enabled=False),
-                        )
+                        if CONTEXT_API_VERSION in api_version:
+                            blade.patch_object_store_access_keys(
+                                names=[result.name],
+                                object_store_access_key=ObjectStoreAccessKey(
+                                    enabled=False
+                                ),
+                                context_names=[module.params["context"]],
+                            )
+                        else:
+                            blade.patch_object_store_access_keys(
+                                names=[result.name],
+                                object_store_access_key=ObjectStoreAccessKey(
+                                    enabled=False
+                                ),
+                            )
                 else:
                     delete_s3user(module, blade)
                     module.fail_json(
@@ -336,13 +446,17 @@ def create_s3user(module, blade):
                     )
         if module.params["policy"]:
             policy_list = module.params["policy"]
-            for policy in range(0, len(policy_list)):
-                if (
-                    blade.get_object_store_access_policies(
+            for policy in range(len(policy_list)):
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.get_object_store_access_policies(
+                        names=[policy_list[policy]],
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.get_object_store_access_policies(
                         names=[policy_list[policy]]
-                    ).status_code
-                    != 200
-                ):
+                    )
+                if res.status_code != 200:
                     module.warn(
                         "Policy {0} is not valid. Ignoring...".format(
                             policy_list[policy]
@@ -350,16 +464,33 @@ def create_s3user(module, blade):
                     )
                     policy_list.remove(policy_list[policy])
             username = module.params["account"] + "/" + module.params["name"]
-            for policy in range(0, len(policy_list)):
-                if not (
-                    blade.get_object_store_users_object_store_access_policies(
-                        member_names=[username], policy_names=[policy_list[policy]]
-                    ).items
-                ):
-                    res = blade.post_object_store_access_policies_object_store_users(
+            for policy in range(len(policy_list)):
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.get_object_store_users_object_store_access_policies(
                         member_names=[username],
                         policy_names=[policy_list[policy]],
+                        context_names=[module.params["context"]],
                     )
+                else:
+                    res = blade.get_object_store_users_object_store_access_policies(
+                        member_names=[username], policy_names=[policy_list[policy]]
+                    )
+                if not list(res.items):
+                    if CONTEXT_API_VERSION in api_version:
+                        res = (
+                            blade.post_object_store_access_policies_object_store_users(
+                                member_names=[username],
+                                policy_names=[policy_list[policy]],
+                                context_names=[module.params["context"]],
+                            )
+                        )
+                    else:
+                        res = (
+                            blade.post_object_store_access_policies_object_store_users(
+                                member_names=[username],
+                                policy_names=[policy_list[policy]],
+                            )
+                        )
                     if res.status_code != 200:
                         module.warn(
                             "Failed to add policy {0} to account user {1}. Error: {2}. Skipping...".format(
@@ -381,13 +512,25 @@ def create_s3user(module, blade):
 def remove_key(module, blade):
     """Remove Access Key from User"""
     changed = False
-    res = blade.get_object_store_access_keys(names=[module.params["key_name"]])
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_object_store_access_keys(
+            names=[module.params["key_name"]], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_object_store_access_keys(names=[module.params["key_name"]])
     if res.status_code == 200:
         changed = True
         if not module.check_mode:
-            res = blade.delete_object_store_access_keys(
-                names=[module.params["key_name"]]
-            )
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_object_store_access_keys(
+                    names=[module.params["key_name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_object_store_access_keys(
+                    names=[module.params["key_name"]]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete access key {0}. "
@@ -401,18 +544,34 @@ def remove_key(module, blade):
 def change_key(module, blade):
     """Change state of Access Key"""
     changed = False
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        res = blade.get_object_store_access_keys(names=[module.params["key_name"]])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.get_object_store_access_keys(
+                names=[module.params["key_name"]],
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.get_object_store_access_keys(names=[module.params["key_name"]])
         if res.status_code == 200:
             key = list(res.items)[0]
             if key.enabled != module.params["enable_key"]:
                 changed = True
-                res = blade.patch_object_store_access_keys(
-                    names=[module.params["key_name"]],
-                    object_store_access_key=ObjectStoreAccessKey(
-                        enabled=module.params["enable_key"]
-                    ),
-                )
+                if CONTEXT_API_VERSION in api_version:
+                    res = blade.patch_object_store_access_keys(
+                        names=[module.params["key_name"]],
+                        object_store_access_key=ObjectStoreAccessKey(
+                            enabled=module.params["enable_key"]
+                        ),
+                        context_names=[module.params["context"]],
+                    )
+                else:
+                    res = blade.patch_object_store_access_keys(
+                        names=[module.params["key_name"]],
+                        object_store_access_key=ObjectStoreAccessKey(
+                            enabled=module.params["enable_key"]
+                        ),
+                    )
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to change state of access key {0}. "
@@ -426,9 +585,15 @@ def change_key(module, blade):
 def delete_s3user(module, blade, internal=False):
     """Delete Object Store Account"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
-        res = blade.delete_object_store_users(names=[user])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.delete_object_store_users(
+                names=[user], context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.delete_object_store_users(names=[user])
         if res.status_code != 200:
             module.fail_json(
                 msg="Object Store Account {0}: Deletion failed".format(
@@ -457,6 +622,7 @@ def main():
                 default="present",
                 choices=["present", "absent", "remove_key", "keystate"],
             ),
+            context=dict(type="str", default=""),
         )
     )
 
