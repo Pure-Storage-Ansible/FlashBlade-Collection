@@ -112,7 +112,7 @@ def get_connected(module, blade):
         )
     else:
         connected_blades = list(blade.get_array_connection().items)
-    for target in range(0, len(connected_blades)):
+    for target in range(len(connected_blades)):
         if (
             connected_blades[target].remote.name == module.params["target"]
             or connected_blades[target].management_address == module.params["target"]
@@ -128,7 +128,7 @@ def get_connected(module, blade):
         )
     else:
         connected_targets = list(blade.get_targets().items)
-    for target in range(0, len(connected_targets)):
+    for target in range(len(connected_targets)):
         if connected_targets[target].name == module.params[
             "target"
         ] and connected_targets[target].status in [

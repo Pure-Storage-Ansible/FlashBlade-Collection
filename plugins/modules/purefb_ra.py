@@ -115,7 +115,7 @@ def test_ra(module, blade):
     """Test support/remote assist configuration"""
     test_response = []
     response = list(blade.get_support_test(test_type="remote-assist").items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:

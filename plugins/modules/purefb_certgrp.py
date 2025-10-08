@@ -152,9 +152,9 @@ def update_certgrp(module, blade):
                     )
     else:
         current = []
-        for cert in range(0, len(certs)):
+        for cert in range(len(certs)):
             current.append(certs[cert].member.name)
-        for new_cert in range(0, len(module.params["certificates"])):
+        for new_cert in range(len(module.params["certificates"])):
             certificate = module.params["certificates"][new_cert]
             if certificate in current:
                 if module.params["state"] == "absent":

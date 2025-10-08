@@ -1150,7 +1150,7 @@ def delete_smb_client_policy(module, blade):
                             )
             else:
                 rules = list(res.items)
-                for cli in range(0, len(rules)):
+                for cli in range(len(rules)):
                     if rules[cli].client == "*":
                         changed = True
                         if not module.check_mode:
@@ -1497,7 +1497,7 @@ def update_smb_client_policy(module, blade):
             cli_count = None
             done = False
             if module.params["client"] == "*":
-                for cli in range(0, len(rules)):
+                for cli in range(len(rules)):
                     if rules[cli].client == "*":
                         cli_count = cli
                 if not cli_count:
@@ -1763,7 +1763,7 @@ def delete_nfs_policy(module, blade):
                             )
             else:
                 rules = list(res.items)
-                for cli in range(0, len(rules)):
+                for cli in range(len(rules)):
                     if rules[cli].client == "*":
                         changed = True
                         if not module.check_mode:
@@ -1875,7 +1875,7 @@ def update_network_access_policy(module, blade):
             cli_count = None
             done = False
             if module.params["client"] == "*":
-                for cli in range(0, len(rules)):
+                for cli in range(len(rules)):
                     if rules[cli].client == "*":
                         cli_count = cli
                 if not cli_count:
@@ -2114,7 +2114,7 @@ def delete_network_access_policy(module, blade):
                             )
             else:
                 rules = list(res.items)
-                for cli in range(0, len(rules)):
+                for cli in range(len(rules)):
                     if rules[cli].client == "*":
                         changed = True
                         if not module.check_mode:
@@ -2409,7 +2409,7 @@ def update_nfs_policy(module, blade):
             cli_count = None
             done = False
             if module.params["client"] == "*":
-                for cli in range(0, len(rules)):
+                for cli in range(len(rules)):
                     if rules[cli].client == "*":
                         cli_count = cli
                 if not cli_count:
@@ -2828,7 +2828,7 @@ def delete_os_policy(module, blade):
             if module.params["force_delete"]:
                 changed = True
                 if not module.check_mode:
-                    for user in range(0, len(policy_users)):
+                    for user in range(len(policy_users)):
                         if CONTEXT_API_VERSION in versions:
                             res = blade.delete_object_store_access_policies_object_store_users(
                                 member_names=[policy_users[user].member.name],
@@ -3236,7 +3236,7 @@ def delete_snap_policy(module, blade):
             current_rules = list(
                 blade.get_policies(names=[module.params["name"]]).items
             )[0].rules
-        for rule in range(0, len(current_rules)):
+        for rule in range(len(current_rules)):
             current_rule = {
                 "at": current_rules[rule].at,
                 "every": current_rules[rule].every,
@@ -3511,7 +3511,7 @@ def update_snap_policy(module, blade):
             0
         ].rules
     create_new = False
-    for rule in range(0, len(current_rules)):
+    for rule in range(len(current_rules)):
         current_rule = {
             "at": current_rules[rule].at,
             "every": current_rules[rule].every,
@@ -3642,7 +3642,7 @@ def update_snap_policy(module, blade):
                     policy_names=[module.params["name"]]
                 ).items
             )
-        for member in range(0, len(policy_fs_details)):
+        for member in range(len(policy_fs_details)):
             current_filesystems.append(policy_fs_details[member].member.name)
         if module.params["state"] == "present":
             difference_set = [
@@ -3720,7 +3720,7 @@ def update_snap_policy(module, blade):
                     policy_names=[module.params["name"]]
                 ).items
             )
-        for member in range(0, len(policy_rl_details)):
+        for member in range(len(policy_rl_details)):
             current_rls.append(policy_rl_details[member].member.name)
         if module.params["state"] == "present":
             difference_set = [

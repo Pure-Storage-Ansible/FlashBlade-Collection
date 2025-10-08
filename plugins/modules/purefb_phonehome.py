@@ -94,7 +94,7 @@ def test_ph(module, blade):
     """Test phonehome configuration"""
     test_response = []
     response = list(blade.get_support_test(test_type="phonehome").items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:

@@ -280,7 +280,7 @@ def test_manager(module, blade):
     """Test SNMP manager configuration"""
     test_response = []
     response = list(blade.get_snmp_managers_test(names=[module.params["name"]]).items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:
@@ -349,7 +349,7 @@ def main():
 
     mgr_configured = False
     mgrs = list(blade.get_snmp_managers().items)
-    for mgr in range(0, len(mgrs)):
+    for mgr in range(len(mgrs)):
         if mgrs[mgr].name == module.params["name"]:
             mgr_configured = True
             break

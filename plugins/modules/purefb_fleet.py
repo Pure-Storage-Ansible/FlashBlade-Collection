@@ -213,7 +213,7 @@ def add_fleet_members(module, blade):
             )
     local_name = list(remote_system.get_arrays().items)[0].name
     members = list(blade.get_fleets_members().items)
-    for member in range(0, len(members)):
+    for member in range(len(members)):
         if members[member].member.name == local_name:
             existing = True
     if not existing:
@@ -276,7 +276,7 @@ def delete_fleet_members(module, blade):
         )
     local_name = list(remote_system.get_arrays().items)[0].name
     members = list(blade.get_fleets_members().items)
-    for member in range(0, len(members)):
+    for member in range(len(members)):
         if members[member].member.name == local_name:
             changed = True
             if not module.check_mode:

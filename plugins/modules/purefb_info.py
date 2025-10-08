@@ -484,7 +484,7 @@ def generate_subnet_dict(blade):
             }
             sub_info[sub_name]["lag"] = subnets[sub].link_aggregation_group.name
             sub_info[sub_name]["interfaces"] = []
-            for iface in range(0, len(subnets[sub].interfaces)):
+            for iface in range(len(subnets[sub].interfaces)):
                 sub_info[sub_name]["interfaces"].append(
                     {"name": subnets[sub].interfaces[iface].name}
                 )
@@ -502,7 +502,7 @@ def generate_lag_dict(blade):
             "status": groups[groupcnt].status,
         }
         lag_info[lag_name]["ports"] = []
-        for port in range(0, len(groups[groupcnt].ports)):
+        for port in range(len(groups[groupcnt].ports)):
             lag_info[lag_name]["ports"].append(
                 {"name": groups[groupcnt].ports[port].name}
             )
@@ -745,7 +745,7 @@ def generate_snap_transfer_dict(blade):
 def generate_array_conn_dict(blade):
     array_conn_info = {}
     arrays = list(blade.get_array_connections().items)
-    for arraycnt in range(0, len(arrays)):
+    for arraycnt in range(len(arrays)):
         array = arrays[arraycnt].remote.name
         array_conn_info[array] = {
             "encrypted": arrays[arraycnt].encrypted,
@@ -871,7 +871,7 @@ def generate_bucket_dict(blade):
             # skip processing buckets marked as destroyed
             continue
         all_rules = list(blade.get_lifecycle_rules(bucket_ids=[buckets[bckt].id]).items)
-        for rule in range(0, len(all_rules)):
+        for rule in range(len(all_rules)):
             bucket_name = all_rules[rule].bucket.name
             rule_id = all_rules[rule].rule_id
             if all_rules[rule].keep_previous_version_for:
@@ -1193,7 +1193,7 @@ def generate_object_store_accounts_dict(blade):
                         filter='user.name="' + acc_users[acc_user].name + '"'
                     ).items
                 )
-                for key in range(0, len(access_keys)):
+                for key in range(len(access_keys)):
                     account_info[acc_name]["users"][user_name]["keys"].append(
                         {
                             "name": access_keys[key].name,

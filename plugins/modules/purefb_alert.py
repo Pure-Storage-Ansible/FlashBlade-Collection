@@ -186,7 +186,7 @@ def test_alert(module, blade):
     response = list(
         blade.get_alert_watchers_test(names=[module.params["address"]]).items
     )
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:
@@ -246,7 +246,7 @@ def main():
             )
         )
     emails = list(res.items)
-    for email in range(0, len(emails)):
+    for email in range(len(emails)):
         if emails[email].name == module.params["address"]:
             exists = True
             break

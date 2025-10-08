@@ -129,7 +129,7 @@ def get_local_rl(module, blade):
 def _check_connected(module, blade):
     res = blade.get_array_connections()
     connected_blades = list(res.items)
-    for target in range(0, len(connected_blades)):
+    for target in range(len(connected_blades)):
         if (
             connected_blades[target].remote.name == module.params["target_array"]
             or connected_blades[target].management_address

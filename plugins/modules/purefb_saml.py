@@ -138,7 +138,7 @@ def test_saml(module, blade):
     """Test SAML2 IdP configuration"""
     test_response = []
     response = list(blade.get_sso_saml2_idps_test(names=[module.params["name"]]).items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:
