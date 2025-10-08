@@ -143,7 +143,7 @@ def create_subnet(module, blade):
         module.fail_json(msg="prefix is required for subnet creation")
     if not module.check_mode:
         if module.params["gateway"]:
-            res = blade.post__subnets(
+            res = blade.post_subnets(
                 names=[module.params["name"]],
                 subnet=Subnet(
                     prefix=module.params["prefix"],
