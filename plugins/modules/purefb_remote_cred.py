@@ -50,7 +50,14 @@ options:
     - Define whether to initialize the S3 bucket
     required: true
     type: str
-
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -93,10 +100,18 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
+CONTEXT_API_VERSION = "2.17"
+
 
 def get_connected(module, blade):
     """Return connected device or None"""
-    connected_blades = list(blade.get_array_connection().items)
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        connected_blades = list(
+            blade.get_array_connection(context_names=[module.params["context"]]).items
+        )
+    else:
+        connected_blades = list(blade.get_array_connection().items)
     for target in range(0, len(connected_blades)):
         if (
             connected_blades[target].remote.name == module.params["target"]
@@ -107,7 +122,12 @@ def get_connected(module, blade):
             "partially_connected",
         ]:
             return connected_blades[target].remote.name
-    connected_targets = list(blade.get_targets().items)
+    if CONTEXT_API_VERSION in api_version:
+        connected_targets = list(
+            blade.get_targets(context_names=[module.params["context"]]).items
+        )
+    else:
+        connected_targets = list(blade.get_targets().items)
     for target in range(0, len(connected_targets)):
         if connected_targets[target].name == module.params[
             "target"
@@ -122,9 +142,16 @@ def get_connected(module, blade):
 
 def get_remote_cred(module, blade):
     """Return Remote Credential or None"""
-    res = blade.get_object_store_remote_credentials(
-        names=[module.params["target"] + "/" + module.params["name"]]
-    )
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version:
+        res = blade.get_object_store_remote_credentials(
+            names=[module.params["target"] + "/" + module.params["name"]],
+            context_names=[module.params["context"]],
+        )
+    else:
+        res = blade.get_object_store_remote_credentials(
+            names=[module.params["target"] + "/" + module.params["name"]]
+        )
     if res.status_code == 200:
         return list(res.items)[0]
     return None
@@ -133,15 +160,23 @@ def get_remote_cred(module, blade):
 def create_credential(module, blade):
     """Create remote credential"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         remote_cred = module.params["target"] + "/" + module.params["name"]
         remote_credentials = ObjectStoreRemoteCredentialsPost(
             access_key_id=module.params["access_key"],
             secret_access_key=module.params["secret"],
         )
-        res = blade.post_object_store_remote_credentials(
-            names=[remote_cred], remote_credentials=remote_credentials
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_object_store_remote_credentials(
+                names=[remote_cred],
+                remote_credentials=remote_credentials,
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.post_object_store_remote_credentials(
+                names=[remote_cred], remote_credentials=remote_credentials
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create remote credential {0}. Error: {1}".format(
@@ -154,15 +189,23 @@ def create_credential(module, blade):
 def update_credential(module, blade):
     """Update remote credential"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         remote_cred = module.params["target"] + "/" + module.params["name"]
         new_attr = ObjectStoreRemoteCredentialsPatch(
             access_key_id=module.params["access_key"],
             secret_access_key=module.params["secret"],
         )
-        res = blade.patch_object_store_remote_credentials(
-            names=[remote_cred], remote_credentials=new_attr
-        )
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.patch_object_store_remote_credentials(
+                names=[remote_cred],
+                remote_credentials=new_attr,
+                context_names=[module.params["context"]],
+            )
+        else:
+            res = blade.patch_object_store_remote_credentials(
+                names=[remote_cred], remote_credentials=new_attr
+            )
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to update remote credential {0}. Error: {1}".format(
@@ -175,9 +218,15 @@ def update_credential(module, blade):
 def delete_credential(module, blade):
     """Delete remote credential"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
         remote_cred = module.params["target"] + "/" + module.params["name"]
-        res = blade.delete_object_store_remote_credentials(names=[remote_cred])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.delete_object_store_remote_credentials(
+                names=[remote_cred], context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.delete_object_store_remote_credentials(names=[remote_cred])
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete remote credential {0}. Error: {1}".format(
@@ -196,6 +245,7 @@ def main():
             access_key=dict(type="str", no_log=False),
             secret=dict(type="str", no_log=True),
             target=dict(type="str", required=True),
+            context=dict(type="str", default=""),
         )
     )
 
