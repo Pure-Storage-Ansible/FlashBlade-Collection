@@ -37,6 +37,14 @@ options:
     default: present
     choices: [ absent, present ]
     type: str
+  context:
+    description:
+    - Name of fleet member on which to perform the operation.
+    - This requires the array receiving the request is a member of a fleet
+      and the context name to be a member of the same fleet.
+    type: str
+    default: ""
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -65,19 +73,28 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-MIN_REQUIRED_API_VERSION = "2.0"
 MAX_HOST_COUNT = 10
+CONTEXT_API_VERSION = "2.17"
 
 
 def delete_host(module, blade):
     """Delete Object Store Virtual Host"""
     changed = False
+    api_version = list(blade.get_versions().items)
     if module.params["name"] == "s3.amazonaws.com":
         module.warn("s3.amazonaws.com is a reserved name and cannot be deleted")
     else:
         changed = True
         if not module.check_mode:
-            res = blade.delete_object_store_virtual_hosts(names=[module.params["name"]])
+            if CONTEXT_API_VERSION in api_version:
+                res = blade.delete_object_store_virtual_hosts(
+                    names=[module.params["name"]],
+                    context_names=[module.params["context"]],
+                )
+            else:
+                res = blade.delete_object_store_virtual_hosts(
+                    names=[module.params["name"]]
+                )
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete Object Store Virtual Host {0}".format(
@@ -90,8 +107,14 @@ def delete_host(module, blade):
 def add_host(module, blade):
     """Add Object Store Virtual Host"""
     changed = True
+    api_version = list(blade.get_versions().items)
     if not module.check_mode:
-        res = blade.post_object_store_virtual_hosts(names=[module.params["name"]])
+        if CONTEXT_API_VERSION in api_version:
+            res = blade.post_object_store_virtual_hosts(
+                names=[module.params["name"]], context_names=[module.params["context"]]
+            )
+        else:
+            res = blade.post_object_store_virtual_hosts(names=[module.params["name"]])
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to add Object Store Virtual Host {0}".format(
@@ -107,6 +130,7 @@ def main():
         dict(
             state=dict(type="str", default="present", choices=["absent", "present"]),
             name=dict(type="str", required=True),
+            context=dict(type="str", default=""),
         )
     )
 
@@ -114,20 +138,29 @@ def main():
 
     blade = get_system(module)
     api_version = list(blade.get_versions().items)
-
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="FlashBlade REST version not supported. "
-            "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
-        )
     state = module.params["state"]
 
-    exists = bool(
-        blade.get_object_store_virtual_hosts(names=[module.params["name"]]).status_code
-        == 200
-    )
-
-    if len(list(blade.get_object_store_virtual_hosts().items)) < MAX_HOST_COUNT:
+    if CONTEXT_API_VERSION in api_version:
+        exists = bool(
+            blade.get_object_store_virtual_hosts(
+                names=[module.params["name"]], context_names=[module.params["context"]]
+            ).status_code
+            == 200
+        )
+    else:
+        exists = bool(
+            blade.get_object_store_virtual_hosts(
+                names=[module.params["name"]]
+            ).status_code
+            == 200
+        )
+    if CONTEXT_API_VERSION in api_version:
+        vhosts = blade.get_object_store_virtual_hosts(
+            context_names=[module.params["context"]]
+        )
+    else:
+        vhosts = blade.get_object_store_virtual_hosts()
+    if vhosts.total_item_count < MAX_HOST_COUNT:
         if not exists and state == "present":
             add_host(module, blade)
         elif exists and state == "absent":
