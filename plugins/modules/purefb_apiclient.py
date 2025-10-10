@@ -103,7 +103,7 @@ RETURN = r"""
 
 HAS_PURESTORAGE = True
 try:
-    from pypureclient import flashblade
+    from pypureclient.flashblade import ApiClient, ApiClientsPost, ReferenceWritable
 except ImportError:
     HAS_PURESTORAGE = False
 
@@ -134,7 +134,7 @@ def update_client(module, blade, client):
         if not module.check_mode:
             res = blade.patch_api_clients(
                 names=[module.params["name"]],
-                api_clients=flashblade.ApiClient(enabled=module.params["enabled"]),
+                api_clients=ApiClient(enabled=module.params["enabled"]),
             )
             if res.status_code != 200:
                 module.fail_json(
@@ -146,6 +146,8 @@ def update_client(module, blade, client):
 def create_client(module, blade):
     """Create API Client"""
     changed = True
+    if not module.params["public_key"]:
+        module.fail_json(msg="public_key is required to create an API Client")
     if not 1 <= module.params["token_ttl"] <= 86400:
         module.fail_json(msg="token_ttl parameter is out of range (1 to 86400)")
     else:
@@ -153,8 +155,8 @@ def create_client(module, blade):
     if not module.params["issuer"]:
         module.params["issuer"] = module.params["name"]
     if not module.check_mode:
-        api_client = flashblade.ApiClientsPost(
-            max_role={"name": module.params["role"]},
+        api_client = ApiClientsPost(
+            max_role=ReferenceWritable(name=module.params["role"]),
             issuer=module.params["issuer"],
             access_token_ttl_in_ms=token_ttl,
             public_key=module.params["public_key"],
@@ -169,7 +171,7 @@ def create_client(module, blade):
                 )
             )
         if module.params["enabled"]:
-            attr = flashblade.ApiClient(enabled=True)
+            attr = ApiClient(enabled=True)
             res = blade.patch_api_clients(
                 api_clients=attr, names=[module.params["name"]]
             )

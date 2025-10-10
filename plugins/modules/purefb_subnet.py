@@ -128,9 +128,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 def get_subnet(module, blade):
     """Return Subnet or None"""
-    subnet = []
-    subnet.append(module.params["name"])
-    res = blade.subnets.get_subnets(names=subnet)
+    res = blade.get_subnets(names=[module.params["name"]])
     if res.status_code == 200:
         return list(res.items)[0]
     return None
@@ -212,7 +210,7 @@ def modify_subnet(module, blade):
         if module.params["gateway"] != subnet.gateway:
             changed = True
             if not module.check_mode:
-                res = blade.subnets.update_subnets(
+                res = blade.patch_subnets(
                     names=[module.params["name"]],
                     subnet=Subnet(gateway=module.params["gateway"]),
                 )
@@ -228,7 +226,7 @@ def modify_subnet(module, blade):
         if module.params["mtu"] != subnet.mtu:
             changed = True
             if not module.check_mode:
-                res = blade.subnets.update_subnets(
+                res = blade.patch_subnets(
                     names=[module.params["name"]],
                     subnet=Subnet(mtu=module.params["mtu"]),
                 )

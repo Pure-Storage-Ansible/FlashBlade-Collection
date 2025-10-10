@@ -124,6 +124,13 @@ options:
     - Name of file to contain Certificate Signing Request when `status sign`
     - Name of file to export the current SSL Certificate when `status export`
     - File will be overwritten if it already exists
+  key_algorithm:
+    type: str
+    description:
+    - The key algorithm used to generate the certificate.
+    - This field can only be specified when creating a new self-signed certificate
+    choices: [ rsa, ec, ed448, ed25519 ]
+    version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -182,7 +189,13 @@ RETURN = r"""
 
 HAS_PURESTORAGE = True
 try:
-    from pypureclient import flashblade
+    from pypureclient.flashblade import (
+        CertificatePost,
+        CertificateSigningRequestPost,
+        Reference,
+        Certificate,
+        CertificatePatch,
+    )
 except ImportError:
     HAS_PURESTORAGE = False
 
@@ -201,95 +214,134 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 
 
 CERT_TYPE_VERSION = "2.15"
+CSR_API_VERSION = "2.20"
 
 
 def update_cert(module, blade):
     """Update existing SSL Certificate"""
+    api_versions = list(blade.get_versions().items)
     changed = False
-    current_cert = list(blade.get_certificates(names=[module.params["name"]]).items)[0]
-    new_cert = current_cert
-    if module.params["common_name"] and module.params["common_name"] != getattr(
-        current_cert, "common_name", None
-    ):
-        new_cert.common_name = module.params["common_name"]
-    else:
-        new_cert.common_name = getattr(current_cert, "common_name", None)
-    if module.params["country"] and module.params["country"] != getattr(
-        current_cert, "country", None
-    ):
-        new_cert.country = module.params["country"]
-    else:
-        new_cert.country = getattr(current_cert, "country")
-    if module.params["email"] and module.params["email"] != getattr(
-        current_cert, "email", None
-    ):
-        new_cert.email = module.params["email"]
-    else:
-        new_cert.email = getattr(current_cert, "email", None)
-    if module.params["key_size"] and module.params["key_size"] != getattr(
-        current_cert, "key_size", None
-    ):
-        new_cert.key_size = module.params["key_size"]
-    else:
-        new_cert.key_size = getattr(current_cert, "key_size", None)
-    if module.params["locality"] and module.params["locality"] != getattr(
-        current_cert, "locality", None
-    ):
-        new_cert.locality = module.params["locality"]
-    else:
-        new_cert.locality = getattr(current_cert, "locality", None)
-    if module.params["province"] and module.params["province"] != getattr(
-        current_cert, "state", None
-    ):
-        new_cert.state = module.params["province"]
-    else:
-        new_cert.state = getattr(current_cert, "state", None)
-    if module.params["organization"] and module.params["organization"] != getattr(
-        current_cert, "organization", None
-    ):
-        new_cert.organization = module.params["organization"]
-    else:
-        new_cert.organization = getattr(current_cert, "organization", None)
-    if module.params["org_unit"] and module.params["org_unit"] != getattr(
-        current_cert, "organizational_unit", None
-    ):
-        new_cert.organizational_unit = module.params["org_unit"]
-    else:
-        new_cert.organizational_unit = getattr(
+    if CSR_API_VERSION in api_versions:
+        current_cert = list(
+            blade.get_certificates(names=[module.params["name"]]).items
+        )[0]
+        new_cert = current_cert
+        if module.params["certificate"] and module.params["certificate"] != getattr(
+            current_cert, "certificate", None
+        ):
+            new_cert.certificate = module.params["certificate"]
+        else:
+            new_cert.certificate = getattr(current_cert, "certificate", None)
+        if module.params["common_name"] and module.params["common_name"] != getattr(
+            current_cert, "common_name", None
+        ):
+            new_cert.common_name = module.params["common_name"]
+        else:
+            new_cert.common_name = getattr(current_cert, "common_name", None)
+        if module.params["country"] and module.params["country"] != getattr(
+            current_cert, "country", None
+        ):
+            new_cert.country = module.params["country"]
+        else:
+            new_cert.country = getattr(current_cert, "country")
+        if module.params["email"] and module.params["email"] != getattr(
+            current_cert, "email", None
+        ):
+            new_cert.email = module.params["email"]
+        else:
+            new_cert.email = getattr(current_cert, "email", None)
+        if module.params["key_size"] and module.params["key_size"] != getattr(
+            current_cert, "key_size", None
+        ):
+            new_cert.key_size = module.params["key_size"]
+        else:
+            new_cert.key_size = getattr(current_cert, "key_size", None)
+        if module.params["locality"] and module.params["locality"] != getattr(
+            current_cert, "locality", None
+        ):
+            new_cert.locality = module.params["locality"]
+        else:
+            new_cert.locality = getattr(current_cert, "locality", None)
+        if module.params["province"] and module.params["province"] != getattr(
+            current_cert, "state", None
+        ):
+            new_cert.state = module.params["province"]
+        else:
+            new_cert.state = getattr(current_cert, "state", None)
+        if module.params["organization"] and module.params["organization"] != getattr(
+            current_cert, "organization", None
+        ):
+            new_cert.organization = module.params["organization"]
+        else:
+            new_cert.organization = getattr(current_cert, "organization", None)
+        if module.params["org_unit"] and module.params["org_unit"] != getattr(
             current_cert, "organizational_unit", None
-        )
-    if new_cert != current_cert:
-        changed = True
-        certificate = flashblade.CertificatePost(
-            common_name=new_cert.common_name,
-            country=getattr(new_cert, "country", None),
-            email=getattr(new_cert, "email", None),
-            key_size=getattr(new_cert, "key_size", None),
-            locality=getattr(new_cert, "locality", None),
-            organization=getattr(new_cert, "organization", None),
-            organizational_unit=getattr(new_cert, "organizational_unit", None),
-            state=getattr(new_cert, "state", None),
-        )
-        if not module.check_mode:
-            res = blade.patch_certificates(
-                names=[module.params["name"]],
-                certificate=certificate,
-                generate_new_key=module.params["generate"],
+        ):
+            new_cert.organizational_unit = module.params["org_unit"]
+        else:
+            new_cert.organizational_unit = getattr(
+                current_cert, "organizational_unit", None
             )
-            if res.status_code != 200:
-                module.fail_json(
-                    msg="Updating existing SSL certificate {0} failed. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
-                    )
+        if module.params["key_algorithm"] and module.params["key_algorithm"] != getattr(
+            current_cert, "key_algorithm", None
+        ):
+            new_cert.key_algorithm = module.params["key_algorithm"]
+        else:
+            new_cert.key_algorithm = getattr(current_cert, "key_algorithm", None)
+        if new_cert != current_cert:
+            changed = True
+            certificate = CertificatePost(
+                certificate=new_cert.certificate,
+                certificate_type="array",
+                common_name=new_cert.common_name,
+                country=getattr(new_cert, "country", None),
+                email=getattr(new_cert, "email", None),
+                key_size=getattr(new_cert, "key_size", None),
+                locality=getattr(new_cert, "locality", None),
+                organization=getattr(new_cert, "organization", None),
+                organizational_unit=getattr(new_cert, "organizational_unit", None),
+                key_algorithm=getattr(new_cert, "key_algorithm", None),
+                state=getattr(new_cert, "state", None),
+                days=module.params["days"],
+            )
+            if not module.check_mode:
+                res = blade.patch_certificates(
+                    names=[module.params["name"]],
+                    certificate=certificate,
+                    generate_new_key=module.params["generate"],
                 )
-
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Updating existing SSL certificate {0} failed. Error: {1}".format(
+                            module.params["name"], res.errors[0].message
+                        )
+                    )
+    else:
+        changed = True
+        certificate = CertificatePatch(
+            certificate=module.params["certificate"],
+            intermeadiate_certificate=module.params["intermeadiate_cert"],
+            private_key=module.params["key"],
+            passphrase=module.params["passphrase"],
+        )
+        res = blade.patch_certificates(
+            names=[module.params["name"]], certificate=certificate
+        )
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Updating existing SSL certificate {0} failed. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
     module.exit_json(changed=changed)
 
 
 def create_cert(module, blade):
     changed = True
-    if CERT_TYPE_VERSION in list(blade.get_versions().items):
-        certificate = flashblade.CertificatePost(
+    api_versions = list(blade.get_versions().items)
+    if CERT_TYPE_VERSION in api_versions:
+        certificate = CertificatePost(
+            certificate=module.params["certificate"],
             certificate_type="array",
             common_name=module.params["common_name"],
             country=module.params["country"],
@@ -303,7 +355,9 @@ def create_cert(module, blade):
             days=module.params["days"],
         )
     else:
-        certificate = flashblade.CertificatePost(
+        certificate = CertificatePost(
+            certificate=module.params["certificate"],
+            certificate_type="array",
             common_name=module.params["common_name"],
             country=module.params["country"],
             email=module.params["email"],
@@ -349,13 +403,13 @@ def import_cert(module, blade):
     changed = True
     if not module.check_mode:
         if CERT_TYPE_VERSION in list(blade.get_versions().items):
-            certificate = flashblade.CertificatePost(
+            certificate = CertificatePost(
                 certificate_type="external",
                 certificate=module.params["certificate"],
                 status="imported",
             )
         else:
-            certificate = flashblade.CertificatePost(
+            certificate = CertificatePost(
                 certificate=module.params["certificate"],
                 intermediate_certificate=module.params["intermediate_cert"],
                 key_size=module.params["key_size"],
@@ -394,59 +448,41 @@ def create_csr(module, blade):
     Output the result to a specified file
     """
     changed = True
-    current_attr = list(blade.get_certificates(names=[module.params["name"]]).items)[0]
-    try:
-        if module.params["common_name"] and module.params["common_name"] != getattr(
-            current_attr, "common_name", None
-        ):
-            current_attr.common_name = module.params["common_name"]
-    except AttributeError:
-        pass
-    try:
-        if module.params["country"] and module.params["country"] != getattr(
-            current_attr, "country", None
-        ):
-            current_attr.country = module.params["country"]
-    except AttributeError:
-        pass
-    try:
-        if module.params["email"] and module.params["email"] != getattr(
-            current_attr, "email", None
-        ):
-            current_attr.email = module.params["email"]
-    except AttributeError:
-        pass
-    try:
-        if module.params["locality"] and module.params["locality"] != getattr(
-            current_attr, "locality", None
-        ):
-            current_attr.locality = module.params["locality"]
-    except AttributeError:
-        pass
-    try:
-        if module.params["province"] and module.params["province"] != getattr(
-            current_attr, "state", None
-        ):
-            current_attr.state = module.params["province"]
-    except AttributeError:
-        pass
-    try:
-        if module.params["organization"] and module.params["organization"] != getattr(
-            current_attr, "organization", None
-        ):
-            current_attr.organization = module.params["organization"]
-    except AttributeError:
-        pass
-    try:
-        if module.params["org_unit"] and module.params["org_unit"] != getattr(
-            current_attr, "organizational_unit", None
-        ):
-            current_attr.organizational_unit = module.params["org_unit"]
-    except AttributeError:
-        pass
+    current_attr = Certificate()
+    res = blade.get_certificates(names=[module.params["name"]])
+    if res.status_code == 200:
+        current_attr = list(res.items)[0]
+    if module.params["common_name"] and module.params["common_name"] != getattr(
+        current_attr, "common_name", None
+    ):
+        current_attr.common_name = module.params["common_name"]
+    if module.params["country"] and module.params["country"] != getattr(
+        current_attr, "country", None
+    ):
+        current_attr.country = module.params["country"]
+    if module.params["email"] and module.params["email"] != getattr(
+        current_attr, "email", None
+    ):
+        current_attr.email = module.params["email"]
+    if module.params["locality"] and module.params["locality"] != getattr(
+        current_attr, "locality", None
+    ):
+        current_attr.locality = module.params["locality"]
+    if module.params["province"] and module.params["province"] != getattr(
+        current_attr, "state", None
+    ):
+        current_attr.state = module.params["province"]
+    if module.params["organization"] and module.params["organization"] != getattr(
+        current_attr, "organization", None
+    ):
+        current_attr.organization = module.params["organization"]
+    if module.params["org_unit"] and module.params["org_unit"] != getattr(
+        current_attr, "organizational_unit", None
+    ):
+        current_attr.organizational_unit = module.params["org_unit"]
     if not module.check_mode:
-        certificate = flashblade.CertificateSigningRequestPost(
-            certificate={"name": module.params["name"]},
+        certificate = CertificateSigningRequestPost(
+            certificate=Reference(name=module.params["name"]),
             common_name=getattr(current_attr, "common_name", None),
             country=getattr(current_attr, "country", None),
             email=getattr(current_attr, "email", None),
@@ -492,6 +528,7 @@ def main():
             export_file=dict(type="str"),
             passphrase=dict(type="str", no_log=True),
             days=dict(type="int", default=3650),
+            key_algorithm=dict(type="str", choices=["rsa", "ec", "ed448", "ed25519"]),
         )
     )
 
@@ -517,6 +554,7 @@ def main():
 
     email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     blade = get_system(module)
+    api_versions = list(blade.get_versions().items)
 
     if module.params["email"]:
         if not re.search(email_pattern, module.params["email"]):
@@ -547,6 +585,8 @@ def main():
     elif exists and state == "present":
         update_cert(module, blade)
     elif state == "sign":
+        if CSR_API_VERSION not in api_versions:
+            module.fail_json(msg="Purity//FB 4.6.3+ is required for CSRs")
         create_csr(module, blade)
     elif not exists and state == "import":
         import_cert(module, blade)

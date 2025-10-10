@@ -272,8 +272,8 @@ def update_ds(module, blade):
     changed = False
     password_required = False
     attr = {}
-    res = blade.get_directory_services(names=[module.params["dstype"]]).items[0]
-    if res.statas_code != 200:
+    res = blade.get_directory_services(names=[module.params["dstype"]])
+    if res.status_code != 200:
         module.fail_json(
             msg="Fetch {0} Directory Service failed. Error: {1}".format(
                 module.params["dstype"], res.errors[0].message
@@ -480,8 +480,8 @@ def main():
     ds_configured = False
     res = blade.get_directory_services(names=[module.params["dstype"]])
     ds_configured = False
-    if res.status_code != 200:
-        ds_configured = False
+    if res.status_code == 200:
+        ds_configured = True
     dirserv = list(res.items)[0]
     ds_enabled = dirserv.enabled
     ldap_uri = False
