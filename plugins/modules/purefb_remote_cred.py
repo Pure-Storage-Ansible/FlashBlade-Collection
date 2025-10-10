@@ -108,10 +108,10 @@ def get_connected(module, blade):
     api_version = list(blade.get_versions().items)
     if CONTEXT_API_VERSION in api_version:
         connected_blades = list(
-            blade.get_array_connection(context_names=[module.params["context"]]).items
+            blade.get_array_connections(context_names=[module.params["context"]]).items
         )
     else:
-        connected_blades = list(blade.get_array_connection().items)
+        connected_blades = list(blade.get_array_connections().items)
     for target in range(len(connected_blades)):
         if (
             connected_blades[target].remote.name == module.params["target"]

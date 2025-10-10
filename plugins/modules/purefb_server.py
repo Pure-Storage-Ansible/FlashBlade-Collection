@@ -204,7 +204,7 @@ def main():
         )
     state = module.params["state"]
 
-    exists = bool(blade.get_servers(names=[module.params["name"]]).total_item_count > 0)
+    exists = bool(blade.get_servers(names=[module.params["name"]]).status_code == 200)
 
     if not exists and state == "present":
         add_server(module, blade)

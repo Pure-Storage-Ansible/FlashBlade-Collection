@@ -718,7 +718,7 @@ def modify_fs(module, blade):
         "writable": fsys.writable,
         "promotion_status": fsys.promotion_status,
         "requested_promotion_state": fsys.requested_promotion_state,
-        "storage_class": fsys.get("storage_class", {}).get("name"),
+        "storage_class": getattr(getattr(fsys, "storage_class", None), "name", None),
     }
     if fsys.destroyed:
         new_fsys["destroyed"] = False
@@ -799,13 +799,24 @@ def modify_fs(module, blade):
         changed = True
         if not module.check_mode:
             if CONTEXT_API_VERSION in api_version:
+                if new_fsys["destroyed"] != fsys.destroyed:
+                    delres = blade.patch_file_systems(
+                        names=module.params["name"],
+                        context_names=[module.params["context"]],
+                        file_system=FileSystemPatch(destroyed=new_fsys["destroyed"]),
+                    )
+                    if delres.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to update filesystem {0} deleted status. Error {1}".format(
+                                module.params["name"], res.errors[0].message
+                            )
+                        )
                 res = blade.patch_file_systems(
                     names=module.params["name"],
                     context_names=[module.params["context"]],
                     file_system=FileSystemPatch(
                         default_group_quota=new_fsys["default_group_quota"],
                         default_user_quota=new_fsys["default_user_quota"],
-                        destroyed=new_fsys["destroyed"],
                         fast_remove_directory_enabled=new_fsys["fastremove"],
                         hard_limit_enabled=new_fsys["hardlimit"],
                         http=Http(enabled=new_fsys["http"]),
@@ -827,12 +838,22 @@ def modify_fs(module, blade):
                     ignore_usage=module.params["ignore_usage"],
                 )
             else:
+                if new_fsys["destroyed"] != fsys.destroyed:
+                    delres = blade.patch_file_systems(
+                        names=module.params["name"],
+                        file_system=FileSystemPatch(destroyed=new_fsys["destroyed"]),
+                    )
+                    if delres.status_code != 200:
+                        module.fail_json(
+                            msg="Failed to update filesystem {0} deleted status. Error {1}".format(
+                                module.params["name"], res.errors[0].message
+                            )
+                        )
                 res = blade.patch_file_systems(
                     names=module.params["name"],
                     file_system=FileSystemPatch(
                         default_group_quota=new_fsys["default_group_quota"],
                         default_user_quota=new_fsys["default_user_quota"],
-                        destroyed=new_fsys["destroyed"],
                         fast_remove_directory_enabled=new_fsys["fastremove"],
                         hard_limit_enabled=new_fsys["hardlimit"],
                         http=Http(enabled=new_fsys["http"]),
@@ -1081,7 +1102,7 @@ def delete_fs(module, blade):
     changed = True
     if not module.check_mode:
         res = blade.patch_file_systems(
-            name=module.params["name"],
+            names=[module.params["name"]],
             file_system=FileSystemPatch(
                 nfs=NfsPatch(v3_enabled=False, v4_1_enabled=False),
                 smb=Smb(enabled=False),
@@ -1097,7 +1118,7 @@ def delete_fs(module, blade):
                 )
             )
         if module.params["eradicate"]:
-            res = blade.delete_file_systems(name=module.params["name"])
+            res = blade.delete_file_systems(names=[module.params["name"]])
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to eradicate filesystem {0}. Error: {1}".format(
@@ -1111,7 +1132,7 @@ def eradicate_fs(module, blade):
     """Eradicate Filesystem"""
     changed = True
     if not module.check_mode:
-        res = blade.delete_file_systems(name=module.params["name"])
+        res = blade.delete_file_systems(names=[module.params["name"]])
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to eradicate filesystem {0}. Error: {1}".format(

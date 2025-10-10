@@ -177,7 +177,7 @@ def get_quota(module, blade):
                 file_system_names=[module.params["name"]],
                 filter="group.name='" + module.params["gname"] + "'",
             )
-    if res.status_code == 200:
+    if res.status_code == 200 and res.total_item_count != 0:
         return list(res.items)[0]
     return None
 
@@ -268,7 +268,7 @@ def update_quota(module, blade):
                             quota=int(human_to_bytes(module.params["quota"]))
                         ),
                     )
-                if res.sttaus_code != 200:
+                if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
                             module.params["gid"],

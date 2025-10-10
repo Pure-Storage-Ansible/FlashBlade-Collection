@@ -225,7 +225,10 @@ def main():
     blade = get_system(module)
 
     if not module.params["prefix"]:
-        module.params["prefix"] = list(blade.get_active_directory().items)[0].name
+        res = blade.get_active_directory()
+        if res.total_item_count == 0:
+            module.fail_json(msg="No active directory configred to provide prefix")
+        module.params["prefix"] = list(res.items)[0].name
 
     if state == "import":
         import_keytab(module, blade)
