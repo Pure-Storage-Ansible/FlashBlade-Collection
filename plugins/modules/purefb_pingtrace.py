@@ -118,6 +118,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+import re
 
 MIN_REQUIRED_API_VERSION = "2.6"
 
@@ -128,7 +129,7 @@ def run_ping(module, blade):
     if module.params["source"] and module.params["component"]:
         res = blade.get_network_interfaces_ping(
             destination=module.params["destination"],
-            component=module.params["component"],
+            component_name=module.params["component"],
             source=module.params["source"],
             packet_size=module.params["packet_size"],
             count=module.params["count"],
@@ -147,7 +148,7 @@ def run_ping(module, blade):
     elif not module.params["source"] and module.params["component"]:
         res = blade.get_network_interfaces_ping(
             destination=module.params["destination"],
-            component=module.params["component"],
+            component_name=module.params["component"],
             packet_size=module.params["packet_size"],
             count=module.params["count"],
             print_latency=module.params["latency"],
@@ -167,9 +168,22 @@ def run_ping(module, blade):
         )
     else:
         responses = list(res.items)
-        for resp in range(0, len(responses)):
+        for resp in range(len(responses)):
+            transmitted, received, packet_loss, time_ms = map(
+                int,
+                re.search(
+                    r"(\d+) packets transmitted, (\d+) received, (\d+)% packet loss, time (\d+)ms",
+                    responses[resp].details,
+                ).groups(),
+            )
             comp_name = responses[resp].component_name.replace(".", "_")
             ping_fact[comp_name] = {
+                "destination": module.params["destination"],
+                "source": module.params["source"],
+                "packet_loss": str(packet_loss) + "%",
+                "packet_tx": transmitted,
+                "packet_rx": received,
+                "time": str(time_ms) + "ms",
                 "details": responses[resp].details,
             }
 
@@ -183,7 +197,7 @@ def run_trace(module, blade):
         res = blade.get_network_interfaces_trace(
             port=module.params["port"],
             destination=module.params["destination"],
-            component=module.params["component"],
+            component_name=module.params["component"],
             discover_mtu=module.params["discover_mtu"],
             source=module.params["source"],
             fragment_packet=module.params["fragment"],
@@ -205,7 +219,7 @@ def run_trace(module, blade):
             port=module.params["port"],
             destination=module.params["destination"],
             discover_mtu=module.params["discover_mtu"],
-            component=module.params["component"],
+            component_name=module.params["component"],
             fragment_packet=module.params["fragment"],
             method=module.params["method"],
             resolve_hostname=module.params["resolve"],
@@ -225,7 +239,7 @@ def run_trace(module, blade):
         )
     else:
         responses = list(res.items)
-        for resp in range(0, len(responses)):
+        for resp in range(len(responses)):
             comp_name = responses[resp].component_name.replace(".", "_")
             trace_fact[comp_name] = {
                 "details": responses[resp].details,
