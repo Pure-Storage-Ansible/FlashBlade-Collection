@@ -385,6 +385,114 @@ releases:
     release_date: '2025-09-02'
   1.21.2:
     release_date: '2025-09-09'
+  1.22.0:
+    changes:
+      minor_changes:
+      - module_utils/purefb - Remove `get_blade()` function as not required for REST
+        v2
+      - purefb_admin - Remove references to unsupported API versions
+      - purefb_alert - Add new ``state`` of ``test`` to check alert manager configuration
+      - purefb_alert - Upgraded to REST v2
+      - purefb_banner - Upgraded to REST v2
+      - purefb_bladename - Upgraded to REST v2
+      - purefb_bucket - Added Fusion support
+      - purefb_bucket - Updated to REST v2
+      - purefb_bucket_access - Fusion support added
+      - purefb_bucket_replica - Add Fusion support
+      - purefb_bucket_replica - Upgraded to REST v2
+      - purefb_certgrp - Upgraded to REST v2
+      - purefb_connect - Added Fusion support
+      - purefb_connect - Remove references to unsupported API versions
+      - purefb_connect - Upgraded to REST v2
+      - purefb_ds - Added new state of ``test`` to enable directory services to run
+        diagnostics test
+      - purefb_ds - Updated to REST v2
+      - purefb_dsrole - Upgraded to REST v2
+      - purefb_eula - Converted to REST v2
+      - purefb_fs - Added support for Fusion
+      - purefb_fs - Upgraded to use REST 2
+      - purefb_fs_replica - Upgraded to REST v2
+      - purefb_groupquota - Fusion support added
+      - purefb_groupquota - Upgraded to REST v2
+      - purefb_info - Upgraded to REST v2
+      - purefb_inventory - Upgraded to REST v2
+      - purefb_lifecycle - Fusion support added
+      - purefb_lifecycle - Upgraded to REST v2
+      - purefb_network - Upgraded to REST v2
+      - purefb_ntp - Upgraded to REST v2
+      - purefb_phonehome - Add new ``state`` of ``test`` to check phonehome configuration
+      - purefb_phonehome - Upgrwded to REST v2
+      - purefb_pingtrace - Ehanced JSON response for ping
+      - purefb_policy - Add Fusion support
+      - purefb_policy - Remove references to unsupported API versions
+      - purefb_policy - Upgraded to REST v2
+      - purefb_ra - Add new ``state`` of ``test`` to check remote support configuration
+      - purefb_remote_cred - Fusion support added
+      - purefb_remote_cred - Upgraded to REST v2
+      - purefb_s3acc - Fusion support added
+      - purefb_s3acc - Remove references to unsupported API versions
+      - purefb_s3user - Fusion support added
+      - purefb_snamp_agent - Upgraded to REST v2
+      - purefb_snap - Fusion support added
+      - purefb_snap - Upgraded to REST v2
+      - purefb_snmp_mgr - Add new ``state`` of ``test`` to check SNMP manager configuration
+      - purefb_snmp_mgr - Upgraded to REST v2
+      - purefb_subnet - Upgraded to REST v2
+      - purefb_syslog - Converted to REST v2
+      - purefb_target - Upgraded to REST v2
+      - purefb_userpolicy - Fusion support added
+      - purefb_userquota - Added Fusion support
+      - purefb_userquota - Upgraded to REST v2
+      - purefb_virtualhost - Fusion support added
+    fragments:
+    - 393_fs_rest2_fusion.yaml
+    - 394_bucketv2.yaml
+    - 395_eula_v2.yaml
+    - 396_syslog_v2.yaml
+    - 400_policy_v2.yaml
+    - 401_bucket_replica_v2.yaml
+    - 402_alert_v2.yaml
+    - 403_banner_v2.yaml
+    - 404_bladename_v2.yaml
+    - 405_certgrp_v2.yaml
+    - 406_connect_v2.yaml
+    - 407_userquota_v2.yaml
+    - 408_target_v2.yaml
+    - 411_ds_v2.yaml
+    - 412_dsrole_v2.yaml
+    - 413_fsreplica_rest2.yaml
+    - 414_grpq_rest2.yaml
+    - 415_lifecycle_v2.yaml
+    - 416_api_remove.yaml
+    - 417_network_v2.yaml
+    - 418_ntp_v2.yaml
+    - 419_phonehome_v2.yaml
+    - 420_remote_cred_v2.yaml
+    - 421_snap_v2.yaml
+    - 422_snmp_agent_v2.yaml
+    - 423_snmp_mgr_v2.yaml
+    - 426_subnet_v2.yaml
+    - 427_ds_test.yaml
+    - 428_multi_test.yaml
+    - 430_info_v2.yaml
+    - 431_rest2_cleanup.yaml
+    - 433_connect_fusion.yaml
+    - 434_fusion_bucket_access.yaml
+    - 435_grpquota_fusion.yaml
+    - 436_fusion_lifecycle.yaml
+    - 437_pingtrace_response.yaml
+    - 438_rem_cred_fusion.yaml
+    - 439_s3acc_fusion.yaml
+    - 440_s3user_fusion.yaml
+    - 441_snap_fusion.yaml
+    - 442_userpolicy_fusion.yaml
+    - 443_vhost_fusion.yaml
+    - 798_inv_v2.yaml
+    modules:
+    - description: Manage FlashBlade KMIP server objects
+      name: purefb_kmip
+      namespace: ''
+    release_date: '2025-10-10'
   1.3.0:
     changes:
       bugfixes:

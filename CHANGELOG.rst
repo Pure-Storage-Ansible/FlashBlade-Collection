@@ -4,6 +4,72 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.22.0
+=======
+
+Minor Changes
+-------------
+
+- module_utils/purefb - Remove `get_blade()` function as not required for REST v2
+- purefb_admin - Remove references to unsupported API versions
+- purefb_alert - Add new ``state`` of ``test`` to check alert manager configuration
+- purefb_alert - Upgraded to REST v2
+- purefb_banner - Upgraded to REST v2
+- purefb_bladename - Upgraded to REST v2
+- purefb_bucket - Added Fusion support
+- purefb_bucket - Updated to REST v2
+- purefb_bucket_access - Fusion support added
+- purefb_bucket_replica - Add Fusion support
+- purefb_bucket_replica - Upgraded to REST v2
+- purefb_certgrp - Upgraded to REST v2
+- purefb_connect - Added Fusion support
+- purefb_connect - Remove references to unsupported API versions
+- purefb_connect - Upgraded to REST v2
+- purefb_ds - Added new state of ``test`` to enable directory services to run diagnostics test
+- purefb_ds - Updated to REST v2
+- purefb_dsrole - Upgraded to REST v2
+- purefb_eula - Converted to REST v2
+- purefb_fs - Added support for Fusion
+- purefb_fs - Upgraded to use REST 2
+- purefb_fs_replica - Upgraded to REST v2
+- purefb_groupquota - Fusion support added
+- purefb_groupquota - Upgraded to REST v2
+- purefb_info - Upgraded to REST v2
+- purefb_inventory - Upgraded to REST v2
+- purefb_lifecycle - Fusion support added
+- purefb_lifecycle - Upgraded to REST v2
+- purefb_network - Upgraded to REST v2
+- purefb_ntp - Upgraded to REST v2
+- purefb_phonehome - Add new ``state`` of ``test`` to check phonehome configuration
+- purefb_phonehome - Upgrwded to REST v2
+- purefb_pingtrace - Ehanced JSON response for ping
+- purefb_policy - Add Fusion support
+- purefb_policy - Remove references to unsupported API versions
+- purefb_policy - Upgraded to REST v2
+- purefb_ra - Add new ``state`` of ``test`` to check remote support configuration
+- purefb_remote_cred - Fusion support added
+- purefb_remote_cred - Upgraded to REST v2
+- purefb_s3acc - Fusion support added
+- purefb_s3acc - Remove references to unsupported API versions
+- purefb_s3user - Fusion support added
+- purefb_snamp_agent - Upgraded to REST v2
+- purefb_snap - Fusion support added
+- purefb_snap - Upgraded to REST v2
+- purefb_snmp_mgr - Add new ``state`` of ``test`` to check SNMP manager configuration
+- purefb_snmp_mgr - Upgraded to REST v2
+- purefb_subnet - Upgraded to REST v2
+- purefb_syslog - Converted to REST v2
+- purefb_target - Upgraded to REST v2
+- purefb_userpolicy - Fusion support added
+- purefb_userquota - Added Fusion support
+- purefb_userquota - Upgraded to REST v2
+- purefb_virtualhost - Fusion support added
+
+New Modules
+-----------
+
+- purestorage.flashblade.purefb_kmip - Manage FlashBlade KMIP server objects
+
 v1.21.2
 =======
 
