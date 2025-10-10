@@ -74,7 +74,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-MIN_REQUIRED_API_VERSION = "2.0"
 ALLOWED_PERIODS = ["h", "d", "w", "y"]
 # Time periods in micro-seconds
 HOUR = 3600000
@@ -116,13 +115,7 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
     time_now = int(time.time() * 1000)
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
 
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="FlashBlade REST version not supported. "
-            "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
-        )
     if module.params["history"][-1].lower() not in ALLOWED_PERIODS:
         module.fail_json(msg="historical window value is not an allowsd time period")
     since_time = str(time_now - _create_time_window(module.params["history"].lower()))
@@ -139,7 +132,7 @@ def main():
             multi_sev = True
     if multi_sev:
         severity = " and ("
-        for level in range(0, len(module.params["severity"])):
+        for level in range(len(module.params["severity"])):
             severity += "severity='" + str(module.params["severity"][level]) + "' or "
         severity = severity[0:-4] + ")"
     else:
@@ -159,7 +152,7 @@ def main():
             msg="Failed to get alert messages. Error: {0}".format(res.errors[0].message)
         )
     alerts = list(res.items)
-    for message in range(0, len(alerts)):
+    for message in range(len(alerts)):
         name = alerts[message].name
         messages[name] = {
             "summary": alerts[message].summary,

@@ -93,7 +93,7 @@ def delete_ntp(module, blade):
     changed = True
     if not module.check_mode:
         if list(blade.get_arrays().items)[0].ntp_servers != []:
-            res = blade.patch_arrays(array_settings=Array(ntp_servers=[]))
+            res = blade.patch_arrays(array=Array(ntp_servers=[]))
             if res.status_code != 200:
                 module.fail_json(
                     msg="Deletion of NTP servers failed. Error: {0}".format(
@@ -110,7 +110,7 @@ def create_ntp(module, blade):
         if not module.params["ntp_servers"]:
             module.params["ntp_servers"] = ["0.pool.ntp.org"]
         res = blade.patch_arrays(
-            array_settings=Array(ntp_servers=module.params["ntp_servers"][0:4])
+            array=Array(ntp_servers=module.params["ntp_servers"][0:4])
         )
         if res.status_code != 200:
             module.fail_json(

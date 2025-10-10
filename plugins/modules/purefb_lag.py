@@ -109,8 +109,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-MIN_REQUIRED_API_VERSION = "2.0"
-
 
 def delete_lag(module, blade):
     """Delete Link Aggregation Group"""
@@ -135,9 +133,9 @@ def update_lag(module, blade):
     current_lag = list(
         blade.get_link_aggregation_groups(names=[module.params["name"]]).items
     )[0]
-    for port in range(0, len(current_lag.ports)):
+    for port in range(len(current_lag.ports)):
         used_ports.append(current_lag.ports[port].name)
-    for lag_port in range(0, len(module.params["ports"]), 2):
+    for lag_port in range(len(module.params["ports"]), 2):
         if (
             not (
                 module.params["ports"][lag_port].split(".")[0].upper()
@@ -147,10 +145,10 @@ def update_lag(module, blade):
             in used_ports
         ):
             current_lags = list(blade.get_link_aggregation_groups().items)
-            for lag in range(0, len(current_lags)):
-                for port in range(0, len(current_lags[lag].ports)):
+            for lag in range(len(current_lags)):
+                for port in range(len(current_lags[lag].ports)):
                     current_ports.append(current_lags[lag].ports[port].name)
-            for current_lag_port in range(0, len(current_ports)):
+            for current_lag_port in range(len(current_ports)):
                 if (
                     module.params["ports"][current_lag_port].split(".")[0].upper()
                     + ".FM1."
@@ -162,7 +160,7 @@ def update_lag(module, blade):
                         )
                     )
     new_ports = []
-    for port in range(0, len(module.params["ports"])):
+    for port in range(len(module.params["ports"])):
         if module.params["ports"][port].split(".")[0].upper()[0] != "X":
             new_ports.append(
                 module.params["ports"][port].split(".")[0].upper()
@@ -177,7 +175,7 @@ def update_lag(module, blade):
         else:
             new_ports.append(module.params["ports"][port].upper())
     ports = []
-    for final_port in range(0, len(new_ports)):
+    for final_port in range(len(new_ports)):
         ports.append(flashblade.Reference(name=new_ports[final_port]))
     link_aggregation_group = flashblade.LinkAggregationGroup(ports=[])
     link_aggregation_group["ports"] = ports
@@ -212,10 +210,10 @@ def create_lag(module, blade):
     used_ports = []
     lagfact = []
     current_lags = list(blade.get_link_aggregation_groups().items)
-    for lag in range(0, len(current_lags)):
-        for port in range(0, len(current_lags[lag].ports)):
+    for lag in range(len(current_lags)):
+        for port in range(len(current_lags[lag].ports)):
             used_ports.append(current_lags[lag].ports[port].name)
-    for lag_port in range(0, len(module.params["ports"])):
+    for lag_port in range(len(module.params["ports"])):
         if (
             module.params["ports"][lag_port].split(".")[0].upper()
             + ".FM1."
@@ -227,7 +225,7 @@ def create_lag(module, blade):
                 )
             )
     new_ports = []
-    for new_port in range(0, len(module.params["ports"])):
+    for new_port in range(len(module.params["ports"])):
         new_ports.append(
             module.params["ports"][new_port].split(".")[0].upper()
             + ".FM1."
@@ -240,7 +238,7 @@ def create_lag(module, blade):
         )
     ports = []
     module.warn("new_ports: {0}".format(new_ports))
-    for final_port in range(0, len(new_ports)):
+    for final_port in range(len(new_ports)):
         ports.append(flashblade.FixedReference(name=new_ports[final_port]))
     link_aggregation_group = flashblade.LinkAggregationGroup(ports=ports)
     module.warn("LAG: {0}".format(link_aggregation_group))
@@ -286,13 +284,6 @@ def main():
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="FlashBlade REST version not supported. "
-            "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
-        )
     state = module.params["state"]
 
     exists = bool(

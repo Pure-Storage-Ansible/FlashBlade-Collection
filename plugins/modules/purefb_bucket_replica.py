@@ -169,7 +169,7 @@ def get_local_rl(module, blade):
         )
     else:
         res = blade.get_bucket_replica_links(local_bucket_names=[module.params["name"]])
-    if res.status_code == 200:
+    if res.status_code == 200 and res.total_item_count != 0:
         return res.items[0]
     return None
 
@@ -182,11 +182,9 @@ def get_connected(module, blade):
         )
     else:
         connected_blades = blade.get_array_connections()
-    for target in range(0, len(connected_blades.items)):
+    for target in range(connected_blades.total_item_count):
         if (
-            connected_blades.items[target].remote.name == module.params["target"]
-            or connected_blades.items[target].management_address
-            == module.params["target"]
+            list(connected_blades.items)[target].remote.name == module.params["target"]
         ) and connected_blades.items[target].status in [
             "connected",
             "connecting",
@@ -197,15 +195,15 @@ def get_connected(module, blade):
         connected_targets = blade.get_targets(context_names=[module.params["context"]])
     else:
         connected_targets = blade.get_targets()
-    for target in range(0, len(connected_targets.items)):
-        if connected_targets.items[target].name == module.params[
+    for target in range(connected_targets.total_item_count):
+        if list(connected_targets.items)[target].name == module.params[
             "target"
-        ] and connected_targets.items[target].status in [
+        ] and list(connected_targets.items)[target].status in [
             "connected",
             "connecting",
             "partially_connected",
         ]:
-            return connected_targets.items[target].name
+            return list(connected_targets.items)[target].name
     return None
 
 
@@ -305,14 +303,14 @@ def delete_rl_policy(module, blade, local_replica_link):
     changed = True
     if not module.check_mode:
         if CONTEXT_API_VERSION in api_version:
-            res = blade.bucket_replica_links.delete_bucket_replica_links(
+            res = blade.delete_bucket_replica_links(
                 remote_names=[local_replica_link.remote.name],
                 local_bucket_names=[module.params["name"]],
                 remote_bucket_names=[local_replica_link.remote_bucket.name],
                 context_names=[module.params["context"]],
             )
         else:
-            res = blade.bucket_replica_links.delete_bucket_replica_links(
+            res = blade.delete_bucket_replica_links(
                 remote_names=[local_replica_link.remote.name],
                 local_bucket_names=[module.params["name"]],
                 remote_bucket_names=[local_replica_link.remote_bucket.name],

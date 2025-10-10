@@ -138,7 +138,7 @@ def test_saml(module, blade):
     """Test SAML2 IdP configuration"""
     test_response = []
     response = list(blade.get_sso_saml2_idps_test(names=[module.params["name"]]).items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:
@@ -247,12 +247,16 @@ def update_saml(module, blade):
     }
     if old_idp != new_idp:
         changed = True
+        decrypt = None
+        signing = None
         if not module.check_mode:
+            if new_idp["sp_decrypt_cred"]:
+                decrypt = ReferenceWriteable(name=new_idp["sp_decrypt_cred"])
+            if new_idp["sp_sign_cred"]:
+                decrypt = ReferenceWriteable(name=new_idp["sp_sign_cred"])
             sp = Saml2SsoSp(
-                decryption_credential=ReferenceWriteable(
-                    name=new_idp["sp_decrypt_cred"]
-                ),
-                signing_credential=ReferenceWriteable(name=new_idp["sp_sign_cred"]),
+                decryption_credential=decrypt,
+                signing_credential=signing,
             )
             idp = Saml2SsoIdp(
                 url=new_idp["id_url"],
@@ -283,14 +287,16 @@ def update_saml(module, blade):
 def create_saml(module, blade):
     """Create SAML2 IdP"""
     changed = True
+    decrypt = None
+    signing = None
     if not module.check_mode:
+        if module.params["decryption_credential"]:
+            decrypt = ReferenceWriteable(name=module.params["decryption_credential"])
+        if module.params["signing_credential"]:
+            signing = ReferenceWriteable(name=module.params["signing_credential"])
         sp = Saml2SsoSp(
-            decryption_credential=ReferenceWriteable(
-                name=module.params["decryption_credential"]
-            ),
-            signing_credential=ReferenceWriteable(
-                name=module.params["signing_credential"]
-            ),
+            decryption_credential=decrypt,
+            signing_credential=signing,
         )
         idp = Saml2SsoIdp(
             url=module.params["url"],
@@ -376,7 +382,7 @@ def main():
         )
 
     exists = bool(
-        list(blade.get_sso_saml2_idps(names=[module.params["name"]]).items)[0]
+        blade.get_sso_saml2_idps(names=[module.params["name"]]).status_code == 200
     )
     if not exists and state == "present":
         create_saml(module, blade)

@@ -137,7 +137,7 @@ def generate_default_dict(blade):
     default_info["buckets"] = blade.get_buckets().total_item_count
     default_info["object_store_users"] = blade.get_object_store_users().total_item_count
     default_info["object_store_accounts"] = (
-        blade.get_object_store_accounts().totol_item_count
+        blade.get_object_store_accounts().total_item_count
     )
     default_info["blades"] = blade.get_blades().total_item_count
     default_info["certificates"] = blade.get_certificates().total_item_count
@@ -172,8 +172,7 @@ def generate_default_dict(blade):
         )
     default_info["smb_mode"] = getattr(defaults, "smb_mode", None)
     default_info["timezone"] = defaults.time_zone
-    if DRIVES_API_VERSION in api_version:
-        default_info["product_type"] = getattr(defaults, "product_type", "Unknown")
+    default_info["product_type"] = getattr(defaults, "product_type", "Unknown")
     if SECURITY_API_VERSION in api_version:
         dar = defaults.encryption.data_at_rest
         default_info["encryption"] = {
@@ -281,18 +280,18 @@ def generate_perf_dict(blade):
         )[0]
         perf_info["file_replication"] = {
             "received_bytes_per_sec": getattr(
-                file_repl_perf.total[0].periodic, "received_bytes_per_sec", None
+                file_repl_perf.periodic, "received_bytes_per_sec", None
             ),
             "transmitted_bytes_per_sec": getattr(
-                file_repl_perf.total[0].periodic, "transmitted_bytes_per_sec", None
+                file_repl_perf.periodic, "transmitted_bytes_per_sec", None
             ),
         }
         perf_info["object_replication"] = {
             "received_bytes_per_sec": getattr(
-                obj_repl_perf.total[0].periodic, "received_bytes_per_sec", None
+                obj_repl_perf.periodic, "received_bytes_per_sec", None
             ),
             "transmitted_bytes_per_sec": getattr(
-                obj_repl_perf.total[0].periodic, "transmitted_bytes_per_sec", None
+                obj_repl_perf.periodic, "transmitted_bytes_per_sec", None
             ),
         }
     return perf_info
@@ -314,6 +313,7 @@ def generate_config_dict(blade):
                 dns_configs[config].sources, "name", None
             )
     smtp_config = list(blade.get_smtp_servers().items)
+    config_info["smtp"] = {}
     for config in range(len(smtp_config)):
         config_info["smtp"][smtp_config[config].name] = {
             "relay_host": getattr(smtp_config[config], "relay_host", None),
@@ -321,6 +321,7 @@ def generate_config_dict(blade):
             "encryption_mode": getattr(smtp_config[config], "encryption_mode", None),
         }
     alert_config = list(blade.get_alert_watchers().items)
+    config_info["alert_watchers"] = {}
     for config in range(len(alert_config)):
         config_info["alert_watchers"][alert_config[config].name] = {
             "enabled": alert_config[config].enabled,
@@ -363,6 +364,7 @@ def generate_config_dict(blade):
         }
     config_info["ntp"] = list(blade.get_arrays().items)[0].ntp_servers
     certs = list(blade.get_certificates().items)
+    config_info["ssl_certs"] = {}
     for cert in range(len(certs)):
         cert_name = certs[cert].name
         valid_from = time.strftime(
@@ -484,7 +486,7 @@ def generate_subnet_dict(blade):
             }
             sub_info[sub_name]["lag"] = subnets[sub].link_aggregation_group.name
             sub_info[sub_name]["interfaces"] = []
-            for iface in range(0, len(subnets[sub].interfaces)):
+            for iface in range(len(subnets[sub].interfaces)):
                 sub_info[sub_name]["interfaces"].append(
                     {"name": subnets[sub].interfaces[iface].name}
                 )
@@ -502,7 +504,7 @@ def generate_lag_dict(blade):
             "status": groups[groupcnt].status,
         }
         lag_info[lag_name]["ports"] = []
-        for port in range(0, len(groups[groupcnt].ports)):
+        for port in range(len(groups[groupcnt].ports)):
             lag_info[lag_name]["ports"].append(
                 {"name": groups[groupcnt].ports[port].name}
             )
@@ -515,24 +517,24 @@ def generate_admin_dict(blade):
     for admin in range(len(admins)):
         admin_name = admins[admin].name
         admin_info[admin_name] = {
-            "api_token_timeout": admins[admin].api_token_timeout,
             "public_key": admins[admin].public_key,
             "local": admins[admin].is_local,
             "role": admins[admin].role.name,
             "locked": admins[admin].locked,
             "lockout_remaining": getattr(admins[admin], "lockout_remaining", None),
         }
-
         if hasattr(admins[admin].api_token, "expires_at"):
-            admin_info[admin_name]["token_expires"] = datetime.fromtimestamp(
-                admins[admin].api_token.expires_at / 1000
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            if admins[admin].api_token.expires_at:
+                admin_info[admin_name]["token_expires"] = datetime.fromtimestamp(
+                    admins[admin].api_token.expires_at / 1000
+                ).strftime("%Y-%m-%d %H:%M:%S")
         else:
             admin_info[admin_name]["token_expires"] = None
         if hasattr(admins[admin].api_token, "created_at"):
-            admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
-                admins[admin].api_token.created_at / 1000
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            if admins[admin].api_token.created_at:
+                admin_info[admin_name]["token_created"] = datetime.fromtimestamp(
+                    admins[admin].api_token.created_at / 1000
+                ).strftime("%Y-%m-%d %H:%M:%S")
         else:
             admin_info[admin_name]["token_created"] = None
     return admin_info
@@ -696,9 +698,8 @@ def generate_snap_dict(blade):
         snapshot = snaps[snap].name
         snap_info[snapshot] = {
             "destroyed": snaps[snap].destroyed,
-            "source": snaps[snap].source,
+            "source": snaps[snap].source.location.name,
             "suffix": snaps[snap].suffix,
-            "source_destroyed": snaps[snap].source_destroyed,
             "created": datetime.fromtimestamp(
                 snaps[snap].created / 1000,
                 tz=timezone.utc,
@@ -707,9 +708,9 @@ def generate_snap_dict(blade):
             "policy": getattr(getattr(snaps[snap], "policy", None), "name", None),
             "owner": snaps[snap].owner.name,
             "owner_destroyed": snaps[snap].owner_destroyed,
-            "source_display_name": snaps[snap].source_display_name,
-            "source_is_local": snaps[snap].source_is_local,
-            "source_location": snaps[snap].source_location.name,
+            "source_display_name": snaps[snap].source.display_name,
+            "source_is_local": snaps[snap].source.is_local,
+            "source_location": snaps[snap].source.location.name,
             "policies": [],
         }
         if PUBLIC_API_VERSION in api_version:
@@ -745,7 +746,7 @@ def generate_snap_transfer_dict(blade):
 def generate_array_conn_dict(blade):
     array_conn_info = {}
     arrays = list(blade.get_array_connections().items)
-    for arraycnt in range(0, len(arrays)):
+    for arraycnt in range(len(arrays)):
         array = arrays[arraycnt].remote.name
         array_conn_info[array] = {
             "encrypted": arrays[arraycnt].encrypted,
@@ -779,15 +780,17 @@ def generate_policies_dict(blade):
         policy = policies[policycnt].name
         policies_info[policy] = {
             "enabled": policies[policycnt].enabled,
-            "retention_lock": getattr(policies[policy], "retention_lock", None),
-            "polivy_type": policies[policy].policy_type,
-            "rules": {
-                "at": getattr(policies[policy].rules[0], "at", None),
-                "every": getattr(policies[policy].rules[0], "every", None),
-                "keep_for": getattr(policies[policy].rules[0], "keep_for", None),
-                "time_zone": getattr(policies[policy].rules[0], "time_zone", None),
-            },
+            "retention_lock": getattr(policies[policycnt], "retention_lock", None),
+            "policy_type": policies[policycnt].policy_type,
+            "rules": {},
         }
+        if policies[policycnt].rules:
+            policies_info[policy]["rules"] = {
+                "at": getattr(policies[policycnt].rules[0], "at", None),
+                "every": getattr(policies[policycnt].rules[0], "every", None),
+                "keep_for": getattr(policies[policycnt].rules[0], "keep_for", None),
+                "time_zone": getattr(policies[policycnt].rules[0], "time_zone", None),
+            }
     return policies_info
 
 
@@ -871,7 +874,7 @@ def generate_bucket_dict(blade):
             # skip processing buckets marked as destroyed
             continue
         all_rules = list(blade.get_lifecycle_rules(bucket_ids=[buckets[bckt].id]).items)
-        for rule in range(0, len(all_rules)):
+        for rule in range(len(all_rules)):
             bucket_name = all_rules[rule].bucket.name
             rule_id = all_rules[rule].rule_id
             if all_rules[rule].keep_previous_version_for:
@@ -972,29 +975,31 @@ def generate_bucket_access_policies_dict(blade):
     policies_info = {}
     buckets = list(blade.get_buckets().items)
     for bucket in range(len(buckets)):
-        policies = list(
-            blade.get_buckets_bucket_access_policies(
-                bucket_names=[buckets[bucket].name]
-            ).items
+        res = blade.get_buckets_bucket_access_policies(
+            bucket_names=[buckets[bucket].name]
         )
-        for policy in range(len(policies)):
-            policy_name = policies[policy].name
-            policies_info[policy_name] = {
-                "description": policies[policy].description,
-                "enabled": policies[policy].enabled,
-                "local": policies[policy].is_local,
-                "rules": [],
-            }
-            for rule in range(len(policies[policy].rules)):
-                policies_info[policy_name]["rules"].append(
-                    {
-                        "actions": policies[policy].rules[rule].actions,
-                        "resources": policies[policy].rules[rule].resources,
-                        "all_principals": policies[policy].rules[rule].principals.all,
-                        "effect": policies[policy].rules[rule].effect,
-                        "name": policies[policy].rules[rule].name,
-                    }
-                )
+        if res.status_code == 200 and res.total_item_count != 0:
+            policies = list(res.items)
+            for policy in range(len(policies)):
+                policy_name = policies[policy].name
+                policies_info[policy_name] = {
+                    "description": policies[policy].description,
+                    "enabled": policies[policy].enabled,
+                    "local": policies[policy].is_local,
+                    "rules": [],
+                }
+                for rule in range(len(policies[policy].rules)):
+                    policies_info[policy_name]["rules"].append(
+                        {
+                            "actions": policies[policy].rules[rule].actions,
+                            "resources": policies[policy].rules[rule].resources,
+                            "all_principals": policies[policy]
+                            .rules[rule]
+                            .principals.all,
+                            "effect": policies[policy].rules[rule].effect,
+                            "name": policies[policy].rules[rule].name,
+                        }
+                    )
     return policies_info
 
 
@@ -1193,7 +1198,7 @@ def generate_object_store_accounts_dict(blade):
                         filter='user.name="' + acc_users[acc_user].name + '"'
                     ).items
                 )
-                for key in range(0, len(access_keys)):
+                for key in range(len(access_keys)):
                     account_info[acc_name]["users"][user_name]["keys"].append(
                         {
                             "name": access_keys[key].name,
@@ -1283,40 +1288,36 @@ def generate_fs_dict(blade):
                 getattr(fsys[fsystem], "multi_protocol", None), "safeguard_acls", None
             ),
         }
-        for v2fs in range(len(fsys)):
-            if fsys[v2fs].name == share:
-                try:
-                    fs_groups = True
-                    fs_group_quotas = list(
-                        blade.get_quotas_groups(file_system_names=[share]).items
-                    )
-                except Exception:
-                    fs_groups = False
-                try:
-                    fs_users = True
-                    fs_user_quotas = list(
-                        blade.get_quotas_users(file_system_names=[share]).items
-                    )
-                except Exception:
-                    fs_users = False
-                if fs_groups:
-                    for group_quota in range(len(fs_group_quotas)):
-                        group_name = fs_group_quotas[group_quota].name.rsplit("/")[1]
-                        fs_info[share]["group_quotas"][group_name] = {
-                            "group_id": fs_group_quotas[group_quota].group.id,
-                            "group_name": fs_group_quotas[group_quota].group.name,
-                            "quota": fs_group_quotas[group_quota].quota,
-                            "usage": fs_group_quotas[group_quota].usage,
-                        }
-                if fs_users:
-                    for user_quota in range(len(fs_user_quotas)):
-                        user_name = fs_user_quotas[user_quota].name.rsplit("/")[1]
-                        fs_info[share]["user_quotas"][user_name] = {
-                            "user_id": fs_user_quotas[user_quota].user.id,
-                            "user_name": fs_user_quotas[user_quota].user.name,
-                            "quota": fs_user_quotas[user_quota].quota,
-                            "usage": fs_user_quotas[user_quota].usage,
-                        }
+        fs_groups = False
+        res = blade.get_quotas_groups(file_system_names=[share])
+        if res.total_item_count != 0:
+            fs_groups = True
+            fs_group_quotas = list(res.items)
+        fs_users = False
+        res = blade.get_quotas_users(file_system_names=[share])
+        if res.total_item_count != 0:
+            fs_users = True
+            fs_user_quotas = list(res.items)
+        if fs_groups:
+            for group_quota in range(len(fs_group_quotas)):
+                group_name = fs_group_quotas[group_quota].name.rsplit("/")[1]
+                fs_info[share]["group_quotas"][group_name] = {
+                    "group_id": getattr(fs_group_quotas[group_quota].group, "id", None),
+                    "group_name": getattr(
+                        fs_group_quotas[group_quota].group, "name", None
+                    ),
+                    "quota": fs_group_quotas[group_quota].quota,
+                    "usage": fs_group_quotas[group_quota].usage,
+                }
+        if fs_users:
+            for user_quota in range(len(fs_user_quotas)):
+                user_name = fs_user_quotas[user_quota].name.rsplit("/")[1]
+                fs_info[share]["user_quotas"][user_name] = {
+                    "user_id": getattr(fs_user_quotas[user_quota].user, "id", None),
+                    "user_name": getattr(fs_user_quotas[user_quota].user, "name", None),
+                    "quota": fs_user_quotas[user_quota].quota,
+                    "usage": fs_user_quotas[user_quota].usage,
+                }
 
     return fs_info
 
@@ -1444,7 +1445,7 @@ def main():
     if "filesystems" in subset or "all" in subset:
         info["filesystems"] = generate_fs_dict(blade)
     if "admins" in subset or "all" in subset:
-        info["admins"] = generate_admin_dict(module, blade)
+        info["admins"] = generate_admin_dict(blade)
     if "snapshots" in subset or "all" in subset:
         info["snapshots"] = generate_snap_dict(blade)
     if "buckets" in subset or "all" in subset:

@@ -137,13 +137,15 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 def update_manager(module, blade):
     """Update SNMP Manager"""
     changed = False
+    res = blade.get_snmp_managers(names=[module.params["name"]])
     mgr = list(blade.get_snmp_managers(names=[module.params["name"]]).items)[0]
-    if mgr.status_code != 200:
+    if res.status_code != 200:
         module.fail_json(
             msg="Failed to get configuration for SNMP manager {0}. Error: {1}".format(
                 module.params["name"], mgr.errors[0].message
             )
         )
+    mgr = list(res.items)[0]
     current_attr = {
         "community": getattr(mgr.v2c, "community", None),
         "notification": mgr.notification,
@@ -151,7 +153,7 @@ def update_manager(module, blade):
         "version": mgr.version,
         "auth_passphrase": getattr(mgr.v3, "auth_passphrase", None),
         "auth_protocol": getattr(mgr.v3, "auth_protocol", None),
-        "privacy_passphrase": getattr(mgr.v3i, "privacy_passphrase", None),
+        "privacy_passphrase": getattr(mgr.v3, "privacy_passphrase", None),
         "privacy_protocol": getattr(mgr.v3, "privacy_protocol", None),
         "user": getattr(mgr.v3, "user", None),
     }
@@ -280,7 +282,7 @@ def test_manager(module, blade):
     """Test SNMP manager configuration"""
     test_response = []
     response = list(blade.get_snmp_managers_test(names=[module.params["name"]]).items)
-    for component in range(0, len(response)):
+    for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
         else:
@@ -349,7 +351,7 @@ def main():
 
     mgr_configured = False
     mgrs = list(blade.get_snmp_managers().items)
-    for mgr in range(0, len(mgrs)):
+    for mgr in range(len(mgrs)):
         if mgrs[mgr].name == module.params["name"]:
             mgr_configured = True
             break

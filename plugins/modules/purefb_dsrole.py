@@ -121,7 +121,7 @@ def update_role(module, blade):
                 group_base=module.params["group_base"], group=module.params["group"]
             )
             res = blade.patch_directory_services_roles(
-                names=[module.params["role"]], directory_service_role=role
+                names=[module.params["role"]], directory_service_roles=role
             )
             if res.status_code != 200:
                 module.fail_json(
@@ -138,7 +138,7 @@ def delete_role(module, blade):
     if not module.check_mode:
         role = DirectoryServiceRole(group_base="", group="")
         res = blade.patch_directory_services_roles(
-            names=[module.params["role"]], directory_service_role=role
+            names=[module.params["role"]], directory_service_roles=role
         )
         if res.status_code != 200:
             module.fail_json(
@@ -157,7 +157,7 @@ def create_role(module, blade):
             group_base=module.params["group_base"], group=module.params["group"]
         )
         res = blade.patch_directory_services_roles(
-            names=[module.params["role"]], directory_service_role=role
+            names=[module.params["role"]], directory_service_roles=role
         )
         if res.status_code != 200:
             module.fail_json(

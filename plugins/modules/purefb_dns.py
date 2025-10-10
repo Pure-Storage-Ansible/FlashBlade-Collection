@@ -286,7 +286,7 @@ def main():
     if NON_MGMT_DNS in api_version:
         configs = list(blade.get_dns().items)
         exists = False
-        for config in range(0, len(configs)):
+        for config in range(len(configs)):
             if configs[config].name == module.params["name"]:
                 exists = True
         if module.params["source"] and not _get_source(module, blade):

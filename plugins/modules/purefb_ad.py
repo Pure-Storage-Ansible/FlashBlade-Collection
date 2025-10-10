@@ -209,7 +209,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-MIN_REQUIRED_API_VERSION = "2.0"
 GC_SERVERS_API_VERSION = "2.12"
 
 
@@ -344,7 +343,7 @@ def update_account(module, blade):
             "service_principals parameter for better security control."
         )
     elif module.params["service_principals"]:
-        for sprin in range(0, len(module.params["service_principals"])):
+        for sprin in range(len(module.params["service_principals"])):
             if "/" not in module.params["service_principals"][sprin]:
                 module.params["service_principals"][sprin] = (
                     module.params["service"]
@@ -422,18 +421,12 @@ def main():
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
     module.params["encryption"] = [
         crypt.replace("aes256-sha1", "aes256-cts-hmac-sha1-96").replace(
             "aes128-sha1", "aes128-cts-hmac-sha1-96"
         )
         for crypt in module.params["encryption"]
     ]
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="FlashBlade REST version not supported. "
-            "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
-        )
     state = module.params["state"]
     exists = bool(blade.get_active_directory().total_item_count == 1)
 

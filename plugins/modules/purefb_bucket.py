@@ -603,12 +603,12 @@ def delete_bucket(module, blade):
             )
         if module.params["eradicate"]:
             if CONTEXT_API_VERSION in api_version:
-                res = blade.buckets.delete_buckets(
+                res = blade.delete_buckets(
                     names=[module.params["name"]],
                     context_names=[module.params["context"]],
                 )
             else:
-                res = blade.buckets.delete_buckets(names=[module.params["name"]])
+                res = blade.delete_buckets(names=[module.params["name"]])
             if res.status_code != 200:
                 module.warn(
                     msg="Eradication for bucket {0} failed. "
@@ -632,7 +632,7 @@ def recover_bucket(module, blade):
             res = blade.patch_buckets(
                 names=[module.params["name"]], bucket=BucketPatch(destroyed=False)
             )
-        if res.stsus_code != 200:
+        if res.status_code != 200:
             module.fail_json(
                 msg="Object Store Bucket {0} Recovery failed. Error: {1}".format(
                     module.params["name"], res.errors[0].message
@@ -692,8 +692,8 @@ def update_bucket(module, blade, bucket):
                 )
 
     if bucket.versioning != "none":
-        if module.params["versioning"] == "absent":
-            versioning = "none"
+        if module.params["versioning"] == "absent" and bucket.versioning == "enabled":
+            versioning = "suspended"
         else:
             versioning = module.params["versioning"]
         if bucket.versioning != versioning:
@@ -710,7 +710,7 @@ def update_bucket(module, blade, bucket):
                         names=[module.params["name"]],
                         bucket=BucketPatch(versioning=versioning),
                     )
-                if res.ststus_code != 200:
+                if res.status_code != 200:
                     module.fail_json(
                         msg="Object Store Bucket {0} versioning change failed. Error: {1}".format(
                             module.params["name"], res.errors[0].message
@@ -763,6 +763,7 @@ def update_bucket(module, blade, bucket):
             if new_quota["quota"] is None or new_quota["quota"] == 0:
                 bucket = BucketPatch(
                     quota_limit="",
+                    hard_limit_enabled=False,
                 )
             else:
                 bucket = BucketPatch(

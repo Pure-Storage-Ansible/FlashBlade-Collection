@@ -135,11 +135,11 @@ def add_policy(module, blade):
     api_version = list(blade.get_versions().items)
     user_policy_list = []
     policy_list = module.params["policy"]
-    for policy in range(0, len(policy_list)):
+    for policy in range(len(policy_list)):
         if not _check_valid_policy(module, blade, policy_list[policy]):
             module.fail_json(msg="Policy {0} is not valid.".format(policy_list[policy]))
     username = module.params["account"] + "/" + module.params["name"]
-    for policy in range(0, len(policy_list)):
+    for policy in range(len(policy_list)):
         if CONTEXT_API_VERSION in api_version:
             res = blade.get_object_store_users_object_store_access_policies(
                 member_names=[username],
@@ -181,7 +181,7 @@ def add_policy(module, blade):
                             member_names=[username]
                         ).items
                     )
-                for user_policy in range(0, len(user_policies)):
+                for user_policy in range(len(user_policies)):
                     user_policy_list.append(user_policies[user_policy].policy.name)
                 if res.status_code != 200:
                     module.fail_json(
@@ -198,11 +198,11 @@ def remove_policy(module, blade):
     api_version = list(blade.get_versions().items)
     user_policy_list = []
     policy_list = module.params["policy"]
-    for policy in range(0, len(policy_list)):
+    for policy in range(len(policy_list)):
         if not _check_valid_policy(module, blade, policy):
             module.fail_json(msg="Policy {0} is not valid.".format(policy))
     username = module.params["account"] + "/" + module.params["name"]
-    for policy in range(0, len(policy_list)):
+    for policy in range(len(policy_list)):
         if CONTEXT_API_VERSION in api_version:
             res = blade.get_object_store_users_object_store_access_policies(
                 member_names=[username],
@@ -239,7 +239,7 @@ def remove_policy(module, blade):
                             member_names=[username]
                         ).items
                     )
-                for user_policy in range(0, len(user_policies)):
+                for user_policy in range(len(user_policies)):
                     user_policy_list.append(user_policies[user_policy].policy.name)
                 if res.status_code != 200:
                     module.fail_json(
@@ -271,7 +271,7 @@ def list_policy(module, blade):
                         member_names=[username]
                     ).items
                 )
-            for user_policy in range(0, len(user_policies)):
+            for user_policy in range(len(user_policies)):
                 policy_list.append(user_policies[user_policy].policy.name)
         else:
             if CONTEXT_API_VERSION in api_version:
@@ -283,7 +283,7 @@ def list_policy(module, blade):
             p_list = list(policies.items)
             if policies.status_code != 200:
                 module.fail_json(msg="Failed to get Object Store User Access Policies")
-            for policy in range(0, len(p_list)):
+            for policy in range(len(p_list)):
                 policy_list.append(p_list[policy].name)
     module.exit_json(changed=changed, policy_list=policy_list)
 

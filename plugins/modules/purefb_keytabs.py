@@ -119,9 +119,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
-MIN_REQUIRED_API_VERSION = "2.0"
-
-
 def rotate_keytab(module, blade):
     """Rotate keytab"""
     changed = True
@@ -226,17 +223,12 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-
-    if MIN_REQUIRED_API_VERSION not in api_version:
-        module.fail_json(
-            msg="Minimum FlashBlade REST version required: {0}".format(
-                MIN_REQUIRED_API_VERSION
-            )
-        )
 
     if not module.params["prefix"]:
-        module.params["prefix"] = list(blade.get_active_directory().items)[0].name
+        res = blade.get_active_directory()
+        if res.total_item_count == 0:
+            module.fail_json(msg="No active directory configred to provide prefix")
+        module.params["prefix"] = list(res.items)[0].name
 
     if state == "import":
         import_keytab(module, blade)

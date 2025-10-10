@@ -177,8 +177,8 @@ def get_quota(module, blade):
                 file_system_names=[module.params["name"]],
                 filter="user.name='" + module.params["uname"] + "'",
             )
-    if res.status_code == 200:
-        return res.items[0]
+    if res.status_code == 200 and res.total_item_count != 0:
+        return list(res.items)[0]
     return None
 
 
