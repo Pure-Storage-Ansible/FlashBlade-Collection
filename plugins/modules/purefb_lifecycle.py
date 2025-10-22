@@ -169,7 +169,6 @@ def _convert_to_millisecs(day):
     """Convert a string like '2w' or '3d' into milliseconds."""
     if not day:
         return 0
-        
     multipliers = {
         "w": 7 * 86400000,  # one week
         "d": 86400000,  # one day
