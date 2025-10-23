@@ -94,7 +94,7 @@ options:
     elements: str
   service_principals:
     description:
-    - A list of either FQDNs or SPNs for registering services with the domain.
+    - A list of SPNs for registering services with the domain.
     - If not specified B(Computer Name.Domain) is used
     type: list
     elements: str
@@ -118,6 +118,12 @@ options:
     elements: str
     choices: ['nfs', 'cifs', 'HOST', '']
     default: ''
+  server:
+    description:
+    - Name of the local array server into which the AD account is added
+    - Do not provide if the AD account is to connect to the default server
+    version_added: "1.23.0"
+    type: str
   local_only:
     description:
     - Do a local-only delete of an active directory account
@@ -131,6 +137,7 @@ EXAMPLES = r"""
 - name: Create new AD account
   purestorage.flashblade.purefb_ad:
     name: ad_account
+    server: local_server
     computer: FLASHBLADE
     domain: acme.com
     username: Administrator
@@ -169,6 +176,7 @@ EXAMPLES = r"""
 - name: Update existing AD account
   purestorage.flashblade.purefb_ad:
     name: ad_account
+    server: local_server
     encryption:
     - aes256-cts-hmac-sha1-96
     kerberos_servers:
@@ -210,6 +218,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 GC_SERVERS_API_VERSION = "2.12"
+SERVERS_API_VERSION = "2.16"
 
 
 def delete_account(module, blade):
@@ -238,7 +247,7 @@ def create_account(module, blade):
                 kerberos_servers=module.params["kerberos_servers"],
                 domain=module.params["domain"],
                 encryption_types=module.params["encryption"],
-                fqdns=module.params["service_principals"],
+                service_principal_names=module.params["service_principals"],
                 join_ou=module.params["join_ou"],
                 user=module.params["username"],
                 password=module.params["password"],
@@ -251,7 +260,7 @@ def create_account(module, blade):
                 kerberos_servers=module.params["kerberos_servers"],
                 domain=module.params["domain"],
                 encryption_types=module.params["encryption"],
-                fqdns=module.params["service_principals"],
+                service_principal_names=module.params["service_principals"],
                 join_ou=module.params["join_ou"],
                 user=module.params["username"],
                 password=module.params["password"],
@@ -337,19 +346,11 @@ def update_account(module, blade):
     if sorted(module.params["encryption"]) != sorted(current_ad.encryption_types):
         attr["encryption_types"] = module.params["encryption"]
         mod_ad = True
-    if len(module.params["service"]) > 1 or module.params["service"] != "":
-        module.warn(
-            "Please incorporate the service parameter into the "
+    if module.params["service"] and module.params["service"] != [""]:
+        module.fail_json(
+            msg="Please incorporate the service parameter into the "
             "service_principals parameter for better security control."
         )
-    elif module.params["service_principals"]:
-        for sprin in range(len(module.params["service_principals"])):
-            if "/" not in module.params["service_principals"][sprin]:
-                module.params["service_principals"][sprin] = (
-                    module.params["service"]
-                    + "/"
-                    + module.params["service_principals"][sprin]
-                )
     if module.params["service_principals"]:
         if current_ad.service_principal_names:
             if sorted(module.params["service_principals"]) != sorted(
@@ -402,6 +403,7 @@ def main():
             local_only=dict(type="bool", default=False),
             domain=dict(type="str"),
             join_ou=dict(type="str"),
+            server=dict(type="str"),
             directory_servers=dict(type="list", elements="str"),
             kerberos_servers=dict(type="list", elements="str"),
             service_principals=dict(type="list", elements="str"),
@@ -428,14 +430,21 @@ def main():
         for crypt in module.params["encryption"]
     ]
     state = module.params["state"]
-    exists = bool(blade.get_active_directory().total_item_count == 1)
-
-    # TODO: Check SMB mode.
-    # If mode is SMB adapter only allow nfs
-    # Only allow cifs or HOST is SMB mode is native
+    exists = bool(
+        blade.get_active_directory(names=[module.params["name"]]).status_code == 200
+    )
 
     if not module.params["computer"]:
         module.params["computer"] = module.params["name"].replace("_", "-")
+    api_version = list(blade.get_versions().items)
+    if SERVERS_API_VERSION in api_version and module.params["server"]:
+        if blade.get_servers(names=[module.params["server"]]).status_code != 200:
+            module.fail_json(
+                msg="Server {0} does not exist on this FlashBlade.".format(
+                    module.params["server"]
+                )
+            )
+        module.params["name"] = module.params["server"] + module.params["name"]
     if module.params["kerberos_servers"]:
         module.params["kerberos_servers"] = module.params["kerberos_servers"][0:5]
     if module.params["directory_servers"]:
