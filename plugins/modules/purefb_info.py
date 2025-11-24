@@ -501,7 +501,7 @@ def generate_lag_dict(blade):
         lag_info[lag_name] = {
             "lag_speed": groups[groupcnt].lag_speed,
             "port_speed": groups[groupcnt].port_speed,
-            "mac_address": getaddr(groups[groupcnt], "mac_address", None),
+            "mac_address": getattr(groups[groupcnt], "mac_address", None),
             "status": groups[groupcnt].status,
         }
         lag_info[lag_name]["ports"] = []
