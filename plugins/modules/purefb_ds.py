@@ -97,9 +97,15 @@ options:
     type: str
   join_ou:
     description:
-      - The optional organizational unit (OU) where the machine account
-        for the directory service will be created.
+    - The optional organizational unit (OU) where the machine account
+      for the directory service will be created.
     type: str
+  nfs_server:
+    description:
+     - Name of the internal server
+     - Only required if I(nfs) is the I(dstype)
+    type: str
+    version_added: 1.23.0
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
 """
@@ -110,7 +116,7 @@ EXAMPLES = r"""
     dstype: management
     state: absent
     fb_url: 10.10.10.2
-    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Create NFS directory service (disabled)
   purestorage.flashblade.purefb_ds:
@@ -120,23 +126,23 @@ EXAMPLES = r"""
     bind_user: Administrator
     bind_password: password
     fb_url: 10.10.10.2
-    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Enable existing SMB directory service
   purestorage.flashblade.purefb_ds:
     dstypr: smb
     enable: true
     fb_url: 10.10.10.2
-    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
 - name: Disable existing management directory service
   purestorage.flashblade.purefb_ds:
     dstype: management
     enable: false
     fb_url: 10.10.10.2
-    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
-- name: Create NFS directory service (enabled)
+- name: Create NFS directory service (LDAP-based) - default internal server
   purestorage.flashblade.purefb_ds:
     dstype: nfs
     enable: true
@@ -145,14 +151,41 @@ EXAMPLES = r"""
     bind_user: Administrator
     bind_password: password
     fb_url: 10.10.10.2
-    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
-- name: Test NFS directory service (modify dstype to test different service)
+- name: Create NFS directory service (NIS based) - alternate internal server
+  purestorage.flashblade.purefb_ds:
+    dstype: nfs
+    nfs_server: acme1
+    enable: true
+    nis_domain: "acme.com"
+    nis_servers:
+    - "1.1.1.1"
+    - "2.2.2.2"
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Test array management directory service
+  purestorage.flashblade.purefb_ds:
+    dstype: management
+    state: test
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Test default nfs directory service
   purestorage.flashblade.purefb_ds:
     dstype: nfs
     state: test
     fb_url: 10.10.10.2
-    api_token: e31060a7-21fc-e277-6240-25983c6c4592
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Test NFS directory service for internal server fred
+  purestorage.flashblade.purefb_ds:
+    dstype: nfs
+    nfs_server: fred
+    state: test
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 """
 
 RETURN = r"""
@@ -178,9 +211,13 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 def enable_ds(module, blade):
     """Enable Directory Service"""
     changed = True
+    ds_name = module.params["dstype"]
     if not module.check_mode:
+        if module.params["nfs_server"] and module.params["dstype"] == "nfs":
+            if module.params["nfs_server"] != "_array_server":
+                ds_name = module.params["dstype"] + "_nfs"
         res = blade.patch_directory_services(
-            names=[module.params["dstype"]],
+            names=[ds_name],
             directory_service=DirectoryService(enabled=True),
         )
         if res.status_code != 200:
@@ -195,9 +232,13 @@ def enable_ds(module, blade):
 def disable_ds(module, blade):
     """Disable Directory Service"""
     changed = True
+    ds_name = module.params["dstype"]
     if not module.check_mode:
+        if module.params["nfs_server"] and module.params["dstype"] == "nfs":
+            if module.params["nfs_server"] != "_array_server":
+                ds_name = module.params["dstype"] + "_nfs"
         res = blade.patch_directory_services(
-            names=[module.params["dstype"]],
+            names=[ds_name],
             directory_service=DirectoryService(enabled=False),
         )
         if res.status_code != 200:
@@ -212,8 +253,12 @@ def disable_ds(module, blade):
 def delete_ds(module, blade):
     """Delete Directory Service"""
     changed = True
+    ds_name = module.params["dstype"]
     if not module.check_mode:
-        res = blade.get_directory_services(names=[module.params["dstype"]])
+        if module.params["nfs_server"] and module.params["dstype"] == "nfs":
+            if module.params["nfs_server"] != "_array_server":
+                ds_name = module.params["dstype"] + "_nfs"
+        res = blade.get_directory_services(names=[ds_name])
         if res.status_code != 200:
             module.fail_json(
                 msg="Fetch {0} Directory Service failed. Error: {1}".format(
@@ -279,7 +324,11 @@ def update_ds(module, blade):
     changed = False
     password_required = False
     attr = {}
-    res = blade.get_directory_services(names=[module.params["dstype"]])
+    ds_name = module.params["dstype"]
+    if module.params["nfs_server"] and module.params["dstype"] == "nfs":
+        if module.params["nfs_server"] != "_array_server":
+            ds_name = module.params["dstype"] + "_nfs"
+    res = blade.get_directory_services(names=[ds_name])
     if res.status_code != 200:
         module.fail_json(
             msg="Fetch {0} Directory Service failed. Error: {1}".format(
@@ -347,6 +396,7 @@ def update_ds(module, blade):
 def create_ds(module, blade):
     """Create Directory Service"""
     changed = True
+    ds_name = module.params["dstype"]
     if not module.check_mode:
         dir_service = DirectoryService()  # Initialize for pylint
         if module.params["dstype"] == "management":
@@ -398,8 +448,11 @@ def create_ds(module, blade):
                     bind_password=module.params["bind_password"],
                     enabled=module.params["enable"],
                 )
+        if module.params["nfs_server"] and module.params["dstype"] == "nfs":
+            if module.params["nfs_server"] != "_array_server":
+                ds_name = module.params["dstype"] + "_nfs"
         res = blade.patch_directory_services(
-            names=[module.params["dstype"]], directory_service=dir_service
+            names=[ds_name], directory_service=dir_service
         )
         if res.status_code != 200:
             module.fail_json(
@@ -412,10 +465,12 @@ def create_ds(module, blade):
 
 def test_ds(module, blade):
     """Test directory services configuration"""
+    test_server = module.params["dstype"]
+    if module.params["dstype"] == "nfs" and module.params["nfs_server"]:
+        if module.params["test_nfs_server"] != "_array_server":
+            test_server = module.params["nfs_server"] + "_nfs"
     test_response = []
-    response = list(
-        blade.get_directory_services_test(names=[module.params["dstype"]]).items
-    )
+    response = list(blade.get_directory_services_test(names=[test_server]).items)
     for component in range(len(response)):
         if response[component].enabled:
             enabled = "true"
@@ -460,6 +515,7 @@ def main():
             join_ou=dict(type="str"),
             nis_domain=dict(type="str"),
             nis_servers=dict(type="list", elements="str"),
+            nfs_server=dict(type="str"),
         )
     )
 
@@ -484,8 +540,11 @@ def main():
     if NO_SMB_VERSION in api_version and module.params["dstype"] == "smb":
         module.warn("Directory Service for SMB no longer supported by FlashBlade")
         module.exit_json(changed=False)
-    ds_configured = False
-    res = blade.get_directory_services(names=[module.params["dstype"]])
+    ds_name = module.params["dstype"]
+    if module.params["nfs_server"] and module.params["dstype"] == "nfs":
+        if module.params["nfs_server"] != "_array_server":
+            ds_name = module.params["dstype"] + "_nfs"
+    res = blade.get_directory_services(names=[ds_name])
     ds_configured = False
     if res.status_code == 200:
         ds_configured = True
