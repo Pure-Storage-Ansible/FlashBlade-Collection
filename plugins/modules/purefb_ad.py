@@ -39,8 +39,10 @@ options:
   state:
     description:
     - Define whether the AD sccount is deleted or not
+    - Test state will perform a test against the suppied account name
+    - Rotate will force a keytab rotation for the specified account
     default: present
-    choices: [ absent, present ]
+    choices: [ absent, present, test, rotate ]
     type: str
   computer:
     description:
@@ -200,6 +202,20 @@ EXAMPLES = r"""
     name: ad_account
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Test AD account
+  purestorage.flashblade.purefb_ad:
+    name: ad_account
+    state: test
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Rotate AD account keytabs
+  purestorage.flashblade.purefb_ad:
+    name: ad_account
+    state: rotate
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 """
 
 RETURN = r"""
@@ -207,7 +223,12 @@ RETURN = r"""
 
 HAS_PURESTORAGE = True
 try:
-    from pypureclient.flashblade import ActiveDirectoryPost, ActiveDirectoryPatch
+    from pypureclient.flashblade import (
+        ActiveDirectoryPost,
+        ActiveDirectoryPatch,
+        Reference,
+        KeytabPost,
+    )
 except ImportError:
     HAS_PURESTORAGE = False
 
@@ -384,11 +405,59 @@ def update_account(module, blade):
     module.exit_json(changed=changed)
 
 
+def test_account(module, blade):
+    """Test AD account configuration"""
+    test_response = []
+    response = list(
+        blade.get_active_directory_test(names=[module.params["name"]]).items
+    )
+    for component in range(len(response)):
+        if response[component].enabled:
+            enabled = "true"
+        else:
+            enabled = "false"
+        if response[component].success:
+            success = "true"
+        else:
+            success = "false"
+        test_response.append(
+            {
+                "component_name": response[component].component_name,
+                "description": response[component].description,
+                "destination": response[component].destination,
+                "enabled": enabled,
+                "success": success,
+                "test_type": response[component].test_type,
+                "resource_name": response[component].resource.name,
+            }
+        )
+    module.exit_json(changed=False, test_response=test_response)
+
+
+def rotate_account(module, blade):
+    """Rotate AD account keytabs"""
+    account = Reference(name=module.params["name"], resource_type="active-directory")
+    keytab = KeytabPost(source=account)
+    if not module.check_mode:
+        res = blade.post_keytabs(keytab=keytab)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Keytab rotation failed for account {0}. Error: {1}".format(
+                    module.params["name"], res.errors[0].message
+                )
+            )
+    module.exit_json(changed=True)
+
+
 def main():
     argument_spec = purefb_argument_spec()
     argument_spec.update(
         dict(
-            state=dict(type="str", default="present", choices=["absent", "present"]),
+            state=dict(
+                type="str",
+                default="present",
+                choices=["absent", "present", "test", "rotate"],
+            ),
             username=dict(type="str"),
             password=dict(type="str", no_log=True),
             name=dict(type="str", required=True),
@@ -454,6 +523,10 @@ def main():
         create_account(module, blade)
     elif exists and state == "present":
         update_account(module, blade)
+    elif exists and state == "test":
+        test_account(module, blade)
+    elif exists and state == "rotate":
+        rotate_account(module, blade)
     elif exists and state == "absent":
         delete_account(module, blade)
 
