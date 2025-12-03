@@ -185,7 +185,7 @@ def get_connected(module, blade):
     for target in range(connected_blades.total_item_count):
         if (
             list(connected_blades.items)[target].remote.name == module.params["target"]
-        ) and connected_blades.items[target].status in [
+        ) and list(connected_blades.items)[target].status in [
             "connected",
             "connecting",
             "partially_connected",
