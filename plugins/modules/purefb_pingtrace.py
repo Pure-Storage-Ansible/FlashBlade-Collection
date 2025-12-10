@@ -169,14 +169,18 @@ def run_ping(module, blade):
     else:
         responses = list(res.items)
         for resp in range(len(responses)):
-            transmitted, received, packet_loss, time_ms = map(
-                int,
-                re.search(
-                    r"(\d+) packets transmitted, (\d+) received, (\d+)% packet loss, time (\d+)ms",
-                    responses[resp].details,
-                ).groups(),
-            )
             comp_name = responses[resp].component_name.replace(".", "_")
+            match = re.search(
+                r"(\d+)\s+packets transmitted,\s+(\d+)\s+received,\s+(\d+)%\s+packet loss,\s+time\s+(\d+)ms",
+                responses[resp].details,
+            )
+
+            if not match:
+                # Report the component that failied along with the failed reposne
+                module.warn("{0}: {1}.".format(comp_name, responses[resp].details))
+                continue
+
+            transmitted, received, packet_loss, time_ms = map(int, match.groups())
             ping_fact[comp_name] = {
                 "destination": module.params["destination"],
                 "source": module.params["source"],
@@ -240,10 +244,11 @@ def run_trace(module, blade):
     else:
         responses = list(res.items)
         for resp in range(len(responses)):
-            comp_name = responses[resp].component_name.replace(".", "_")
-            trace_fact[comp_name] = {
-                "details": responses[resp].details,
-            }
+            if hasattr(responses[resp], "details"):
+                comp_name = responses[resp].component_name.replace(".", "_")
+                trace_fact[comp_name] = {
+                    "details": responses[resp].details,
+                }
 
     module.exit_json(changed=False, tracefact=trace_fact)
 
