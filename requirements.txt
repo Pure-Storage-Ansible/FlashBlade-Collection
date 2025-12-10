@@ -2,5 +2,5 @@ netaddr
 datetime
 pycountry
 pytz
-purity-fb
 urllib3
+py-pure-client
