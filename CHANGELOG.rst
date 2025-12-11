@@ -16,6 +16,7 @@ Minor Changes
 - purefb_ad - Updated encryption algorithms to use correct values
 - purefb_ds - Allow directory services to be modified for internal NFS servers
 - purefb_ds - Update test state to allow specific tests to be run
+- purefb_info - Added MAC address information for LAGs
 
 Bugfixes
 --------
