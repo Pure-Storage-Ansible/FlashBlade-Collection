@@ -505,8 +505,10 @@ releases:
       - purefb_ad - Updated encryption algorithms to use correct values
       - purefb_ds - Allow directory services to be modified for internal NFS servers
       - purefb_ds - Update test state to allow specific tests to be run
+      - purefb_info - Added MAC address information for LAGs
     fragments:
     - 450_ad_fqdn.yaml
+    - 452_lag_mac.yaml
     - 454_ds_test.yaml
     - 455_alert_fix.yaml
     - 456_ad_test.yaml
