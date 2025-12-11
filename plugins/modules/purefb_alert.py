@@ -131,8 +131,8 @@ def update_alert(module, blade):
             )
         )
     current_state = {
-        "enabled": alert.items[0].enabled,
-        "severity": alert.items[0].minimum_notification_severity,
+        "enabled": alert.enabled,
+        "severity": alert.minimum_notification_severity,
     }
     if current_state["enabled"] != module.params["enabled"]:
         enabled = module.params["enabled"]

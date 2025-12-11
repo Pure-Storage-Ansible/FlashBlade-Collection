@@ -4,6 +4,26 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.23.0
+=======
+
+Minor Changes
+-------------
+
+- purefa_ad - Added support for local servers using the ``server`` parameter.
+- purefb_ad - Added test and rotate states
+- purefb_ad - Remove doc references to FQDNs as SPNs are the required method.
+- purefb_ad - Updated encryption algorithms to use correct values
+- purefb_ds - Allow directory services to be modified for internal NFS servers
+- purefb_ds - Update test state to allow specific tests to be run
+- purefb_info - Added MAC address information for LAGs
+
+Bugfixes
+--------
+
+- purefb_alert - Fixed issue with syntax error in update function
+- purefb_bucket_replica - Fixed issue with ItemIterator error
+
 v1.22.0
 =======
 
