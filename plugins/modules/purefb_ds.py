@@ -215,15 +215,15 @@ def enable_ds(module, blade):
     if not module.check_mode:
         if module.params["nfs_server"] and module.params["dstype"] == "nfs":
             if module.params["nfs_server"] != "_array_server":
-                ds_name = module.params["dstype"] + "_nfs"
+                ds_name = module.params["nfs_server"] + "_nfs"
         res = blade.patch_directory_services(
             names=[ds_name],
             directory_service=DirectoryService(enabled=True),
         )
         if res.status_code != 200:
             module.fail_json(
-                msg="Enable {0} Directory Service failed. Error: {1}".format(
-                    module.params["dstype"], res.errors[0].message
+                msg="Enable Directory Service {0} failed. Error: {1}".format(
+                    ds_name, res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -236,15 +236,15 @@ def disable_ds(module, blade):
     if not module.check_mode:
         if module.params["nfs_server"] and module.params["dstype"] == "nfs":
             if module.params["nfs_server"] != "_array_server":
-                ds_name = module.params["dstype"] + "_nfs"
+                ds_name = module.params["nfs_server"] + "_nfs"
         res = blade.patch_directory_services(
             names=[ds_name],
             directory_service=DirectoryService(enabled=False),
         )
         if res.status_code != 200:
             module.fail_json(
-                msg="Disable {0} Directory Service failed. Error: {1}".format(
-                    module.params["dstype"], res.errors[0].message
+                msg="Disable Directory Service {0} failed. Error: {1}".format(
+                    ds_name, res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -257,7 +257,7 @@ def delete_ds(module, blade):
     if not module.check_mode:
         if module.params["nfs_server"] and module.params["dstype"] == "nfs":
             if module.params["nfs_server"] != "_array_server":
-                ds_name = module.params["dstype"] + "_nfs"
+                ds_name = module.params["nfs_server"] + "_nfs"
         res = blade.get_directory_services(names=[ds_name])
         if res.status_code != 200:
             module.fail_json(
@@ -307,12 +307,12 @@ def delete_ds(module, blade):
                 changed = False
         if changed:
             res = blade.patch_directory_services(
-                names=[module.params["dstype"]], directory_service=dir_service
+                names=[ds_name], directory_service=dir_service
             )
             if res.status_code != 200:
                 module.fail_json(
-                    msg="Delete {0} Directory Service failed. Error: {1}".format(
-                        module.params["dstype"], res.errors[0].message
+                    msg="Delete Directory Service {0} failed. Error: {1}".format(
+                        ds_name, res.errors[0].message
                     )
                 )
     module.exit_json(changed=changed)
@@ -327,7 +327,7 @@ def update_ds(module, blade):
     ds_name = module.params["dstype"]
     if module.params["nfs_server"] and module.params["dstype"] == "nfs":
         if module.params["nfs_server"] != "_array_server":
-            ds_name = module.params["dstype"] + "_nfs"
+            ds_name = module.params["nfs_server"] + "_nfs"
     res = blade.get_directory_services(names=[ds_name])
     if res.status_code != 200:
         module.fail_json(
@@ -382,12 +382,12 @@ def update_ds(module, blade):
         if not module.check_mode:
             n_attr = DirectoryService(**attr)
             res = blade.patch_directory_services(
-                names=[module.params["dstype"]], directory_service=n_attr
+                names=[ds_name], directory_service=n_attr
             )
             if res.status_code != 200:
                 module.fail_json(
-                    msg="Failed to change {0} directory service. Error: {1}".format(
-                        module.params["dstype"], res.errors[0].message
+                    msg="Failed to change directory service {0}. Error: {1}".format(
+                        ds_name, res.errors[0].message
                     )
                 )
     module.exit_json(changed=changed)
@@ -450,14 +450,14 @@ def create_ds(module, blade):
                 )
         if module.params["nfs_server"] and module.params["dstype"] == "nfs":
             if module.params["nfs_server"] != "_array_server":
-                ds_name = module.params["dstype"] + "_nfs"
+                ds_name = module.params["nfs_server"] + "_nfs"
         res = blade.patch_directory_services(
             names=[ds_name], directory_service=dir_service
         )
         if res.status_code != 200:
             module.fail_json(
-                msg="Create {0} Directory Service failed. Error: {1}".format(
-                    module.params["dstype"], res.errors[0].message
+                msg="Create Directory Service {0} failed. Error: {1}".format(
+                    ds_name, res.errors[0].message
                 )
             )
     module.exit_json(changed=changed)
@@ -543,12 +543,16 @@ def main():
     ds_name = module.params["dstype"]
     if module.params["nfs_server"] and module.params["dstype"] == "nfs":
         if module.params["nfs_server"] != "_array_server":
-            ds_name = module.params["dstype"] + "_nfs"
+            ds_name = module.params["nfs_server"] + "_nfs"
     res = blade.get_directory_services(names=[ds_name])
     ds_configured = False
     if res.status_code == 200:
+        dirserv = list(res.items)[0]
         ds_configured = True
-    dirserv = list(res.items)[0]
+        if module.params["dstype"] == "nfs" and not dirserv.nfs.nis_servers:
+            ds_configured = False
+    else:
+        module.exit_json(msg="Directory Service {0} does not exist".format(ds_name))
     ds_enabled = dirserv.enabled
     ldap_uri = False
     set_ldap = False
@@ -570,12 +574,12 @@ def main():
         update_ds(module, blade)
     elif ds_configured and not module.params["enable"] and ds_enabled:
         disable_ds(module, blade)
+    elif not ds_configured and state == "present":
+        create_ds(module, blade)
     elif ds_configured and module.params["enable"] and not ds_enabled:
         enable_ds(module, blade)
         # Now we have enabled the DS lets make sure there aren't any new updates...
         update_ds(module, blade)
-    elif not ds_configured and state == "present":
-        create_ds(module, blade)
     elif state == "test":
         test_ds(module, blade)
     else:
