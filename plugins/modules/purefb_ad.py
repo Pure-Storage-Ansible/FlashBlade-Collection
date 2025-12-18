@@ -97,6 +97,7 @@ options:
   service_principals:
     description:
     - A list of SPNs for registering services with the domain.
+    - The service must be provided with the FQDN. See examples below.
     - If not specified B(Computer Name.Domain) is used
     type: list
     elements: str
@@ -113,6 +114,7 @@ options:
   service:
     description:
     - Service protocol for Active Directory principals
+    - This parameter is now IGNORED.
     - Refer to FlashBlade User Guide for more details
     - Use the I(service_principals) parameter instead to correctly define the service type to be used
       for each principal.
