@@ -208,48 +208,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 
 
-def enable_ds(module, blade):
-    """Enable Directory Service"""
-    changed = True
-    ds_name = module.params["dstype"]
-    if not module.check_mode:
-        if module.params["nfs_server"] and module.params["dstype"] == "nfs":
-            if module.params["nfs_server"] != "_array_server":
-                ds_name = module.params["nfs_server"] + "_nfs"
-        res = blade.patch_directory_services(
-            names=[ds_name],
-            directory_service=DirectoryService(enabled=True),
-        )
-        if res.status_code != 200:
-            module.fail_json(
-                msg="Enable Directory Service {0} failed. Error: {1}".format(
-                    ds_name, res.errors[0].message
-                )
-            )
-    module.exit_json(changed=changed)
-
-
-def disable_ds(module, blade):
-    """Disable Directory Service"""
-    changed = True
-    ds_name = module.params["dstype"]
-    if not module.check_mode:
-        if module.params["nfs_server"] and module.params["dstype"] == "nfs":
-            if module.params["nfs_server"] != "_array_server":
-                ds_name = module.params["nfs_server"] + "_nfs"
-        res = blade.patch_directory_services(
-            names=[ds_name],
-            directory_service=DirectoryService(enabled=False),
-        )
-        if res.status_code != 200:
-            module.fail_json(
-                msg="Disable Directory Service {0} failed. Error: {1}".format(
-                    ds_name, res.errors[0].message
-                )
-            )
-    module.exit_json(changed=changed)
-
-
 def delete_ds(module, blade):
     """Delete Directory Service"""
     changed = True
@@ -337,6 +295,10 @@ def update_ds(module, blade):
         )
     ds_now = list(res.items)[0]
     if module.params["dstype"] == "nfs" and module.params["nis_servers"]:
+        if module.params["enable"]:
+            if module.params["enable"] != ds_now.enabled:
+                attr["enabled"] = module.params["enable"]
+                mod_ds = True
         if sorted(module.params["nis_servers"]) != sorted(
             ds_now.nfs.nis_servers
         ) or module.params["nis_domain"] != "".join(map(str, ds_now.nfs.nis_domains)):
@@ -345,6 +307,14 @@ def update_ds(module, blade):
                 "nis_servers": module.params["nis_servers"][0:30],
             }
             mod_ds = True
+    elif module.params["dstype"] == "smb":
+        if module.params["join_ou"] != ds_now.smb.join_ou:
+            attr["smb"] = {"join_ou": module.params["join_ou"]}
+            mod_ds = True
+        if module.params["enable"]:
+            if module.params["enable"] != ds_now.enabled:
+                attr["enabled"] = module.params["enable"]
+                mod_ds = True
     else:
         if module.params["uri"]:
             if sorted(module.params["uri"][0:30]) != sorted(ds_now.uris):
@@ -373,10 +343,6 @@ def update_ds(module, blade):
                 mod_ds = True
             else:
                 module.fail_json(msg="'bind_password' must be provided for this task")
-        if module.params["dstype"] == "smb":
-            if module.params["join_ou"] != ds_now.smb.join_ou:
-                attr["smb"] = {"join_ou": module.params["join_ou"]}
-                mod_ds = True
     if mod_ds:
         changed = True
         if not module.check_mode:
@@ -570,16 +536,10 @@ def main():
             )
     if state == "absent":
         delete_ds(module, blade)
-    elif ds_configured and module.params["enable"] and ds_enabled:
+    elif ds_configured:
         update_ds(module, blade)
-    elif ds_configured and not module.params["enable"] and ds_enabled:
-        disable_ds(module, blade)
     elif not ds_configured and state == "present":
         create_ds(module, blade)
-    elif ds_configured and module.params["enable"] and not ds_enabled:
-        enable_ds(module, blade)
-        # Now we have enabled the DS lets make sure there aren't any new updates...
-        update_ds(module, blade)
     elif state == "test":
         test_ds(module, blade)
     else:
