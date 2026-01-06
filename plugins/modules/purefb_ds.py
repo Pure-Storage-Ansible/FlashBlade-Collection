@@ -536,7 +536,7 @@ def main():
             )
     if state == "absent":
         delete_ds(module, blade)
-    elif ds_configured:
+    elif ds_configured and state == "present":
         update_ds(module, blade)
     elif not ds_configured and state == "present":
         create_ds(module, blade)
