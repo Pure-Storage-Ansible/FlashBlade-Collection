@@ -70,13 +70,13 @@ EXAMPLES = r"""
     nameservers:
       - 8.8.8.8
       - 8.8.4.4
-    fa_url: 10.10.10.2
+    fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Delete exisitng management DNS settings
   purestorage.flashblade.purefb_dns:
     state: absent
-    fa_url: 10.10.10.2
+    fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Set DNS settings with alternate name
@@ -86,7 +86,7 @@ EXAMPLES = r"""
     nameservers:
       - 8.8.8.8
       - 8.8.4.4
-    fa_url: 10.10.10.2
+    fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 """
 
