@@ -526,6 +526,17 @@ releases:
     - 467_ping_xfm_fix.yaml
     - 470_br_index.yaml
     release_date: '2025-12-15'
+  1.24.0:
+    changes:
+      bugfixes:
+      - purefb_ad - Ensure encryption algorithms used match the GUI values
+      - purefb_certs - Fix the syntax to generate a CSR
+      - purefb_ds - Fixed issue when creating pre-enabled management directory service
+    fragments:
+    - 476_fix_certs.yaml
+    - 477_mgmt_ds.yaml
+    - 478_ad_encrypt.yaml
+    release_date: '2026-01-14'
   1.3.0:
     changes:
       bugfixes:
