@@ -4,6 +4,20 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.23.1
+=======
+
+Minor Changes
+-------------
+
+- purefb_info - Added MAC address information for LAGs
+
+Bugfixes
+--------
+
+- purefb_bucket_replica - Fixed IndexError crash in check loop
+- purefb_pingtrace - Fiexed issue with XFM module when state is ping
+
 v1.23.0
 =======
 

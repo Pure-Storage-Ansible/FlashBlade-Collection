@@ -66,8 +66,8 @@ options:
     - The encryption types that will be supported for use by clients for Kerberos authentication
     type: list
     elements: str
-    choices: [ aes256-cts-hmac-sha1-96, aes128-cts-hmac-sha1-96, arcfour-hma ]
-    default: aes256-cts-hmac-sha1-96
+    choices: [ aes256-sha1, aes128-sha1, aes256-cts-hmac-sha1-96, aes128-cts-hmac-sha1-96, arcfour-hma ]
+    default: aes256-sha1
   join_ou:
     description:
     - Location where the Computer account will be created. e.g. OU=Arrays,OU=Storage.
@@ -97,6 +97,7 @@ options:
   service_principals:
     description:
     - A list of SPNs for registering services with the domain.
+    - The service must be provided with the FQDN. See examples below.
     - If not specified B(Computer Name.Domain) is used
     type: list
     elements: str
@@ -113,6 +114,7 @@ options:
   service:
     description:
     - Service protocol for Active Directory principals
+    - This parameter is now IGNORED.
     - Refer to FlashBlade User Guide for more details
     - Use the I(service_principals) parameter instead to correctly define the service type to be used
       for each principal.
@@ -481,11 +483,13 @@ def main():
                 type="list",
                 elements="str",
                 choices=[
+                    "aes256-sha1",
+                    "aes128-sha1",
                     "aes256-cts-hmac-sha1-96",
                     "aes128-cts-hmac-sha1-96",
                     "arcfour-hma",
                 ],
-                default=["aes256-cts-hmac-sha1-96"],
+                default=["aes256-sha1"],
             ),
         )
     )
@@ -496,6 +500,12 @@ def main():
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)
+    module.params["encryption"] = [
+        crypt.replace("aes256-sha1", "aes256-cts-hmac-sha1-96").replace(
+            "aes128-sha1", "aes128-cts-hmac-sha1-96"
+        )
+        for crypt in module.params["encryption"]
+    ]
     state = module.params["state"]
     exists = bool(
         blade.get_active_directory(names=[module.params["name"]]).status_code == 200

@@ -514,6 +514,18 @@ releases:
     - 456_ad_test.yaml
     - 465_bkt_repl_ite_fix.yaml
     release_date: '2025-12-10'
+  1.23.1:
+    changes:
+      bugfixes:
+      - purefb_bucket_replica - Fixed IndexError crash in check loop
+      - purefb_pingtrace - Fiexed issue with XFM module when state is ping
+      minor_changes:
+      - purefb_info - Added MAC address information for LAGs
+    fragments:
+    - 453_lag_mac.yaml
+    - 467_ping_xfm_fix.yaml
+    - 470_br_index.yaml
+    release_date: '2025-12-15'
   1.3.0:
     changes:
       bugfixes:
