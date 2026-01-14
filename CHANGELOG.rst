@@ -4,6 +4,16 @@ Purestorage.Flashblade Release Notes
 
 .. contents:: Topics
 
+v1.24.0
+=======
+
+Bugfixes
+--------
+
+- purefb_ad - Ensure encryption algorithms used match the GUI values
+- purefb_certs - Fix the syntax to generate a CSR
+- purefb_ds - Fixed issue when creating pre-enabled management directory service
+
 v1.23.1
 =======
 
