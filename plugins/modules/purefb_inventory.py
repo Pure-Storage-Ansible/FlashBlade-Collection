@@ -56,7 +56,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-
 PART_NUMBER_API_VERSION = "2.8"
 
 

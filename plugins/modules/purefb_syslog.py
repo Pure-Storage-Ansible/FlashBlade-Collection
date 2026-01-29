@@ -102,7 +102,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-
 SYSLOG_SERVICES_API = "2.14"
 
 

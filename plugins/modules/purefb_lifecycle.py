@@ -134,7 +134,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from datetime import datetime
 
-
 CONTEXT_API_VERSION = "2.17"
 
 

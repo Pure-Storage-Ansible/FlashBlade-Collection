@@ -212,7 +212,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-
 CERT_TYPE_VERSION = "2.15"
 CSR_API_VERSION = "2.20"
 
