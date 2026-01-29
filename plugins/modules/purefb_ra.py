@@ -71,7 +71,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-
 DURATION_API = "2.14"
 
 

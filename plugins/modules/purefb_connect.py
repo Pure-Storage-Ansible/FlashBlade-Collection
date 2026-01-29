@@ -140,7 +140,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-
 CONTEXT_API_VERSION = "2.17"
 FAN_IN_MAXIMUM = 5
 FAN_OUT_MAXIMUM = 5

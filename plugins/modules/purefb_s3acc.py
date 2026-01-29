@@ -130,7 +130,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 
-
 PUBLIC_API_VERSION = "2.12"
 CONTEXT_API_VERSION = "2.17"
 
@@ -385,12 +384,8 @@ def delete_s3acc(module, blade):
         else:
             res = blade.get_object_store_users(names=[module.params["name"] + "/*'"])
         if res.status_code == 200:
-            module.fail_json(
-                msg="Remove all Users from Object Store Account {0} \
-                                 before deletion".format(
-                    module.params["name"]
-                )
-            )
+            module.fail_json(msg="Remove all Users from Object Store Account {0} \
+                                 before deletion".format(module.params["name"]))
         else:
             if CONTEXT_API_VERSION in api_version:
                 res = blade.delete_object_store_accounts(

@@ -93,7 +93,6 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 from datetime import datetime, timezone
 import time
 
-
 DRIVES_API_VERSION = "2.5"
 SECURITY_API_VERSION = "2.7"
 BUCKET_API_VERSION = "2.8"
