@@ -316,8 +316,8 @@ def main():
 
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
-   if not HAS_PYPURECLIENT:
-       module.fail_json(msg="py-pure-client sdk is required for this module")
+    if not HAS_PYPURECLIENT:
+        module.fail_json(msg="py-pure-client sdk is required for this module")
     state = module.params["state"]
     blade = get_system(module)
     api_version = list(blade.get_versions().items)
