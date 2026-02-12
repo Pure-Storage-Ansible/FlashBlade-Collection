@@ -354,7 +354,9 @@ def main():
     local_replica_link = get_local_rl(module, blade)
 
     if not module.params["target"] and state == "present" and not local_replica_link:
-        module.fail_json(msg="target parameter is required when creating a new replica link")
+        module.fail_json(
+            msg="target parameter is required when creating a new replica link"
+        )
 
     target = get_connected(module, blade) if module.params["target"] else None
 
