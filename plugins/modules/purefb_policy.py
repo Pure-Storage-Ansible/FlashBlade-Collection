@@ -631,6 +631,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     convert_time_to_millisecs,
+    _findstr,
 )
 
 NFS_POLICY_API_VERSION = "2.3"
@@ -651,13 +652,6 @@ def _convert_to_millisecs(hour_str: str) -> int:
         return 0 if time_part == 12 else time_part * 3600000
     else:  # PM
         return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
-
-
-def _findstr(text, match):
-    for line in text.splitlines():
-        if match in line:
-            found = line
-    return found
 
 
 def _get_local_tz(module, timezone="UTC"):

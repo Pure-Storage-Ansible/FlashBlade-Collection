@@ -20,10 +20,19 @@ from ansible.module_utils.facts.utils import get_file_content
 
 
 def _findstr(text, match):
+    """Find first line in text containing match string.
+
+    Args:
+        text: Multi-line text to search
+        match: String to search for
+
+    Returns:
+        First line containing match, or None if not found
+    """
     for line in text.splitlines():
         if match in line:
-            found = line
-    return found
+            return line
+    return None
 
 
 def human_to_bytes(size):
