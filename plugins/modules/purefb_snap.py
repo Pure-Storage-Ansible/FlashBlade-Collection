@@ -237,11 +237,11 @@ def create_snapshot(module, blade):
         )
     else:
         connected_blades = list(blade.get_array_connections().items)
-    for rem_blade in range(len(connected_blades)):
+    for rem_blade in connected_blades:
         if (
             module.params["target"]
-            and module.params["target"] == connected_blades[rem_blade].remote.name
-            and connected_blades[rem_blade].status == "connected"
+            and module.params["target"] == rem_blade.remote.name
+            and rem_blade.status == "connected"
         ):
             blade_exists = True
             break

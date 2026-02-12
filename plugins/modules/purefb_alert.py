@@ -186,26 +186,26 @@ def test_alert(module, blade):
     response = list(
         blade.get_alert_watchers_test(names=[module.params["address"]]).items
     )
-    for component in range(len(response)):
-        if response[component].enabled:
+    for component in response:
+        if component.enabled:
             enabled = "true"
         else:
             enabled = "false"
-        if response[component].success:
+        if component.success:
             success = "true"
         else:
             success = "false"
         test_response.append(
             {
-                "component_address": response[component].component_address,
-                "component_name": response[component].component_name,
-                "description": response[component].description,
-                "destination": response[component].destination,
+                "component_address": component.component_address,
+                "component_name": component.component_name,
+                "description": component.description,
+                "destination": component.destination,
                 "enabled": enabled,
-                "result_details": getattr(response[component], "result_details", ""),
+                "result_details": getattr(component, "result_details", ""),
                 "success": success,
-                "test_type": response[component].test_type,
-                "resource_name": response[component].resource.name,
+                "test_type": component.test_type,
+                "resource_name": component.resource.name,
             }
         )
     module.exit_json(changed=False, test_response=test_response)
@@ -246,8 +246,8 @@ def main():
             )
         )
     emails = list(res.items)
-    for email in range(len(emails)):
-        if emails[email].name == module.params["address"]:
+    for email in emails:
+        if email.name == module.params["address"]:
             exists = True
             break
     if module.params["state"] == "present" and not exists:

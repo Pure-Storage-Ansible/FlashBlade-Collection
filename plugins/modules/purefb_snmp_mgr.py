@@ -282,26 +282,26 @@ def test_manager(module, blade):
     """Test SNMP manager configuration"""
     test_response = []
     response = list(blade.get_snmp_managers_test(names=[module.params["name"]]).items)
-    for component in range(len(response)):
-        if response[component].enabled:
+    for component in response:
+        if component.enabled:
             enabled = "true"
         else:
             enabled = "false"
-        if response[component].success:
+        if component.success:
             success = "true"
         else:
             success = "false"
         test_response.append(
             {
-                "component_address": response[component].component_address,
-                "component_name": response[component].component_name,
-                "description": response[component].description,
-                "destination": response[component].destination,
+                "component_address": component.component_address,
+                "component_name": component.component_name,
+                "description": component.description,
+                "destination": component.destination,
                 "enabled": enabled,
-                "result_details": getattr(response[component], "result_details", ""),
+                "result_details": getattr(component, "result_details", ""),
                 "success": success,
-                "test_type": response[component].test_type,
-                "resource_name": response[component].resource.name,
+                "test_type": component.test_type,
+                "resource_name": component.resource.name,
             }
         )
     module.exit_json(changed=False, test_response=test_response)
@@ -351,8 +351,8 @@ def main():
 
     mgr_configured = False
     mgrs = list(blade.get_snmp_managers().items)
-    for mgr in range(len(mgrs)):
-        if mgrs[mgr].name == module.params["name"]:
+    for mgr in mgrs:
+        if mgr.name == module.params["name"]:
             mgr_configured = True
             break
     if module.params["version"] == "v3":

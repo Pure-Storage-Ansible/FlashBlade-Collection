@@ -307,18 +307,18 @@ def main():
                 module.fail_json(msg="Gateway and subnet are not compatible.")
         subnets = list(blade.get_subnets().items)
         nrange = netaddr.IPSet([module.params["prefix"]])
-        for sub in range(len(subnets)):
+        for sub in subnets:
             if (
-                subnets[sub].vlan == module.params["vlan"]
-                and subnets[sub].name != module.params["name"]
-                and hasattr(subnets[sub].link_aggregation_group, "name")
+                sub.vlan == module.params["vlan"]
+                and sub.name != module.params["name"]
+                and hasattr(sub.link_aggregation_group, "name")
             ):
                 module.fail_json(
                     msg="VLAN ID {0} is already in use.".format(module.params["vlan"])
                 )
             if (
-                nrange & netaddr.IPSet([subnets[sub].prefix])
-                and subnets[sub].name != module.params["name"]
+                nrange & netaddr.IPSet([sub.prefix])
+                and sub.name != module.params["name"]
             ):
                 module.fail_json(msg="Prefix CIDR overlaps with existing subnet.")
 

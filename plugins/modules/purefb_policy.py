@@ -1135,18 +1135,18 @@ def delete_smb_client_policy(module, blade):
                             )
             else:
                 rules = list(res.items)
-                for cli in range(len(rules)):
-                    if rules[cli].client == "*":
+                for cli in rules:
+                    if cli.client == "*":
                         changed = True
                         if not module.check_mode:
                             if CONTEXT_API_VERSION in versions:
                                 res = blade.delete_smb_client_policies_rules(
-                                    names=[rules[cli].name],
+                                    names=[cli.name],
                                     context_names=[module.params["context"]],
                                 )
                             else:
                                 res = blade.delete_smb_client_policies_rules(
-                                    names=[rules[cli].name]
+                                    names=[cli.name]
                                 )
                             if res.status_code != 200:
                                 module.fail_json(
@@ -1480,8 +1480,8 @@ def update_smb_client_policy(module, blade):
             cli_count = None
             done = False
             if module.params["client"] == "*":
-                for cli in range(len(rules)):
-                    if rules[cli].client == "*":
+                for cli in rules:
+                    if cli.client == "*":
                         cli_count = cli
                 if not cli_count:
                     if SMB_ENCRYPT_API_VERSION in versions:
@@ -1746,18 +1746,18 @@ def delete_nfs_policy(module, blade):
                             )
             else:
                 rules = list(res.items)
-                for cli in range(len(rules)):
-                    if rules[cli].client == "*":
+                for cli in rules:
+                    if cli.client == "*":
                         changed = True
                         if not module.check_mode:
                             if CONTEXT_API_VERSION in versions:
                                 res = blade.delete_nfs_export_policies_rules(
-                                    names=[rules[cli].name],
+                                    names=[cli.name],
                                     context_names=[module.params["context"]],
                                 )
                             else:
                                 res = blade.delete_nfs_export_policies_rules(
-                                    names=[rules[cli].name]
+                                    names=[cli.name]
                                 )
                             if res.status_code != 200:
                                 module.fail_json(
@@ -1858,8 +1858,8 @@ def update_network_access_policy(module, blade):
             cli_count = None
             done = False
             if module.params["client"] == "*":
-                for cli in range(len(rules)):
-                    if rules[cli].client == "*":
+                for cli in rules:
+                    if cli.client == "*":
                         cli_count = cli
                 if not cli_count:
                     rule = NetworkAccessPolicyRule(
@@ -2097,18 +2097,18 @@ def delete_network_access_policy(module, blade):
                             )
             else:
                 rules = list(res.items)
-                for cli in range(len(rules)):
-                    if rules[cli].client == "*":
+                for cli in rules:
+                    if cli.client == "*":
                         changed = True
                         if not module.check_mode:
                             if CONTEXT_API_VERSION in versions:
                                 res = blade.delete_network_access_policies_rules(
-                                    names=[rules[cli].name],
+                                    names=[cli.name],
                                     context_names=[module.params["context"]],
                                 )
                             else:
                                 res = blade.delete_network_access_policies_rules(
-                                    names=[rules[cli].name]
+                                    names=[cli.name]
                                 )
                             if res.status_code != 200:
                                 module.fail_json(
@@ -2392,8 +2392,8 @@ def update_nfs_policy(module, blade):
             cli_count = None
             done = False
             if module.params["client"] == "*":
-                for cli in range(len(rules)):
-                    if rules[cli].client == "*":
+                for cli in rules:
+                    if cli.client == "*":
                         cli_count = cli
                 if not cli_count:
                     rule = NfsExportPolicyRule(
@@ -2811,23 +2811,23 @@ def delete_os_policy(module, blade):
             if module.params["force_delete"]:
                 changed = True
                 if not module.check_mode:
-                    for user in range(len(policy_users)):
+                    for user in policy_users:
                         if CONTEXT_API_VERSION in versions:
                             res = blade.delete_object_store_access_policies_object_store_users(
-                                member_names=[policy_users[user].member.name],
+                                member_names=[user.member.name],
                                 policy_names=[policy_name],
                                 context_names=[module.params["context"]],
                             )
                         else:
                             res = blade.delete_object_store_access_policies_object_store_users(
-                                member_names=[policy_users[user].member.name],
+                                member_names=[user.member.name],
                                 policy_names=[policy_name],
                             )
                         if res.status_code != 200:
                             module.fail_json(
                                 msg="Failed to delete user {0} from policy {1}, "
                                 "Error: {2}".format(
-                                    policy_users[user].member,
+                                    user.member,
                                     policy_name,
                                     res.errors[0].message,
                                 )
@@ -3219,27 +3219,27 @@ def delete_snap_policy(module, blade):
             current_rules = list(
                 blade.get_policies(names=[module.params["name"]]).items
             )[0].rules
-        for rule in range(len(current_rules)):
+        for rule in current_rules:
             current_rule = {
-                "at": current_rules[rule].at,
-                "every": current_rules[rule].every,
-                "keep_for": current_rules[rule].keep_for,
-                "time_zone": current_rules[rule].time_zone,
+                "at": rule.at,
+                "every": rule.every,
+                "keep_for": rule.keep_for,
+                "time_zone": rule.time_zone,
             }
             if not module.params["at"]:
-                delete_at = current_rules[rule].at
+                delete_at = rule.at
             else:
                 delete_at = time_to_milliseconds(module.params["at"])
             if module.params["keep_for"]:
                 delete_keep_for = module.params["keep_for"]
             else:
-                delete_keep_for = int(current_rules[rule].keep_for / 1000)
+                delete_keep_for = int(rule.keep_for / 1000)
             if module.params["every"]:
                 delete_every = module.params["every"]
             else:
-                delete_every = int(current_rules[rule].every / 1000)
+                delete_every = int(rule.every / 1000)
             if not module.params["timezone"]:
-                delete_tz = current_rules[rule].time_zone
+                delete_tz = rule.time_zone
             else:
                 delete_tz = module.params["timezone"]
             delete_rule = {
@@ -3494,27 +3494,27 @@ def update_snap_policy(module, blade):
             0
         ].rules
     create_new = False
-    for rule in range(len(current_rules)):
+    for rule in current_rules:
         current_rule = {
-            "at": current_rules[rule].at,
-            "every": current_rules[rule].every,
-            "keep_for": current_rules[rule].keep_for,
-            "time_zone": current_rules[rule].time_zone,
+            "at": rule.at,
+            "every": rule.every,
+            "keep_for": rule.keep_for,
+            "time_zone": rule.time_zone,
         }
         if not module.params["at"]:
-            new_at = current_rules[rule].at
+            new_at = rule.at
         else:
             new_at = time_to_milliseconds(module.params["at"])
         if module.params["keep_for"]:
             new_keep_for = module.params["keep_for"]
         else:
-            new_keep_for = int(current_rules[rule].keep_for / 1000)
+            new_keep_for = int(rule.keep_for / 1000)
         if module.params["every"]:
             new_every = module.params["every"]
         else:
-            new_every = int(current_rules[rule].every / 1000)
+            new_every = int(rule.every / 1000)
         if not module.params["timezone"]:
-            new_tz = current_rules[rule].time_zone
+            new_tz = rule.time_zone
         else:
             new_tz = module.params["timezone"]
         new_rule = {
@@ -3625,8 +3625,8 @@ def update_snap_policy(module, blade):
                     policy_names=[module.params["name"]]
                 ).items
             )
-        for member in range(len(policy_fs_details)):
-            current_filesystems.append(policy_fs_details[member].member.name)
+        for member in policy_fs_details:
+            current_filesystems.append(member.member.name)
         if module.params["state"] == "present":
             difference_set = [
                 item
@@ -3703,8 +3703,8 @@ def update_snap_policy(module, blade):
                     policy_names=[module.params["name"]]
                 ).items
             )
-        for member in range(len(policy_rl_details)):
-            current_rls.append(policy_rl_details[member].member.name)
+        for member in policy_rl_details:
+            current_rls.append(member.member.name)
         if module.params["state"] == "present":
             difference_set = [
                 item

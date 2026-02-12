@@ -413,24 +413,24 @@ def test_account(module, blade):
     response = list(
         blade.get_active_directory_test(names=[module.params["name"]]).items
     )
-    for component in range(len(response)):
-        if response[component].enabled:
+    for component in response:
+        if component.enabled:
             enabled = "true"
         else:
             enabled = "false"
-        if response[component].success:
+        if component.success:
             success = "true"
         else:
             success = "false"
         test_response.append(
             {
-                "component_name": response[component].component_name,
-                "description": response[component].description,
-                "destination": response[component].destination,
+                "component_name": component.component_name,
+                "description": component.description,
+                "destination": component.destination,
                 "enabled": enabled,
                 "success": success,
-                "test_type": response[component].test_type,
-                "resource_name": response[component].resource.name,
+                "test_type": component.test_type,
+                "resource_name": component.resource.name,
             }
         )
     module.exit_json(changed=False, test_response=test_response)

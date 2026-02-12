@@ -114,25 +114,25 @@ def test_ra(module, blade):
     """Test support/remote assist configuration"""
     test_response = []
     response = list(blade.get_support_test(test_type="remote-assist").items)
-    for component in range(len(response)):
-        if response[component].enabled:
+    for component in response:
+        if component.enabled:
             enabled = "true"
         else:
             enabled = "false"
-        if response[component].success:
+        if component.success:
             success = "true"
         else:
             success = "false"
         test_response.append(
             {
-                "component_address": response[component].component_address,
-                "component_name": response[component].component_name,
-                "description": response[component].description,
-                "destination": response[component].destination,
+                "component_address": component.component_address,
+                "component_name": component.component_name,
+                "description": component.description,
+                "destination": component.destination,
                 "enabled": enabled,
-                "result_details": getattr(response[component], "result_details", ""),
+                "result_details": getattr(component, "result_details", ""),
                 "success": success,
-                "test_type": response[component].test_type,
+                "test_type": component.test_type,
             }
         )
     module.exit_json(changed=False, test_response=test_response)
