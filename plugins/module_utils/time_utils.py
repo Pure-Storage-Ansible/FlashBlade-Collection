@@ -122,4 +122,3 @@ def milliseconds_to_time(millisecs: Optional[int]) -> Optional[str]:
     hours = int(millisecs / 3600000) % 24
     minutes = int((millisecs % 3600000) / 60000)
     return f"{hours:02d}:{minutes:02d}"
-

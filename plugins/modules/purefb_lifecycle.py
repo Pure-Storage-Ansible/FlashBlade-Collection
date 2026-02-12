@@ -168,8 +168,6 @@ def _convert_date_to_epoch(module):
 
 
 
-
-
 def delete_rule(module, blade):
     """Delete lifecycle rule"""
     changed = True
@@ -213,22 +211,22 @@ def create_rule(module, blade):
         attr = LifecycleRulePost(
             bucket=ReferenceWritable(name=module.params["bucket"]),
             rule_id=module.params["name"],
-            keep_previous_version_for=time_to_milliseconds(
-                module.params["keep_previous_for"]
-            )
-            if module.params["keep_previous_for"]
-            else 0,
+            keep_previous_version_for=(
+                time_to_milliseconds(module.params["keep_previous_for"])
+                if module.params["keep_previous_for"]
+                else 0
+            ),
             keep_current_version_until=module.params["keep_current_until"],
-            keep_current_version_for=time_to_milliseconds(
-                module.params["keep_current_for"]
-            )
-            if module.params["keep_current_for"]
-            else 0,
-            abort_incomplete_multipart_uploads_after=time_to_milliseconds(
-                module.params["abort_uploads_after"]
-            )
-            if module.params["abort_uploads_after"]
-            else 0,
+            keep_current_version_for=(
+                time_to_milliseconds(module.params["keep_current_for"])
+                if module.params["keep_current_for"]
+                else 0
+            ),
+            abort_incomplete_multipart_uploads_after=(
+                time_to_milliseconds(module.params["abort_uploads_after"])
+                if module.params["abort_uploads_after"]
+                else 0
+            ),
             prefix=module.params["prefix"],
         )
         if attr.keep_current_version_until:
@@ -303,9 +301,7 @@ def update_rule(module, blade, rule):
     if not module.params["abort_uploads_after"]:
         abort_uploads_after = current_rule["abort_incomplete_multipart_uploads_after"]
     else:
-        abort_uploads_after = time_to_milliseconds(
-            module.params["abort_uploads_after"]
-        )
+        abort_uploads_after = time_to_milliseconds(module.params["abort_uploads_after"])
     if not module.params["keep_current_until"]:
         keep_current_until = current_rule["keep_current_version_until"]
     else:

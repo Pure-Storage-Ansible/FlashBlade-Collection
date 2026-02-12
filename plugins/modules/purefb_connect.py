@@ -149,8 +149,6 @@ FAN_OUT_MAXIMUM = 5
 
 
 
-
-
 def _check_connected(module, blade):
     api_version = list(blade.get_versions().items)
     if CONTEXT_API_VERSION in api_version:

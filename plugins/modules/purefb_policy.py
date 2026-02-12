@@ -646,8 +646,6 @@ CONTEXT_API_VERSION = "2.17"
 
 
 
-
-
 def _get_local_tz(module, timezone="UTC"):
     """
     We will attempt to get the local timezone of the server running the module and use that.
@@ -1362,9 +1360,7 @@ def create_worm_data_policy(module, blade):
     if not module.check_mode:
         min_retention = time_to_milliseconds(module.params["min_retention"])
         max_retention = time_to_milliseconds(module.params["max_retention"])
-        default_retention = time_to_milliseconds(
-            module.params["default_retention"]
-        )
+        default_retention = time_to_milliseconds(module.params["default_retention"])
         if CONTEXT_API_VERSION in versions:
             res = blade.post_worm_data_policies(
                 policy=WormDataPolicy(

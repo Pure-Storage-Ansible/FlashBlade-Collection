@@ -110,8 +110,6 @@ FLEET_API_VERSION = "2.17"
 
 
 
-
-
 def _bytes_to_human(bytes_number):
     if bytes_number:
         labels = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s", "PB/s"]
@@ -762,16 +760,20 @@ def generate_array_conn_dict(blade):
                 "window_limit": _bytes_to_human(
                     getattr(arrays[arraycnt].throttle, "window_limit", None)
                 ),
-                "window_start": milliseconds_to_time(
-                    getattr(arrays[arraycnt].throttle.window, "start", None)
-                )
-                if getattr(arrays[arraycnt].throttle.window, "start", None)
-                else None,
-                "window_end": milliseconds_to_time(
-                    getattr(arrays[arraycnt].throttle.window, "end", None)
-                )
-                if getattr(arrays[arraycnt].throttle.window, "end", None)
-                else None,
+                "window_start": (
+                    milliseconds_to_time(
+                        getattr(arrays[arraycnt].throttle.window, "start", None)
+                    )
+                    if getattr(arrays[arraycnt].throttle.window, "start", None)
+                    else None
+                ),
+                "window_end": (
+                    milliseconds_to_time(
+                        getattr(arrays[arraycnt].throttle.window, "end", None)
+                    )
+                    if getattr(arrays[arraycnt].throttle.window, "end", None)
+                    else None
+                ),
             },
         }
     return array_conn_info

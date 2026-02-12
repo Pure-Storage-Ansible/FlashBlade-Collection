@@ -86,8 +86,6 @@ def human_to_real(iops):
 
 
 
-
-
 def get_local_tz(module, timezone="UTC"):
     """
     We will attempt to get the local timezone of the server running the module and use that.
