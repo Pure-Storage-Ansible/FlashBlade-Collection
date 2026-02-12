@@ -3569,7 +3569,7 @@ def update_snap_policy(module, blade):
                         msg="every parameter is out of range (300 to 34560000)"
                     )
                 if module.params["at"]:
-                    attr = snapshotPolicyPatch(
+                    attr = SnapshotPolicyPatch(
                         enabled=module.params["enabled"],
                         add_rules=[
                             PolicyRule(
