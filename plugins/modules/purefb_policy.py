@@ -598,7 +598,7 @@ try:
         NfsExportPolicy,
         NfsExportPolicyRule,
         Policy,
-        PolicyPatch,
+        SnapshotPolicyPatch,
         PolicyRule,
         SmbSharePolicyRule,
         SmbSharePolicy,
@@ -3250,7 +3250,7 @@ def delete_snap_policy(module, blade):
             }
             if current_rule == delete_rule:
                 changed = True
-                attr = PolicyPatch(remove_rules=[delete_rule])
+                attr = SnapshotPolicyPatch(remove_rules=[delete_rule])
                 if not module.check_mode:
                     if CONTEXT_API_VERSION in versions:
                         res = blade.patch_policies(
@@ -3569,7 +3569,7 @@ def update_snap_policy(module, blade):
                         msg="every parameter is out of range (300 to 34560000)"
                     )
                 if module.params["at"]:
-                    attr = PolicyPatch(
+                    attr = SnapshotPolicyPatch(
                         enabled=module.params["enabled"],
                         add_rules=[
                             PolicyRule(
@@ -3581,7 +3581,7 @@ def update_snap_policy(module, blade):
                         ],
                     )
                 else:
-                    attr = PolicyPatch(
+                    attr = SnapshotPolicyPatch(
                         enabled=module.params["enabled"],
                         add_rules=[
                             PolicyRule(
@@ -3591,7 +3591,7 @@ def update_snap_policy(module, blade):
                         ],
                     )
             else:
-                attr = PolicyPatch(enabled=module.params["enabled"])
+                attr = SnapshotPolicyPatch(enabled=module.params["enabled"])
             if CONTEXT_API_VERSION in versions:
                 res = blade.patch_policies(
                     names=[module.params["name"]],
