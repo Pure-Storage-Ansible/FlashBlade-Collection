@@ -167,7 +167,6 @@ def _convert_date_to_epoch(module):
     return epoch_milliseconds
 
 
-
 def delete_rule(module, blade):
     """Delete lifecycle rule"""
     changed = True

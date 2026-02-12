@@ -109,7 +109,6 @@ SERVERS_API_VERSION = "2.16"
 FLEET_API_VERSION = "2.17"
 
 
-
 def _bytes_to_human(bytes_number):
     if bytes_number:
         labels = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s", "PB/s"]

@@ -645,7 +645,6 @@ WORM_POLICY_API_VERSION = "2.15"
 CONTEXT_API_VERSION = "2.17"
 
 
-
 def _get_local_tz(module, timezone="UTC"):
     """
     We will attempt to get the local timezone of the server running the module and use that.
