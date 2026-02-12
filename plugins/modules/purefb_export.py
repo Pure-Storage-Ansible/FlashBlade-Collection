@@ -214,7 +214,10 @@ def modify_export(module, blade, export):
     else:
         export_name = module.params["name"]
     if module.params["type"] == "NFS":
-        if module.params["export_policy"] != export.policy.name:
+        if (
+            module.params["export_policy"]
+            and module.params["export_policy"] != export.policy.name
+        ):
             export_policy = module.params["export_policy"]
             changed_policy = True
         else:
@@ -242,12 +245,18 @@ def modify_export(module, blade, export):
                         )
                     )
     else:
-        if module.params["client_policy"] != export.policy.name:
+        if (
+            module.params["client_policy"]
+            and module.params["client_policy"] != export.policy.name
+        ):
             client_policy = module.params["client_policy"]
             changed_policy = True
         else:
             client_policy = export.policy.name
-        if module.params["share_policy"] != export.share_policy.name:
+        if (
+            module.params["share_policy"]
+            and module.params["share_policy"] != export.share_policy.name
+        ):
             share_policy = module.params["share_policy"]
             changed_policy = True
         else:
@@ -323,7 +332,9 @@ def main():
         blade.get_servers(names=[module.params["server"]]).status_code == 200
     )
     if not server_exists:
-        module.fail_json("Server {0} does not exist.".format(module.params["server"]))
+        module.fail_json(
+            msg="Server {0} does not exist.".format(module.params["server"])
+        )
     export = get_export(module, blade)
 
     if state == "present" and not export and not module.params["rename"]:
