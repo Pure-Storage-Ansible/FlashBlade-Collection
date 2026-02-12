@@ -137,8 +137,10 @@ def get_local_bucket(module, blade):
         )
     else:
         res = blade.get_buckets(names=[module.params["name"]])
-    if res.status_code == 200 and res.total_item_count > 0:
-        return list(res.items)[0]
+    if res.status_code == 200:
+        items = list(res.items)
+        if items:
+            return items[0]
     return None
 
 
@@ -154,8 +156,10 @@ def get_remote_cred(module, blade, target):
         res = blade.get_object_store_remote_credentials(
             names=[target + "/" + module.params["credential"]]
         )
-    if res.status_code == 200 and res.total_item_count > 0:
-        return res.items[0]
+    if res.status_code == 200:
+        items = list(res.items)
+        if items:
+            return items[0]
     return None
 
 
@@ -169,8 +173,10 @@ def get_local_rl(module, blade):
         )
     else:
         res = blade.get_bucket_replica_links(local_bucket_names=[module.params["name"]])
-    if res.status_code == 200 and res.total_item_count != 0:
-        return res.items[0]
+    if res.status_code == 200:
+        items = list(res.items)
+        if items:
+            return items[0]
     return None
 
 
