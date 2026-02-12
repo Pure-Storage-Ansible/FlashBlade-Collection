@@ -139,21 +139,16 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.time_utils import (
+    time_to_milliseconds,
+)
 
 CONTEXT_API_VERSION = "2.17"
 FAN_IN_MAXIMUM = 5
 FAN_OUT_MAXIMUM = 5
 
 
-def _convert_to_millisecs(hour_str: str) -> int:
-    """Convert a 12-hour formatted time string (e.g., '02AM', '12PM') to milliseconds since midnight."""
-    time_part = int(hour_str[:-2])
-    period = hour_str[-2:]
 
-    if period == "AM":
-        return 0 if time_part == 12 else time_part * 3600000
-    # PM
-    return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
 
 
 def _check_connected(module, blade):
@@ -267,8 +262,8 @@ def create_connection(module, blade):
             if not module.params["window_end"]:
                 module.params["window_end"] = "12AM"
             window = TimeWindow(
-                start=_convert_to_millisecs(module.params["window_start"]),
-                end=_convert_to_millisecs(module.params["window_end"]),
+                start=time_to_milliseconds(module.params["window_start"]),
+                end=time_to_milliseconds(module.params["window_end"]),
             )
         if module.params["window_limit"] and module.params["default_limit"]:
             throttle = Throttle(
@@ -386,11 +381,11 @@ def update_connection(module, blade):
     else:
         window_limit = remote_connection.throttle.window_limit
     if module.params["window_start"]:
-        start = _convert_to_millisecs(module.params["window_start"])
+        start = time_to_milliseconds(module.params["window_start"])
     else:
         start = remote_connection.throttle.window.start
     if module.params["window_end"]:
-        end = _convert_to_millisecs(module.params["window_end"])
+        end = time_to_milliseconds(module.params["window_end"])
     else:
         end = remote_connection.throttle.window.end
 

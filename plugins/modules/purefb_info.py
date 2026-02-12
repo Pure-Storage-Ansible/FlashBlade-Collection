@@ -90,6 +90,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.time_utils import (
+    milliseconds_to_time,
+)
 from datetime import datetime, timezone
 import time
 
@@ -106,10 +109,7 @@ SERVERS_API_VERSION = "2.16"
 FLEET_API_VERSION = "2.17"
 
 
-def _millisecs_to_time(millisecs):
-    if millisecs:
-        return (str(int(millisecs / 3600000 % 24)).zfill(2) + ":00",)
-    return None
+
 
 
 def _bytes_to_human(bytes_number):
@@ -762,12 +762,16 @@ def generate_array_conn_dict(blade):
                 "window_limit": _bytes_to_human(
                     getattr(arrays[arraycnt].throttle, "window_limit", None)
                 ),
-                "window_start": _millisecs_to_time(
+                "window_start": milliseconds_to_time(
                     getattr(arrays[arraycnt].throttle.window, "start", None)
-                ),
-                "window_end": _millisecs_to_time(
+                )
+                if getattr(arrays[arraycnt].throttle.window, "start", None)
+                else None,
+                "window_end": milliseconds_to_time(
                     getattr(arrays[arraycnt].throttle.window, "end", None)
-                ),
+                )
+                if getattr(arrays[arraycnt].throttle.window, "end", None)
+                else None,
             },
         }
     return array_conn_info

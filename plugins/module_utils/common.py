@@ -85,35 +85,7 @@ def human_to_real(iops):
     return digit
 
 
-def convert_to_millisecs(hour):
-    """Convert a 12-hour clock to milliseconds from
-    midnight"""
-    if hour[-2:].upper() == "AM" and hour[:2] == "12":
-        return 0
-    elif hour[-2:].upper() == "AM":
-        return int(hour[:-2]) * 3600000
-    elif hour[-2:].upper() == "PM" and hour[:2] == "12":
-        return 43200000
-    return (int(hour[:-2]) + 12) * 3600000
 
-
-def convert_time_to_millisecs(time):
-    """Convert a time period in milliseconds"""
-    if time[-1:].lower() not in ["w", "d", "h", "m", "s"]:
-        return 0
-    try:
-        if time[-1:].lower() == "w":
-            return int(time[:-1]) * 7 * 86400000
-        elif time[-1:].lower() == "d":
-            return int(time[:-1]) * 86400000
-        elif time[-1:].lower() == "h":
-            return int(time[:-1]) * 3600000
-        elif time[-1:].lower() == "m":
-            return int(time[:-1]) * 60000
-        elif time[-1:].lower() == "s":
-            return int(time[:-1]) * 1000
-    except Exception:
-        return 0
 
 
 def get_local_tz(module, timezone="UTC"):
