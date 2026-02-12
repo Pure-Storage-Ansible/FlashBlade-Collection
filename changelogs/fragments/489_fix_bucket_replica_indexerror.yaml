@@ -4,4 +4,3 @@ bugfixes:
   - purefb_bucket_replica - Fixed iteration anti-pattern using range(len()) that could cause IndexError
   - purefb_bucket_replica - Check actual list length instead of unreliable total_item_count
   - purefb_bucket_replica - Added validation for missing target parameter when creating new replica links
-
