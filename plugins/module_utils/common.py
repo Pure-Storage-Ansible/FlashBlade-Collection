@@ -35,6 +35,18 @@ def _findstr(text, match):
     return None
 
 
+def remove_duplicates(items):
+    """Remove duplicates from a list while preserving order.
+
+    Args:
+        items: List that may contain duplicates
+
+    Returns:
+        List with duplicates removed, order preserved
+    """
+    return list(dict.fromkeys(items))
+
+
 def human_to_bytes(size):
     """Given a human-readable byte string (e.g. 2G, 30M),
     return the number of bytes.  Will return 0 if the argument has

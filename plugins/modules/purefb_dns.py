@@ -104,16 +104,11 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    remove_duplicates,
+)
 
 NON_MGMT_DNS = "2.15"
-
-
-def remove(duplicate):
-    final_list = []
-    for num in duplicate:
-        if num not in final_list:
-            final_list.append(num)
-    return final_list
 
 
 def _get_source(module, blade):
@@ -281,7 +276,7 @@ def main():
     blade = get_system(module)
     api_version = list(blade.get_versions().items)
     if module.params["nameservers"]:
-        module.params["nameservers"] = remove(module.params["nameservers"])
+        module.params["nameservers"] = remove_duplicates(module.params["nameservers"])
 
     if NON_MGMT_DNS in api_version:
         configs = list(blade.get_dns().items)

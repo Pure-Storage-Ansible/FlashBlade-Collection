@@ -78,14 +78,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
-
-
-def remove(duplicate):
-    final_list = []
-    for num in duplicate:
-        if num not in final_list:
-            final_list.append(num)
-    return final_list
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    remove_duplicates,
+)
 
 
 def delete_ntp(module, blade):
@@ -144,7 +139,7 @@ def main():
     if module.params["state"] == "absent":
         delete_ntp(module, blade)
     else:
-        module.params["ntp_servers"] = remove(module.params["ntp_servers"])
+        module.params["ntp_servers"] = remove_duplicates(module.params["ntp_servers"])
         if sorted(list(blade.get_arrays().items)[0].ntp_servers) != sorted(
             module.params["ntp_servers"][0:4]
         ):
