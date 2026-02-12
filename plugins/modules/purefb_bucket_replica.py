@@ -138,7 +138,9 @@ def get_local_bucket(module, blade):
     else:
         res = blade.get_buckets(names=[module.params["name"]])
     if res.status_code == 200:
-        return list(res.items)[0]
+        items = list(res.items)
+        if items:
+            return items[0]
     return None
 
 
@@ -155,7 +157,9 @@ def get_remote_cred(module, blade, target):
             names=[target + "/" + module.params["credential"]]
         )
     if res.status_code == 200:
-        return res.items[0]
+        items = list(res.items)
+        if items:
+            return items[0]
     return None
 
 
@@ -169,8 +173,10 @@ def get_local_rl(module, blade):
         )
     else:
         res = blade.get_bucket_replica_links(local_bucket_names=[module.params["name"]])
-    if res.status_code == 200 and res.total_item_count != 0:
-        return res.items[0]
+    if res.status_code == 200:
+        items = list(res.items)
+        if items:
+            return items[0]
     return None
 
 
@@ -193,15 +199,13 @@ def get_connected(module, blade):
         connected_targets = blade.get_targets(context_names=[module.params["context"]])
     else:
         connected_targets = blade.get_targets()
-    for target in range(connected_targets.total_item_count):
-        if list(connected_targets.items)[target].name == module.params[
-            "target"
-        ] and list(connected_targets.items)[target].status in [
+    for target in list(connected_targets.items):
+        if target.name == module.params["target"] and target.status in [
             "connected",
             "connecting",
             "partially_connected",
         ]:
-            return list(connected_targets.items)[target].name
+            return target.name
     return None
 
 
@@ -348,9 +352,15 @@ def main():
 
     local_bucket = get_local_bucket(module, blade)
     local_replica_link = get_local_rl(module, blade)
-    target = get_connected(module, blade)
 
-    if not target:
+    if not module.params["target"] and state == "present" and not local_replica_link:
+        module.fail_json(
+            msg="target parameter is required when creating a new replica link"
+        )
+
+    target = get_connected(module, blade) if module.params["target"] else None
+
+    if module.params["target"] and not target:
         module.fail_json(
             msg="Selected target {0} is not connected.".format(module.params["target"])
         )
