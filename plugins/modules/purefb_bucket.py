@@ -472,7 +472,7 @@ def create_bucket(module, blade):
                 res = blade.patch_buckets(bucket=pac, names=[module.params["name"]])
             if res.status_code != 200:
                 module.warn(
-                    msg="Failed to set Public Access config correctly for bucket {0}. "
+                    "Failed to set Public Access config correctly for bucket {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
             if (
@@ -496,7 +496,7 @@ def create_bucket(module, blade):
                     )
                 if res.status_code != 200:
                     module.warn(
-                        msg="Failed to set bucket access policy for bucket {0}. Error: {1}".format(
+                        "Failed to set bucket access policy for bucket {0}. Error: {1}".format(
                             module.params["name"], res.errors[0].message
                         )
                     )
@@ -521,7 +521,7 @@ def create_bucket(module, blade):
                     )
                 if res.status_code != 200:
                     module.warn(
-                        msg="Failed to set bucket access policy rule for bucket {0}. Error: {1}".format(
+                        "Failed to set bucket access policy rule for bucket {0}. Error: {1}".format(
                             module.params["name"], res.errors[0].message
                         )
                     )
@@ -553,7 +553,7 @@ def create_bucket(module, blade):
                 res = blade.patch_buckets(bucket=worm, names=[module.params["name"]])
             if res.status_code != 200:
                 module.warn(
-                    msg="Failed to set Bucket Eradication config correctly for bucket {0}. "
+                    "Failed to set Bucket Eradication config correctly for bucket {0}. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
     module.exit_json(changed=changed)
@@ -598,7 +598,7 @@ def delete_bucket(module, blade):
             )
         if res.status_code != 200:
             module.warn(
-                msg="Deletion for bucket {0} failed. "
+                "Deletion for bucket {0} failed. "
                 "Error: {1}".format(module.params["name"], res.errors[0].message)
             )
         if module.params["eradicate"]:
@@ -611,7 +611,7 @@ def delete_bucket(module, blade):
                 res = blade.delete_buckets(names=[module.params["name"]])
             if res.status_code != 200:
                 module.warn(
-                    msg="Eradication for bucket {0} failed. "
+                    "Eradication for bucket {0} failed. "
                     "Error: {1}".format(module.params["name"], res.errors[0].message)
                 )
     module.exit_json(changed=changed)
