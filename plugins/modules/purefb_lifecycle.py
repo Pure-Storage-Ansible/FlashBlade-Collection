@@ -179,13 +179,6 @@ def _convert_to_millisecs(day):
     return int(number) * multipliers.get(unit, 0)
 
 
-def _findstr(text, match):
-    for line in text.splitlines():
-        if match in line:
-            found = line
-    return found
-
-
 def delete_rule(module, blade):
     """Delete lifecycle rule"""
     changed = True

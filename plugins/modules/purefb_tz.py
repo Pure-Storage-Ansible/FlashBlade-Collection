@@ -66,13 +66,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
-
-
-def _findstr(text, match):
-    for line in text.splitlines():
-        if match in line:
-            found = line
-    return found
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    _findstr,
+)
 
 
 def _get_local_tz(module, timezone="UTC"):
