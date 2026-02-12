@@ -630,8 +630,10 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     purefb_argument_spec,
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
-    convert_time_to_millisecs,
     _findstr,
+)
+from ansible_collections.purestorage.flashblade.plugins.module_utils.time_utils import (
+    time_to_milliseconds,
 )
 
 NFS_POLICY_API_VERSION = "2.3"
@@ -641,17 +643,6 @@ SMB_ENCRYPT_API_VERSION = "2.11"
 NET_POLICY_API_VERSION = "2.13"
 WORM_POLICY_API_VERSION = "2.15"
 CONTEXT_API_VERSION = "2.17"
-
-
-def _convert_to_millisecs(hour_str: str) -> int:
-    """Convert a 12-hour formatted time string (e.g., '02AM', '12PM') to milliseconds since midnight."""
-    time_part = int(hour_str[:-2])
-    period = hour_str[-2:]
-
-    if period == "AM":
-        return 0 if time_part == 12 else time_part * 3600000
-    else:  # PM
-        return 12 * 3600000 if time_part == 12 else (time_part + 12) * 3600000
 
 
 def _get_local_tz(module, timezone="UTC"):
@@ -1366,11 +1357,9 @@ def create_worm_data_policy(module, blade):
     changed = True
     versions = list(blade.get_versions().items)
     if not module.check_mode:
-        min_retention = convert_time_to_millisecs(module.params["min_retention"])
-        max_retention = convert_time_to_millisecs(module.params["max_retention"])
-        default_retention = convert_time_to_millisecs(
-            module.params["default_retention"]
-        )
+        min_retention = time_to_milliseconds(module.params["min_retention"])
+        max_retention = time_to_milliseconds(module.params["max_retention"])
+        default_retention = time_to_milliseconds(module.params["default_retention"])
         if CONTEXT_API_VERSION in versions:
             res = blade.post_worm_data_policies(
                 policy=WormDataPolicy(
@@ -2274,26 +2263,26 @@ def update_worm_data_policy(module, blade):
         new_policy["retention_lock"] = module.params["retention_lock"]
     if (
         module.params["default_retention"]
-        and convert_time_to_millisecs(module.params["default_retention"])
+        and time_to_milliseconds(module.params["default_retention"])
         != current_policy["default_retention"]
     ):
-        new_policy["default_retention"] = convert_time_to_millisecs(
+        new_policy["default_retention"] = time_to_milliseconds(
             module.params["default_retention"]
         )
     if (
         module.params["max_retention"]
-        and convert_time_to_millisecs(module.params["max_retention"])
+        and time_to_milliseconds(module.params["max_retention"])
         != current_policy["max_retention"]
     ):
-        new_policy["max_retention"] = convert_time_to_millisecs(
+        new_policy["max_retention"] = time_to_milliseconds(
             module.params["max_retention"]
         )
     if (
         module.params["min_retention"]
-        and convert_time_to_millisecs(module.params["min_retention"])
+        and time_to_milliseconds(module.params["min_retention"])
         != current_policy["min_retention"]
     ):
-        new_policy["min_retention"] = convert_time_to_millisecs(
+        new_policy["min_retention"] = time_to_milliseconds(
             module.params["min_retention"]
         )
     if new_policy != current_policy:
@@ -3240,7 +3229,7 @@ def delete_snap_policy(module, blade):
             if not module.params["at"]:
                 delete_at = current_rules[rule].at
             else:
-                delete_at = _convert_to_millisecs(module.params["at"])
+                delete_at = time_to_milliseconds(module.params["at"])
             if module.params["keep_for"]:
                 delete_keep_for = module.params["keep_for"]
             else:
@@ -3362,7 +3351,7 @@ def create_snap_policy(module, blade):
                         PolicyRule(
                             keep_for=module.params["keep_for"] * 1000,
                             every=module.params["every"] * 1000,
-                            at=_convert_to_millisecs(module.params["at"]),
+                            at=time_to_milliseconds(module.params["at"]),
                             time_zone=module.params["timezone"],
                         )
                     ],
@@ -3515,7 +3504,7 @@ def update_snap_policy(module, blade):
         if not module.params["at"]:
             new_at = current_rules[rule].at
         else:
-            new_at = _convert_to_millisecs(module.params["at"])
+            new_at = time_to_milliseconds(module.params["at"])
         if module.params["keep_for"]:
             new_keep_for = module.params["keep_for"]
         else:
@@ -3586,7 +3575,7 @@ def update_snap_policy(module, blade):
                             PolicyRule(
                                 keep_for=module.params["keep_for"] * 1000,
                                 every=module.params["every"] * 1000,
-                                at=_convert_to_millisecs(module.params["at"]),
+                                at=time_to_milliseconds(module.params["at"]),
                                 time_zone=module.params["timezone"],
                             )
                         ],

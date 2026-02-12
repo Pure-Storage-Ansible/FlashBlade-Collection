@@ -137,8 +137,8 @@ except ImportError:
     HAS_PURESTORAGE = False
 
 from ansible.module_utils.basic import AnsibleModule
-from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
-    convert_time_to_millisecs,
+from ansible_collections.purestorage.flashblade.plugins.module_utils.time_utils import (
+    time_to_milliseconds,
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
     get_system,
@@ -182,7 +182,7 @@ def create_local_user(module, blade, user):
                     )
                 )
             if module.params["api"]:
-                ttl = convert_time_to_millisecs(module.params["timeout"])
+                ttl = time_to_milliseconds(module.params["timeout"])
                 res = blade.post_admins_api_tokens(
                     admin_names=[module.params["name"]], timeout=ttl
                 )
@@ -230,7 +230,7 @@ def create_local_user(module, blade, user):
                     )
         if module.params["api"]:
             api_changed = True
-            ttl = convert_time_to_millisecs(module.params["timeout"])
+            ttl = time_to_milliseconds(module.params["timeout"])
             res = blade.delete_admins_api_tokens(admin_names=[module.params["name"]])
             if res.status_code != 200:
                 module.fail_json(
@@ -293,7 +293,7 @@ def update_ad_user(module, blade, user):
     if module.params["api"]:
         if user:
             api_changed = True
-            ttl = convert_time_to_millisecs(module.params["timeout"])
+            ttl = time_to_milliseconds(module.params["timeout"])
             if getattr(user.api_token, "token"):
                 res = blade.delete_admins_api_tokens(
                     admin_names=[module.params["name"]]
@@ -316,7 +316,7 @@ def update_ad_user(module, blade, user):
             api_token = list(res.items)[0].api_token.token
         else:
             api_changed = True
-            ttl = convert_time_to_millisecs(module.params["timeout"])
+            ttl = time_to_milliseconds(module.params["timeout"])
             res = blade.post_admins_api_tokens(
                 admin_names=[module.params["name"]], timeout=ttl
             )
