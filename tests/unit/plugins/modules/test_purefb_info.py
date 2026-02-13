@@ -386,7 +386,25 @@ class TestPurefbInfo:
         mock_array.encryption = Mock()
         mock_array.encryption.data_at_rest = Mock()
         mock_array.encryption.data_at_rest.enabled = True
-        mock_array.encryption.data_at_rest.algorithm = "AES-256"
+        mock_array.encryption.data_at_rest.algorithms = ["AES-256"]
+        mock_array.encryption.data_at_rest.entropy_source = "internal"
+        mock_array.security_update = "enabled"
+        mock_array.network_access_policy = Mock()
+        mock_array.network_access_policy.name = "default"
+
+        # Mock support verification keys (for SECURITY_API_VERSION)
+        mock_blade.get_support_verification_keys.return_value.items = []
+
+        # Mock support/remote assist info
+        mock_support = Mock()
+        mock_support.phonehome_enabled = True
+        mock_support.proxy = None
+        mock_support.remote_assist_active = False
+        mock_support.remote_assist_expires = None
+        mock_support.remote_assist_opened = None
+        mock_support.remote_assist_status = "disabled"
+        mock_support.remote_assist_duration = 0
+        mock_blade.get_support.return_value.items = [mock_support]
 
         # Call function
         result = generate_default_dict(mock_blade)
@@ -562,6 +580,9 @@ class TestPurefbInfo:
 
         # Mock SNMP managers
         mock_blade.get_snmp_managers.return_value.items = []
+
+        # Mock SAML2 SSO (for SMTP_ENCRYPT_API_VERSION check)
+        mock_blade.get_sso_saml2_idps.return_value.items = []
 
         # Call function
         result = generate_config_dict(mock_blade)
