@@ -47,6 +47,41 @@ def remove_duplicates(items):
     return list(dict.fromkeys(items))
 
 
+def get_filesystem(module, blade):
+    """Get filesystem from FlashBlade.
+
+    Retrieves a filesystem by name, with optional context support for
+    multi-tenancy (API version 2.17+).
+
+    Args:
+        module: Ansible module object with params['name'] and optional params['context']
+        blade: FlashBlade client object
+
+    Returns:
+        Filesystem object if found, None otherwise
+
+    Example:
+        >>> fs = get_filesystem(module, blade)
+        >>> if fs:
+        >>>     print(fs.name)
+    """
+    CONTEXT_API_VERSION = "2.17"
+
+    api_version = list(blade.get_versions().items)
+    if CONTEXT_API_VERSION in api_version and module.params.get("context"):
+        res = blade.get_file_systems(
+            names=[module.params["name"]], context_names=[module.params["context"]]
+        )
+    else:
+        res = blade.get_file_systems(names=[module.params["name"]])
+
+    if res.status_code == 200:
+        items = list(res.items)
+        if items:
+            return items[0]
+    return None
+
+
 def human_to_bytes(size):
     """Given a human-readable byte string (e.g. 2G, 30M),
     return the number of bytes.  Will return 0 if the argument has

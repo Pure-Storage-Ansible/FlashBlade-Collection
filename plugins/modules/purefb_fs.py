@@ -324,27 +324,15 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_filesystem,
+)
 
 EXPORT_POLICY_API_VERSION = "2.3"
 SMB_POLICY_API_VERSION = "2.10"
 CA_API_VERSION = "2.12"
 GOWNER_API_VERSION = "2.13"
 CONTEXT_API_VERSION = "2.17"
-
-
-def get_fs(module, blade):
-    """Return Filesystem or None"""
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version:
-        res = blade.get_file_systems(
-            context_names=[module.params["context"]],
-            names=[module.params["name"]],
-        )
-    else:
-        res = blade.get_file_systems(names=[module.params["name"]])
-    if res.status_code == 200:
-        return list(res.items)[0]
-    return None
 
 
 def create_fs(module, blade):
@@ -697,7 +685,7 @@ def modify_fs(module, blade):
         user_quota = human_to_bytes(module.params["user_quota"])
     if module.params["group_quota"]:
         group_quota = human_to_bytes(module.params["group_quota"])
-    fsys = get_fs(module, blade)
+    fsys = get_filesystem(module, blade)
     new_fsys = {
         "destroyed": fsys.destroyed,
         "provisioned": fsys.provisioned,
@@ -1192,7 +1180,7 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    fsys = get_fs(module, blade)
+    fsys = get_filesystem(module, blade)
 
     if module.params["eradicate"] and state == "present":
         module.warn("Eradicate flag ignored without state=absent")

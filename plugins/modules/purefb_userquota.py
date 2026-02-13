@@ -132,22 +132,11 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_filesystem,
+)
 
 CONTEXT_API_VERSION = "2.17"
-
-
-def get_fs(module, blade):
-    """Return Filesystem or None"""
-    versions = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in versions:
-        res = blade.get_file_systems(
-            names=[module.params["name"]], context_names=[module.params["context"]]
-        )
-    else:
-        res = blade.get_file_systems(names=[module.params["name"]])
-    if res.status_code == 200:
-        return list(res.items)[0]
-    return None
 
 
 def get_quota(module, blade):
@@ -368,7 +357,7 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    fsys = get_fs(module, blade)
+    fsys = get_filesystem(module, blade)
     if not fsys:
         module.fail_json(
             msg="Filesystem {0} does not exist.".format(module.params["name"])
