@@ -75,6 +75,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def _check_replication_configured(module, blade):
@@ -105,7 +108,7 @@ def break_connection(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to disconnect target {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -127,7 +130,7 @@ def create_connection(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to connect to remote target {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -155,7 +158,7 @@ def update_connection(module, blade, connection):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to change address for target {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)

@@ -134,6 +134,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     get_filesystem,
+    get_error_message,
 )
 
 CONTEXT_API_VERSION = "2.17"
@@ -211,7 +212,7 @@ def create_quota(module, blade):
                     msg="Failed to create quote for UID {0} on filesystem {1}. Error: {2}".format(
                         module.params["uid"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
             else:
@@ -219,7 +220,7 @@ def create_quota(module, blade):
                     msg="Failed to create quote for username {0} on filesystem {1}. Error: {2}".format(
                         module.params["uname"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)
@@ -253,7 +254,7 @@ def update_quota(module, blade):
                         msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
                             module.params["uid"],
                             module.params["name"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
             else:
@@ -275,7 +276,7 @@ def update_quota(module, blade):
                         msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
                             module.params["uname"],
                             module.params["name"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     module.exit_json(changed=changed)
@@ -316,7 +317,7 @@ def delete_quota(module, blade):
                     msg="Failed to delete quota for UID {0} on filesystem {1}. Error: {2}".format(
                         module.params["uid"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
             else:
@@ -324,7 +325,7 @@ def delete_quota(module, blade):
                     msg="Failed to delete quota for username {0} on filesystem {1}. Error: {2}".format(
                         module.params["uname"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)

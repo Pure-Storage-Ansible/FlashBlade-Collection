@@ -68,6 +68,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     _findstr,
+    get_error_message,
 )
 
 
@@ -151,7 +152,7 @@ def set_timezone(module, blade):
         res = blade.patch_arrays(flashblade.Array(time_zone=module.params["timezone"]))
         if res.status_code != 200:
             module.fail_json(
-                msg="Failed to timezone. Error: {0}".format(res.errors[0].message)
+                msg="Failed to timezone. Error: {0}".format(get_error_message(res))
             )
 
     module.exit_json(changed=changed)

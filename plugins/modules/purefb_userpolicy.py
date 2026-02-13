@@ -114,6 +114,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 CONTEXT_API_VERSION = "2.17"
 
@@ -165,7 +168,7 @@ def add_policy(module, blade):
                     if res.status_code != 200:
                         module.fail_json(
                             msg="Failed to add policy {0}. Error: {1}".format(
-                                policy, res.errors[0].message
+                                policy, get_error_message(res)
                             )
                         )
                 if CONTEXT_API_VERSION in api_version:
@@ -186,7 +189,7 @@ def add_policy(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to add policy {0} to account user {1}. Error: {2}".format(
-                            policy, username, res.errors[0].message
+                            policy, username, get_error_message(res)
                         )
                     )
     module.exit_json(changed=changed, policy_list=user_policy_list)
@@ -244,7 +247,7 @@ def remove_policy(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to remove policy {0} from account user {1}. Error: {2}".format(
-                            policy, username, res.errors[0].message
+                            policy, username, get_error_message(res)
                         )
                     )
     module.exit_json(changed=changed, policy_list=user_policy_list)
