@@ -115,18 +115,22 @@ class TestPurefbBladename:
         # Setup mocks
         mock_module = Mock()
         mock_module.params = {"name": "invalid_name!", "state": "present"}
+        mock_module.check_mode = False
         mock_ansible_module.return_value = mock_module
 
+        # Mock blade - won't be called due to early validation failure
         mock_blade = Mock()
         mock_get_system.return_value = mock_blade
 
         # Call main
         main()
 
-        # Verify - should fail with invalid name
+        # Verify - should fail with invalid name before calling get_arrays
         mock_module.fail_json.assert_called_once()
         call_args = mock_module.fail_json.call_args[1]
         assert "does not conform to array name rules" in call_args["msg"]
+        # Should not call get_arrays since validation fails first
+        mock_blade.get_arrays.assert_not_called()
 
     @patch("plugins.modules.purefb_bladename.get_system")
     @patch("plugins.modules.purefb_bladename.AnsibleModule")
@@ -136,15 +140,18 @@ class TestPurefbBladename:
         # Setup mocks
         mock_module = Mock()
         mock_module.params = {"name": "blade-name", "state": "present"}
+        mock_module.check_mode = False
         mock_ansible_module.return_value = mock_module
 
         # Call main
         main()
 
-        # Verify - should fail with SDK missing message
+        # Verify - should fail with SDK missing message (before calling get_system)
         mock_module.fail_json.assert_called_once()
         call_args = mock_module.fail_json.call_args[1]
         assert "py-pure-client sdk is required" in call_args["msg"]
+        # Should not call get_system since SDK check fails first
+        mock_get_system.assert_not_called()
 
     @patch("plugins.modules.purefb_bladename.get_system")
     @patch("plugins.modules.purefb_bladename.AnsibleModule")
@@ -202,6 +209,7 @@ class TestPurefbBladename:
             # Setup mocks
             mock_module = Mock()
             mock_module.params = {"name": name, "state": "present"}
+            mock_module.check_mode = False
             mock_ansible_module.return_value = mock_module
 
             mock_blade = Mock()
@@ -215,6 +223,7 @@ class TestPurefbBladename:
             call_args = mock_module.fail_json.call_args[1]
             assert "does not conform to array name rules" in call_args["msg"]
 
-            # Reset mock for next iteration
+            # Reset mocks for next iteration
             mock_module.reset_mock()
+            mock_blade.reset_mock()
 
