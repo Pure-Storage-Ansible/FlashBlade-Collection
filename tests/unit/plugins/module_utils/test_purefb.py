@@ -10,9 +10,11 @@ __metaclass__ = type
 import sys
 from unittest.mock import Mock, patch, MagicMock
 
-# Mock pypureclient before importing purefb
+# Mock external dependencies before importing purefb
 sys.modules["pypureclient"] = MagicMock()
 sys.modules["pypureclient.flashblade"] = MagicMock()
+sys.modules["urllib3"] = MagicMock()
+sys.modules["distro"] = MagicMock()
 
 from plugins.module_utils.purefb import get_system, purefb_argument_spec
 
@@ -215,7 +217,7 @@ class TestGetSystem:
         call_args = mock_module.fail_json.call_args[1]
         assert "authentication failed" in call_args["msg"].lower()
 
-    @patch("plugins.module_utils.purefb.urllib3.disable_warnings")
+    @patch("urllib3.disable_warnings")
     @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     def test_disable_warnings(self, mock_client_class, mock_disable_warnings):
@@ -241,7 +243,7 @@ class TestGetSystem:
         # Verify urllib3.disable_warnings was called
         mock_disable_warnings.assert_called_once()
 
-    @patch("plugins.module_utils.purefb.distro.name")
+    @patch("distro.name")
     @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     @patch("plugins.module_utils.purefb.HAS_DISTRO", True)
