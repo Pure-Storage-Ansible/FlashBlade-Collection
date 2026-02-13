@@ -98,7 +98,7 @@ class TestTimeToMilliseconds:
 
     def test_invalid_format(self):
         """Test that invalid format raises error."""
-        with pytest.raises(TimeConversionError, match="Invalid time format"):
+        with pytest.raises(TimeConversionError, match="Invalid duration format"):
             time_to_milliseconds("invalid")
         with pytest.raises(TimeConversionError, match="Invalid time format"):
             time_to_milliseconds("123")
@@ -114,7 +114,7 @@ class TestTimeToMilliseconds:
 
     def test_invalid_duration_unit(self):
         """Test that invalid duration unit raises error."""
-        with pytest.raises(TimeConversionError, match="Invalid time unit"):
+        with pytest.raises(TimeConversionError, match="Invalid time format"):
             time_to_milliseconds("5x")
 
     def test_negative_duration(self):
