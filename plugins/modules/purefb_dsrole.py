@@ -98,6 +98,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def update_role(module, blade):
@@ -107,7 +110,7 @@ def update_role(module, blade):
     if res.status_code != 200:
         module.fail_json(
             msg="fetch Directory Service Role {0} failed. Error: {1}".format(
-                module.params["role"], res.errors[0].message
+                module.params["role"], get_error_message(res)
             )
         )
     role = list(res.items)[0]
@@ -126,7 +129,7 @@ def update_role(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Update Directory Service Role {0} failed. Error: {1}".format(
-                        module.params["role"], res.errors[0].message
+                        module.params["role"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -143,7 +146,7 @@ def delete_role(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Delete Directory Service Role {0} failed. Error: {1}".format(
-                    module.params["role"], res.errors[0].message
+                    module.params["role"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -162,7 +165,7 @@ def create_role(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Create Directory Service Role {0} failed. Error: {1}".format(
-                    module.params["role"], res.errors[0].message
+                    module.params["role"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

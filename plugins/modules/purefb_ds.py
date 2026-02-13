@@ -206,6 +206,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def delete_ds(module, blade):
@@ -220,7 +223,7 @@ def delete_ds(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Fetch {0} Directory Service failed. Error: {1}".format(
-                    module.params["dstype"], res.errors[0].message
+                    module.params["dstype"], get_error_message(res)
                 )
             )
         dirserv = list(res.items)[0]
@@ -270,7 +273,7 @@ def delete_ds(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Delete Directory Service {0} failed. Error: {1}".format(
-                        ds_name, res.errors[0].message
+                        ds_name, get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -290,7 +293,7 @@ def update_ds(module, blade):
     if res.status_code != 200:
         module.fail_json(
             msg="Fetch {0} Directory Service failed. Error: {1}".format(
-                module.params["dstype"], res.errors[0].message
+                module.params["dstype"], get_error_message(res)
             )
         )
     ds_now = list(res.items)[0]
@@ -353,7 +356,7 @@ def update_ds(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to change directory service {0}. Error: {1}".format(
-                        ds_name, res.errors[0].message
+                        ds_name, get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -423,7 +426,7 @@ def create_ds(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Create Directory Service {0} failed. Error: {1}".format(
-                    ds_name, res.errors[0].message
+                    ds_name, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

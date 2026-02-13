@@ -211,6 +211,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 CERT_TYPE_VERSION = "2.15"
 CSR_API_VERSION = "2.20"
@@ -312,7 +315,7 @@ def update_cert(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Updating existing SSL certificate {0} failed. Error: {1}".format(
-                            module.params["name"], res.errors[0].message
+                            module.params["name"], get_error_message(res)
                         )
                     )
     else:
@@ -329,7 +332,7 @@ def update_cert(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Updating existing SSL certificate {0} failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -375,7 +378,7 @@ def create_cert(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Creating SSL certificate {0} failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
 
@@ -391,7 +394,7 @@ def delete_cert(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete {0} SSL certifcate. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -420,7 +423,7 @@ def import_cert(module, blade):
         )
     if res.status_code != 200:
         module.fail_json(
-            msg="Importing Certificate failed. Error: {0}".format(res.errors[0].message)
+            msg="Importing Certificate failed. Error: {0}".format(get_error_message(res))
         )
     module.exit_json(changed=changed)
 

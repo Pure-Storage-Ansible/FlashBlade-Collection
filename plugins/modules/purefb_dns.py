@@ -106,6 +106,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     remove_duplicates,
+    get_error_message,
 )
 
 NON_MGMT_DNS = "2.15"
@@ -131,7 +132,7 @@ def delete_dns(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Delete DNS settigs failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -155,7 +156,7 @@ def create_dns(module, blade):
             )
         if res.status_code != 200:
             module.fail_json(
-                msg="Set DNS settings failed. Error: {0}".format(res.errors[0].message)
+                msg="Set DNS settings failed. Error: {0}".format(get_error_message(res))
             )
     module.exit_json(changed=changed)
 
@@ -190,7 +191,7 @@ def update_multi_dns(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Update to DNS configuration {0} failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -207,7 +208,7 @@ def delete_multi_dns(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete DNS configuration {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -251,7 +252,7 @@ def create_multi_dns(module, blade):
                 msg="Failed to create {0} DNS configuration {1}. Error: {2}".format(
                     module.params["service"],
                     module.params["name"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
     module.exit_json(changed=changed)

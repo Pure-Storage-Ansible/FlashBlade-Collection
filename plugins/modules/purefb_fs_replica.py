@@ -104,6 +104,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 DELETE_RL_API_VERSION = "2.10"
 
@@ -169,7 +172,7 @@ def create_rl(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create filesystem replica link for {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
         else:
@@ -191,7 +194,7 @@ def add_rl_policy(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to get replica link for {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
         module.params["target_array"] = list(res.items)[0].remote.name
@@ -214,7 +217,7 @@ def add_rl_policy(module, blade):
                     msg="Failed to add policy {0} to replica link {1}. Error: {2}".format(
                         module.params["policy"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)
@@ -240,7 +243,7 @@ def delete_rl_policy(module, blade):
                     msg="Failed to remove policy {0} from replica link {1}. Error: {2}".format(
                         module.params["policy"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
         else:
@@ -264,7 +267,7 @@ def delete_rl(module, blade):
                     module.params["name"],
                     module.params["target_array"],
                     module.params["target_fs"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
     module.exit_jsob(changed=changed)

@@ -142,6 +142,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 from ansible_collections.purestorage.flashblade.plugins.module_utils.time_utils import (
     time_to_milliseconds,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 CONTEXT_API_VERSION = "2.17"
 FAN_IN_MAXIMUM = 5
@@ -210,7 +213,7 @@ def break_connection(module, blade, target_blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to disconnect {0} from {1}. Error: {2}".format(
-                    target_blade.remote.name, source_blade, res.errors[0].message
+                    target_blade.remote.name, source_blade, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -302,7 +305,7 @@ def create_connection(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to connect to remote array {0}. Error: {1}".format(
-                    remote_array, res.errors[0].message
+                    remote_array, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -427,7 +430,7 @@ def update_connection(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update connection to remote array {0}. Error: {1}".format(
-                        remote_name, res.errors[0].message
+                        remote_name, get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
