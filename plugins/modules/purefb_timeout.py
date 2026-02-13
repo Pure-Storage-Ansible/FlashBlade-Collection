@@ -111,9 +111,10 @@ def main():
     blade = get_system(module)
 
     state = module.params["state"]
-    if 5 < module.params["timeout"] > 180 and module.params["timeout"] != 0:
+    if (
+        module.params["timeout"] < 5 or module.params["timeout"] > 180
+    ) and module.params["timeout"] != 0:
         module.fail_json(msg="Timeout value must be between 5 and 180 minutes")
-    blade = get_system(module)
     current_timeout = list(blade.get_arrays().items)[0].idle_timeout / 60000
     if state == "present" and current_timeout != module.params["timeout"]:
         set_timeout(module, blade)

@@ -359,12 +359,13 @@ class TestPurefbTimeout:
         mock_blade.patch_arrays.return_value = mock_response
         mock_get_system.return_value = mock_blade
 
-        # Call main
+        # Call main - set_timeout will call exit_json and exit
         main()
 
         # Verify - should call patch_arrays to update timeout
         mock_blade.patch_arrays.assert_called_once()
         mock_array_class.assert_called_once_with(idle_timeout=60 * 60000)
+        # set_timeout calls exit_json(changed=True), which exits the module
         mock_module.exit_json.assert_called_once_with(changed=True)
 
     @patch("plugins.modules.purefb_timeout.flashblade.Array")
@@ -390,10 +391,11 @@ class TestPurefbTimeout:
         mock_blade.patch_arrays.return_value = mock_response
         mock_get_system.return_value = mock_blade
 
-        # Call main
+        # Call main - disable_timeout will call exit_json and exit
         main()
 
         # Verify - should call patch_arrays to disable timeout
         mock_blade.patch_arrays.assert_called_once()
         mock_array_class.assert_called_once_with(idle_timeout=0)
+        # disable_timeout calls exit_json(changed=True), which exits the module
         mock_module.exit_json.assert_called_once_with(changed=True)
