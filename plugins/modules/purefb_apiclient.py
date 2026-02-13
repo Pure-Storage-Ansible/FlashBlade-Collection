@@ -113,6 +113,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def delete_client(module, blade):
@@ -167,7 +170,7 @@ def create_client(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create API Client {0}. Error message: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
         if module.params["enabled"]:

@@ -66,6 +66,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def update_name(module, blade):
@@ -77,7 +80,7 @@ def update_name(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to change array name to {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
 

@@ -200,6 +200,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 MIN_API_VERSION = "2.12"
 CONTEXT_API_VERSION = "2.17"
@@ -240,7 +243,7 @@ def delete_cors_policy(module, blade):
                     msg="Failed to delete CORS rule {0} for bucket {1}. Error: {2}".format(
                         module.params["rule"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
         else:
@@ -269,7 +272,7 @@ def delete_cors_policy(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete CORS policy for bucket {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
 
@@ -312,7 +315,7 @@ def delete_access_policy(module, blade):
                     msg="Failed to delete access rule {0} for bucket {1}. Error: {2}".format(
                         module.params["rule"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
         else:
@@ -341,7 +344,7 @@ def delete_access_policy(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete access policy for bucket {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
 
@@ -377,7 +380,7 @@ def create_access_policy(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create initial bucket access policy for {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     # Create a new rule for the policy
@@ -431,7 +434,7 @@ def create_access_policy(module, blade):
             module.fail_json(
                 msg="Failed to create access policy rule {0} "
                 "in policy {1}. Error: {2}".format(
-                    module.params["rule"], module.params["name"], res.errors[0].message
+                    module.params["rule"], module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -466,7 +469,7 @@ def create_cors_policy(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create initial CORS policy for {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     # Create a new rule for the policy
@@ -511,7 +514,7 @@ def create_cors_policy(module, blade):
             module.fail_json(
                 msg="Failed to create CORS policy rule {0} "
                 "in policy {1}. Error: {2}".format(
-                    module.params["rule"], module.params["name"], res.errors[0].message
+                    module.params["rule"], module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

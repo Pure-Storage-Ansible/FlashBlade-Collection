@@ -86,6 +86,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def create_alert(module, blade):
@@ -101,7 +104,7 @@ def create_alert(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create alert email {0}. Error: {1}".format(
-                    module.params["address"], res.errors[0].message
+                    module.params["address"], get_error_message(res)
                 )
             )
         if not module.params["enabled"]:
@@ -112,7 +115,7 @@ def create_alert(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to disable during create alert email {0}. Error: {1}".format(
-                        module.params["address"], res.errors[0].message
+                        module.params["address"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -127,7 +130,7 @@ def update_alert(module, blade):
     else:
         module.fail_json(
             msg="Failed to get information for alert email {0}. Error: {1}".format(
-                module.params["address"], res.errors[0].message
+                module.params["address"], get_error_message(res)
             )
         )
     current_state = {
@@ -157,7 +160,7 @@ def update_alert(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update alert email {0}: Error: {1}".format(
-                        module.params["address"], res.errors[0].message
+                        module.params["address"], get_error_message(res)
                     )
                 )
     else:
@@ -173,7 +176,7 @@ def delete_alert(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete alert email {0}. Error: {1}".format(
-                    module.params["address"], res.errors[0].message
+                    module.params["address"], get_error_message(res)
                 )
             )
 
@@ -242,7 +245,7 @@ def main():
     if res.status_code != 200:
         module.fail_json(
             msg="Failed to get exisitng email list. Error: {0}".format(
-                res.errors[0].message
+                get_error_message(res)
             )
         )
     emails = list(res.items)
