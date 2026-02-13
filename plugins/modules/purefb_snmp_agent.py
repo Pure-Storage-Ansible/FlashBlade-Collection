@@ -95,6 +95,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def update_agent(module, blade):
@@ -132,7 +135,7 @@ def update_agent(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update v2c SNMP agent. Error: {0}".format(
-                            res.errors[0].message
+                            get_error_message(res)
                         )
                     )
             else:
@@ -148,7 +151,7 @@ def update_agent(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update v3 SNMP agent. Error: {0}".format(
-                            res.errors[0].message
+                            get_error_message(res)
                         )
                     )
 

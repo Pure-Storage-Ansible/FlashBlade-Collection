@@ -143,6 +143,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     get_filesystem,
+    get_error_message,
 )
 
 from datetime import datetime
@@ -177,7 +178,7 @@ def get_latest_fssnapshot(module, blade):
     if res.status_code != 200:
         module.fail_json(
             msg="Failed to get filesystem snapshots. Error: {0}".format(
-                res.errors[0].message
+                get_error_message(res)
             )
         )
     all_snaps = list(res.items)
@@ -277,7 +278,7 @@ def create_snapshot(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create remote snapshot. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -308,7 +309,7 @@ def restore_snapshot(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to restore snapshot {0} to filesystem {1}. Error: {2}".format(
-                        snapname, module.params["name"], res.errors[0].message
+                        snapname, module.params["name"], get_error_message(res)
                     )
                 )
     else:
@@ -340,7 +341,7 @@ def recover_snapshot(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to recover snapshot {0} for filesystem {1}. Error: {2}".format(
-                    snapname, module.params["name"], res.errors[0].message
+                    snapname, module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -374,7 +375,7 @@ def delete_snapshot(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete snapshot {0}. Error: {1}".format(
-                    snapname, res.errors[0].message
+                    snapname, get_error_message(res)
                 )
             )
         if module.params["eradicate"]:
@@ -387,7 +388,7 @@ def delete_snapshot(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to eradicate snapshot {0}. Error: {1}".format(
-                        snapname, res.errors[0].message
+                        snapname, get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -408,7 +409,7 @@ def eradicate_snapshot(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to eradicate snapshot {0}. Error: {1}".format(
-                    snapname, res.errors[0].message
+                    snapname, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

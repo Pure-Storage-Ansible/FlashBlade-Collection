@@ -79,6 +79,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 MIN_REQUIRED_API_VERSION = "2.16"
 
@@ -94,7 +97,7 @@ def delete_server(module, blade):
             module.fail_json(
                 msg="Failed to delete server {0}. Error: {1}".format(
                     module.params["name"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
     module.exit_json(changed=changed)
@@ -119,7 +122,7 @@ def update_server(module, blade):
                 module.fail_json(
                     msg="Failed to update DNS config for server {0}. Error: {1}".format(
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if module.params["directory_service"] is not None:
@@ -137,7 +140,7 @@ def update_server(module, blade):
                 module.fail_json(
                     msg="Failed to update directory services for server {0}. Error: {1}".format(
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)
@@ -172,7 +175,7 @@ def add_server(module, blade):
             module.fail_json(
                 msg="Failed to add server {0}. Error: {1}".format(
                     module.params["name"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
     module.exit_json(changed=changed)

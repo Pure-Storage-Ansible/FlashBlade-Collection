@@ -172,6 +172,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 CONTEXT_API_VERSION = "2.17"
 
@@ -281,7 +284,7 @@ def update_s3user(module, blade):
                                     msg="Object Store User {0} access Key import failed. "
                                     "Error: {1}".format(
                                         user,
-                                        res.errors[0].message,
+                                        get_error_message(res),
                                     )
                                 )
                 else:
@@ -327,7 +330,7 @@ def update_s3user(module, blade):
                                 msg="Object Store User {0} access Key creation failed. "
                                 "Error: {1}".format(
                                     user,
-                                    res.errors[0].message,
+                                    get_error_message(res),
                                 )
                             )
             else:
@@ -355,7 +358,7 @@ def create_s3user(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create account {0}. Error:{1}".format(
-                    user, res.errors[0].message
+                    user, get_error_message(res)
                 )
             )
         if module.params["access_key"] and module.params["imported_key"]:
@@ -398,7 +401,7 @@ def create_s3user(module, blade):
                 delete_s3user(module, blade, True)
                 module.fail_json(
                     msg="Object Store User {0} creation failed. Error: {1}".format(
-                        user, res.errors[0].message
+                        user, get_error_message(res)
                     )
                 )
         else:
@@ -442,7 +445,7 @@ def create_s3user(module, blade):
                     delete_s3user(module, blade)
                     module.fail_json(
                         msg="Object Store User {0} creation failed with imported access key. "
-                        "Error: {1}".format(user, res.errors[0].message)
+                        "Error: {1}".format(user, get_error_message(res))
                     )
         if module.params["policy"]:
             policy_list = module.params["policy"]
@@ -490,7 +493,7 @@ def create_s3user(module, blade):
                             "Failed to add policy {0} to account user {1}. Error: {2}. Skipping...".format(
                                 policy,
                                 username,
-                                res.errors[0].message,
+                                get_error_message(res),
                             )
                         )
             if "pure:policy/full-access" not in policy_list:
@@ -529,7 +532,7 @@ def remove_key(module, blade):
                 module.fail_json(
                     msg="Failed to delete access key {0}. "
                     "Error: {1}".format(
-                        module.params["key_name"], res.errors[0].message
+                        module.params["key_name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -570,7 +573,7 @@ def change_key(module, blade):
                     module.fail_json(
                         msg="Failed to change state of access key {0}. "
                         "Error: {1}".format(
-                            module.params["key_name"], res.errors[0].message
+                            module.params["key_name"], get_error_message(res)
                         )
                     )
     module.exit_json(changed=changed)

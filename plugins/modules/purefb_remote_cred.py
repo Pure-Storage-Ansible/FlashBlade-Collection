@@ -99,6 +99,12 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 CONTEXT_API_VERSION = "2.17"
 
@@ -178,7 +184,7 @@ def create_credential(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create remote credential {0}. Error: {1}".format(
-                    remote_cred, res.errors[0].message
+                    remote_cred, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -207,7 +213,7 @@ def update_credential(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to update remote credential {0}. Error: {1}".format(
-                    remote_cred, res.errors[0].message
+                    remote_cred, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -228,7 +234,7 @@ def delete_credential(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete remote credential {0}. Error: {1}".format(
-                    remote_cred, res.errors[0].message
+                    remote_cred, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
