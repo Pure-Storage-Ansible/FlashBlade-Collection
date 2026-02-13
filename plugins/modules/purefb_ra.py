@@ -70,6 +70,12 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 DURATION_API = "2.14"
 
@@ -89,7 +95,7 @@ def enable_ra(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Enabling Remote Assist failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -104,7 +110,7 @@ def disable_ra(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Disabling Remote Assist failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

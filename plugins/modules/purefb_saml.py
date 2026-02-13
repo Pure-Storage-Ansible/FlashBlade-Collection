@@ -129,6 +129,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 MIN_REQUIRED_API_VERSION = "2.15"
 TEST_API_VERSION = "2.16"
@@ -171,7 +174,7 @@ def delete_saml(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete SAML2 IdP {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -278,7 +281,7 @@ def update_saml(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update SAML2 IdP {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -314,7 +317,7 @@ def create_saml(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create SAML2 Identity Provider {0}. Error message: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
             if module.params["enabled"]:
@@ -326,7 +329,7 @@ def create_saml(module, blade):
                     blade.delete_sso_saml2_idps(names=[module.params["name"]])
                     module.fail_json(
                         msg="Failed to create SAML2 Identity Provider {0}. Error message: {1}".format(
-                            module.params["name"], res.errors[0].message
+                            module.params["name"], get_error_message(res)
                         )
                     )
 

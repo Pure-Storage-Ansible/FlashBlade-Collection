@@ -124,6 +124,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def get_subnet(module, blade):
@@ -164,7 +167,7 @@ def create_subnet(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create subnet {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -187,7 +190,7 @@ def modify_subnet(module, blade):
                         msg="Failed to change subnet {0} prefix to {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["prefix"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     if module.params["vlan"]:
@@ -203,7 +206,7 @@ def modify_subnet(module, blade):
                         msg="Failed to change subnet {0} VLAN to {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["vlan"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     if module.params["gateway"]:
@@ -219,7 +222,7 @@ def modify_subnet(module, blade):
                         msg="Failed to change subnet {0} gateway to {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["gateway"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     if module.params["mtu"]:
@@ -235,7 +238,7 @@ def modify_subnet(module, blade):
                         msg="Failed to change subnet {0} MTU to {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["mtu"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     module.exit_json(changed=changed)
@@ -249,7 +252,7 @@ def delete_subnet(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete subnet {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

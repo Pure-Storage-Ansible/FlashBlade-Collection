@@ -79,6 +79,12 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def delete_proxy(module, blade):
@@ -89,7 +95,7 @@ def delete_proxy(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Delete proxy settings failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -108,7 +114,7 @@ def create_proxy(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Set phone home proxy failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
 
@@ -131,7 +137,7 @@ def update_proxy(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Phone home proxy update failed. Error: {0}".format(
-                        res.errors[0].message
+                        get_error_message(res)
                     )
                 )
 

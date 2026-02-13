@@ -132,6 +132,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def update_manager(module, blade):
@@ -185,7 +188,7 @@ def update_manager(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update v2c SNMP manager {0}. Error: {1}".format(
-                            module.params["name"], res.errors[0].message
+                            module.params["name"], get_error_message(res)
                         )
                     )
             else:
@@ -208,7 +211,7 @@ def update_manager(module, blade):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update v3 SNMP manager {0}. Error: {1}".format(
-                            module.params["name"], res.errors[0].message
+                            module.params["name"], get_error_message(res)
                         )
                     )
 
@@ -223,7 +226,7 @@ def delete_manager(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Delete SNMP manager {0} failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -249,7 +252,7 @@ def create_manager(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create v2c SNMP manager {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
         else:
@@ -272,7 +275,7 @@ def create_manager(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to create v3 SNMP manager {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
