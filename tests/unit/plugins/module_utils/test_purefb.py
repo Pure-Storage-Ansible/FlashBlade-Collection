@@ -7,7 +7,13 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-from unittest.mock import Mock, patch
+import sys
+from unittest.mock import Mock, patch, MagicMock
+
+# Mock pypureclient before importing purefb
+sys.modules["pypureclient"] = MagicMock()
+sys.modules["pypureclient.flashblade"] = MagicMock()
+
 from plugins.module_utils.purefb import get_system, purefb_argument_spec
 
 
@@ -48,7 +54,7 @@ class TestPurefbArgumentSpec:
 class TestGetSystem:
     """Tests for get_system function."""
 
-    @patch("pypureclient.flashblade.Client")
+    @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     def test_with_module_params(self, mock_client_class):
         """Test get_system with module parameters."""
@@ -83,7 +89,7 @@ class TestGetSystem:
         # Verify result is the client
         assert result == mock_client
 
-    @patch("pypureclient.flashblade.Client")
+    @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     @patch("plugins.module_utils.purefb.environ")
     def test_with_environment_vars(self, mock_environ, mock_client_class):
@@ -174,7 +180,7 @@ class TestGetSystem:
         call_args = mock_module.fail_json.call_args[1]
         assert "pypureclient SDK not installed" in call_args["msg"]
 
-    @patch("pypureclient.flashblade.Client")
+    @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     def test_authentication_failure(self, mock_client_class):
         """Test that authentication failure is handled."""
@@ -209,8 +215,8 @@ class TestGetSystem:
         call_args = mock_module.fail_json.call_args[1]
         assert "authentication failed" in call_args["msg"].lower()
 
-    @patch("urllib3.disable_warnings")
-    @patch("pypureclient.flashblade.Client")
+    @patch("plugins.module_utils.purefb.urllib3.disable_warnings")
+    @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     def test_disable_warnings(self, mock_client_class, mock_disable_warnings):
         """Test that warnings can be disabled."""
@@ -235,8 +241,8 @@ class TestGetSystem:
         # Verify urllib3.disable_warnings was called
         mock_disable_warnings.assert_called_once()
 
-    @patch("distro.name")
-    @patch("pypureclient.flashblade.Client")
+    @patch("plugins.module_utils.purefb.distro.name")
+    @patch("plugins.module_utils.purefb.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     @patch("plugins.module_utils.purefb.HAS_DISTRO", True)
     def test_user_agent_with_distro(self, mock_client_class, mock_distro_name):
