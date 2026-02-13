@@ -101,6 +101,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 SYSLOG_SERVICES_API = "2.14"
 
@@ -113,7 +116,7 @@ def delete_syslog(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to remove syslog server {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
 
@@ -143,7 +146,7 @@ def add_syslog(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to add syslog server. Error: {0}".format(
-                        res.errors[0].message
+                        get_error_message(res)
                     )
                 )
         else:
@@ -154,7 +157,7 @@ def add_syslog(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to add syslog server {0} - {1}. Error: {2}".format(
-                        module.params["name"], full_address, res.errors[0].message
+                        module.params["name"], full_address, get_error_message(res)
                     )
                 )
 
@@ -194,7 +197,7 @@ def update_syslog(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Updating syslog server {0} failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
