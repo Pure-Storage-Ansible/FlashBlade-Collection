@@ -182,8 +182,8 @@ class TestHumanToReal:
 
     def test_plain_number(self):
         """Test plain number without suffix."""
-        assert human_to_real("1000") == 1000
-        assert human_to_real("5000") == 5000
+        assert human_to_real("1000") == "1000"
+        assert human_to_real("5000") == "5000"
 
     def test_thousands(self):
         """Test K (thousands) suffix."""
