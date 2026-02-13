@@ -1,3 +1,5 @@
+__metaclass__ = type
+
 import sys
 from unittest.mock import Mock, patch, MagicMock
 
