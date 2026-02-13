@@ -141,6 +141,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_filesystem,
+)
 
 from datetime import datetime
 
@@ -157,20 +160,6 @@ except ImportError:
 
 SNAP_NOW_API = "2.10"
 CONTEXT_API_VERSION = "2.17"
-
-
-def get_fs(module, blade):
-    """Return Filesystem or None"""
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version:
-        res = blade.get_file_systems(
-            names=[module.params["name"]], context_names=[module.params["context"]]
-        )
-    else:
-        res = blade.get_file_systems(names=[module.params["name"]])
-    if res.status_code == 200:
-        return list(res.items)[0]
-    return None
 
 
 def get_latest_fssnapshot(module, blade):
@@ -464,7 +453,7 @@ def main():
                 SNAP_NOW_API
             )
         )
-    filesystem = get_fs(module, blade)
+    filesystem = get_filesystem(module, blade)
     snap = get_fssnapshot(module, blade)
     if state == "present" and filesystem and not filesystem.destroyed and not snap:
         create_snapshot(module, blade)
