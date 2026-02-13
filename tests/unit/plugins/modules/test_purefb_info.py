@@ -319,9 +319,10 @@ class TestPurefbInfo:
         # Setup mock blade
         mock_blade = Mock()
 
-        # Mock API version
+        # Mock API version - needs to support 'in' operator
         mock_version = Mock()
-        mock_version.version = "2.0.0"
+        mock_version.version = "2.7"  # Use version that supports SECURITY_API_VERSION
+        mock_version.__contains__ = Mock(return_value=True)
         mock_blade.get_versions.return_value.items = [mock_version]
 
         # Mock array info
@@ -558,6 +559,9 @@ class TestPurefbInfo:
 
         # Mock SNMP agents
         mock_blade.get_snmp_agents.return_value.items = []
+
+        # Mock SNMP managers
+        mock_blade.get_snmp_managers.return_value.items = []
 
         # Call function
         result = generate_config_dict(mock_blade)
