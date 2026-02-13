@@ -7,8 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from plugins.module_utils.purefb import get_system, purefb_argument_spec
 
 
@@ -98,10 +97,11 @@ class TestGetSystem:
         }
 
         # Setup environment variables
-        mock_environ.get.side_effect = lambda key: {
+        env_vars = {
             "PUREFB_URL": "https://env-flashblade.example.com",
             "PUREFB_API": "env-token-456",
-        }.get(key)
+        }
+        mock_environ.get.side_effect = env_vars.get
 
         # Setup mock FlashBlade client
         mock_client = Mock()
@@ -251,5 +251,3 @@ class TestGetSystem:
         call_kwargs = mock_flashblade.Client.call_args[1]
         assert "Ubuntu 22.04" in call_kwargs["user_agent"]
         assert "Ansible" in call_kwargs["user_agent"]
-
-
