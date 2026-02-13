@@ -80,6 +80,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     remove_duplicates,
+    get_error_message,
 )
 
 
@@ -92,7 +93,7 @@ def delete_ntp(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Deletion of NTP servers failed. Error: {0}".format(
-                        res.errors[0].message
+                        get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -110,7 +111,7 @@ def create_ntp(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Update of NTP servers failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

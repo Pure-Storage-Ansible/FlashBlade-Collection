@@ -100,6 +100,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def test_kmip(module, blade):
@@ -178,7 +181,7 @@ def update_kmip(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Updating existing KMIP object {0} failed. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
 
@@ -204,7 +207,7 @@ def create_kmip(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Creating KMIP object {0} failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -218,7 +221,7 @@ def delete_kmip(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete {0} KMIP object. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

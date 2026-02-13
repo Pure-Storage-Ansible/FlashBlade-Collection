@@ -102,6 +102,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def get_iface(module, blade):
@@ -127,7 +130,7 @@ def create_iface(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Interface {0} creation failed. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -149,7 +152,7 @@ def modify_iface(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to modify Interface {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -163,7 +166,7 @@ def delete_iface(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete network {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

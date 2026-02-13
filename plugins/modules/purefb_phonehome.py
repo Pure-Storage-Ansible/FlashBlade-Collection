@@ -60,6 +60,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def enable_ph(module, blade):
@@ -70,7 +73,7 @@ def enable_ph(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Enabling Phone Home failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -84,7 +87,7 @@ def disable_ph(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Disabling Phone Home failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

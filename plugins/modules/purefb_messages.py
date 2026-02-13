@@ -73,6 +73,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 ALLOWED_PERIODS = ["h", "d", "w", "y"]
 # Time periods in micro-seconds
@@ -149,7 +152,9 @@ def main():
     res = blade.get_alerts(filter=filter_string)
     if res.status_code != 200:
         module.fail_json(
-            msg="Failed to get alert messages. Error: {0}".format(res.errors[0].message)
+            msg="Failed to get alert messages. Error: {0}".format(
+                get_error_message(res)
+            )
         )
     alerts = list(res.items)
     for message in alerts:

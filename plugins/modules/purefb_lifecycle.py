@@ -135,6 +135,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 from ansible_collections.purestorage.flashblade.plugins.module_utils.time_utils import (
     time_to_milliseconds,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 from datetime import datetime
 
 CONTEXT_API_VERSION = "2.17"
@@ -186,7 +189,7 @@ def delete_rule(module, blade):
                 msg="Failed to delete lifecycle rule {0} for bucket {1}. Error: {2}".format(
                     module.params["name"],
                     module.params["bucket"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
     module.exit_json(changed=changed)
@@ -249,7 +252,7 @@ def create_rule(module, blade):
                 msg="Failed to create lifecycle rule {0} for bucket {1}. Error: {2}".format(
                     module.params["name"],
                     module.params["bucket"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
         if not module.params["enabled"]:
@@ -357,7 +360,7 @@ def update_rule(module, blade, rule):
                     msg="Failed to update lifecycle rule {0} for bucket {1}. Error: {2}".format(
                         module.params["name"],
                         module.params["bucket"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)

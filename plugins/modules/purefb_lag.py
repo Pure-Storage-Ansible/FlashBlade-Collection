@@ -108,6 +108,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def delete_lag(module, blade):
@@ -118,7 +121,7 @@ def delete_lag(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete LAG {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -174,7 +177,7 @@ def update_lag(module, blade):
             )
             if res.status_code != 200:
                 module.fail_json(
-                    msg=f"Failed to update LAG {module.params['name']}. Error: {res.errors[0].message}"
+                    msg=f"Failed to update LAG {module.params['name']}. Error: {get_error_message(res)}"
                 )
             response = list(res.items)[0]
             lagfact = {
@@ -229,7 +232,7 @@ def create_lag(module, blade):
             module.fail_json(
                 msg="Failed to create LAG {0}. Error: {1}".format(
                     module.params["name"],
-                    res.errors[0].message,
+                    get_error_message(res),
                 )
             )
         else:
