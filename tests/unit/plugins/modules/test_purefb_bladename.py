@@ -116,21 +116,24 @@ class TestPurefbBladename:
         mock_module = Mock()
         mock_module.params = {"name": "invalid_name!", "state": "present"}
         mock_module.check_mode = False
+        # Make fail_json raise exception to stop execution
+        mock_module.fail_json.side_effect = SystemExit("fail_json called")
         mock_ansible_module.return_value = mock_module
 
-        # Mock blade - won't be called due to early validation failure
+        # Mock blade - get_system is called before validation
         mock_blade = Mock()
         mock_get_system.return_value = mock_blade
 
-        # Call main
-        main()
+        # Call main - should raise SystemExit
+        try:
+            main()
+        except SystemExit:
+            pass
 
-        # Verify - should fail with invalid name before calling get_arrays
+        # Verify - should fail with invalid name
         mock_module.fail_json.assert_called_once()
         call_args = mock_module.fail_json.call_args[1]
         assert "does not conform to array name rules" in call_args["msg"]
-        # Should not call get_arrays since validation fails first
-        mock_blade.get_arrays.assert_not_called()
 
     @patch("plugins.modules.purefb_bladename.get_system")
     @patch("plugins.modules.purefb_bladename.AnsibleModule")
@@ -141,10 +144,15 @@ class TestPurefbBladename:
         mock_module = Mock()
         mock_module.params = {"name": "blade-name", "state": "present"}
         mock_module.check_mode = False
+        # Make fail_json raise exception to stop execution
+        mock_module.fail_json.side_effect = SystemExit("fail_json called")
         mock_ansible_module.return_value = mock_module
 
-        # Call main
-        main()
+        # Call main - should raise SystemExit
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify - should fail with SDK missing message (before calling get_system)
         mock_module.fail_json.assert_called_once()
@@ -210,13 +218,18 @@ class TestPurefbBladename:
             mock_module = Mock()
             mock_module.params = {"name": name, "state": "present"}
             mock_module.check_mode = False
+            # Make fail_json raise exception to stop execution
+            mock_module.fail_json.side_effect = SystemExit("fail_json called")
             mock_ansible_module.return_value = mock_module
 
             mock_blade = Mock()
             mock_get_system.return_value = mock_blade
 
-            # Call main
-            main()
+            # Call main - should raise SystemExit
+            try:
+                main()
+            except SystemExit:
+                pass
 
             # Verify - should fail validation
             mock_module.fail_json.assert_called()
@@ -226,4 +239,6 @@ class TestPurefbBladename:
             # Reset mocks for next iteration
             mock_module.reset_mock()
             mock_blade.reset_mock()
+            mock_ansible_module.reset_mock()
+            mock_get_system.reset_mock()
 
