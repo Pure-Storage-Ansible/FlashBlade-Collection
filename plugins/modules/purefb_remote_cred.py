@@ -112,31 +112,29 @@ def get_connected(module, blade):
         )
     else:
         connected_blades = list(blade.get_array_connections().items)
-    for target in range(len(connected_blades)):
+    for target in connected_blades:
         if (
-            connected_blades[target].remote.name == module.params["target"]
-            or connected_blades[target].management_address == module.params["target"]
-        ) and connected_blades[target].status in [
+            target.remote.name == module.params["target"]
+            or target.management_address == module.params["target"]
+        ) and target.status in [
             "connected",
             "connecting",
             "partially_connected",
         ]:
-            return connected_blades[target].remote.name
+            return target.remote.name
     if CONTEXT_API_VERSION in api_version:
         connected_targets = list(
             blade.get_targets(context_names=[module.params["context"]]).items
         )
     else:
         connected_targets = list(blade.get_targets().items)
-    for target in range(len(connected_targets)):
-        if connected_targets[target].name == module.params[
-            "target"
-        ] and connected_targets[target].status in [
+    for target in connected_targets:
+        if target.name == module.params["target"] and target.status in [
             "connected",
             "connecting",
             "partially_connected",
         ]:
-            return connected_targets[target].name
+            return target.name
     return None
 
 

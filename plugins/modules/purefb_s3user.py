@@ -222,12 +222,12 @@ def update_s3user(module, blade):
             )
         else:
             keys = list(blade.get_object_store_access_keys().items)
-        for key in range(len(keys)):
+        for key in keys:
             if module.params["imported_key"]:
-                if keys[key].name == module.params["imported_key"]:
+                if key.name == module.params["imported_key"]:
                     module.warn("Imported key provided already belongs to a user")
                     exists = True
-            if keys[key].user.name == user:
+            if key.user.name == user:
                 key_count += 1
         if not exists:
             if key_count < 2:
@@ -446,41 +446,35 @@ def create_s3user(module, blade):
                     )
         if module.params["policy"]:
             policy_list = module.params["policy"]
-            for policy in range(len(policy_list)):
+            for policy in policy_list:
                 if CONTEXT_API_VERSION in api_version:
                     res = blade.get_object_store_access_policies(
-                        names=[policy_list[policy]],
+                        names=[policy],
                         context_names=[module.params["context"]],
                     )
                 else:
-                    res = blade.get_object_store_access_policies(
-                        names=[policy_list[policy]]
-                    )
+                    res = blade.get_object_store_access_policies(names=[policy])
                 if res.status_code != 200:
-                    module.warn(
-                        "Policy {0} is not valid. Ignoring...".format(
-                            policy_list[policy]
-                        )
-                    )
-                    policy_list.remove(policy_list[policy])
+                    module.warn("Policy {0} is not valid. Ignoring...".format(policy))
+                    policy_list.remove(policy)
             username = module.params["account"] + "/" + module.params["name"]
-            for policy in range(len(policy_list)):
+            for policy in policy_list:
                 if CONTEXT_API_VERSION in api_version:
                     res = blade.get_object_store_users_object_store_access_policies(
                         member_names=[username],
-                        policy_names=[policy_list[policy]],
+                        policy_names=[policy],
                         context_names=[module.params["context"]],
                     )
                 else:
                     res = blade.get_object_store_users_object_store_access_policies(
-                        member_names=[username], policy_names=[policy_list[policy]]
+                        member_names=[username], policy_names=[policy]
                     )
                 if not list(res.items):
                     if CONTEXT_API_VERSION in api_version:
                         res = (
                             blade.post_object_store_access_policies_object_store_users(
                                 member_names=[username],
-                                policy_names=[policy_list[policy]],
+                                policy_names=[policy],
                                 context_names=[module.params["context"]],
                             )
                         )
@@ -488,13 +482,13 @@ def create_s3user(module, blade):
                         res = (
                             blade.post_object_store_access_policies_object_store_users(
                                 member_names=[username],
-                                policy_names=[policy_list[policy]],
+                                policy_names=[policy],
                             )
                         )
                     if res.status_code != 200:
                         module.warn(
                             "Failed to add policy {0} to account user {1}. Error: {2}. Skipping...".format(
-                                policy_list[policy],
+                                policy,
                                 username,
                                 res.errors[0].message,
                             )

@@ -80,8 +80,8 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 def _check_replication_configured(module, blade):
     interfaces = list(blade.get_network_interfaces().items)
     repl_ok = False
-    for link in range(len(interfaces)):
-        if "replication" in interfaces[link].services:
+    for link in interfaces:
+        if "replication" in link.services:
             repl_ok = True
     if not repl_ok:
         module.fail_json(
@@ -91,9 +91,9 @@ def _check_replication_configured(module, blade):
 
 def _check_connected(module, blade):
     connected_targets = list(blade.get_targets().items)
-    for target in range(len(connected_targets)):
-        if connected_targets[target].name == module.params["name"]:
-            return connected_targets[target]
+    for target in connected_targets:
+        if target.name == module.params["name"]:
+            return target
     return None
 
 
@@ -116,8 +116,8 @@ def create_connection(module, blade):
     changed = True
     if not module.check_mode:
         connected_targets = list(blade.get_targets().items)
-        for target in range(len(connected_targets)):
-            if connected_targets[target].address == module.params["address"]:
+        for ctarget in connected_targets:
+            if ctarget.address == module.params["address"]:
                 module.fail_json(
                     msg="Target already exists with same connection address"
                 )
@@ -137,10 +137,10 @@ def update_connection(module, blade, connection):
     """Update target connection address"""
     changed = False
     connected_targets = list(blade.get_targets().items)
-    for target in range(len(connected_targets)):
+    for target in connected_targets:
         if (
-            connected_targets[target].address == module.params["address"]
-            and connected_targets[target].name != module.params["name"]
+            target.address == module.params["address"]
+            and target.name != module.params["name"]
         ):
             module.fail_json(msg="Target already exists with same connection address")
     if module.params["address"] != connection.address:

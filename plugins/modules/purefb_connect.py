@@ -156,8 +156,8 @@ def _check_connected(module, blade):
         )
     else:
         connected_blades = list(blade.get_array_connections().items)
-    for target in range(len(connected_blades)):
-        if connected_blades[target].management_address is None:
+    for target in connected_blades:
+        if target.management_address is None:
             remote_system = Client(
                 target=module.params["target_url"],
                 api_token=module.params["target_api"],
@@ -170,16 +170,16 @@ def _check_connected(module, blade):
                     )
                 )
             remote_array = list(res.items)[0].name
-            if connected_blades[target].remote.name == remote_array:
-                return connected_blades[target]
-        if connected_blades[target].management_address == module.params[
+            if target.remote.name == remote_array:
+                return target
+        if target.management_address == module.params[
             "target_url"
-        ] and connected_blades[target].status in [
+        ] and target.status in [
             "connected",
             "connecting",
             "partially_connected",
         ]:
-            return connected_blades[target]
+            return target
     return None
 
 
