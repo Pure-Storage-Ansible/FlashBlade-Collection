@@ -336,6 +336,20 @@ class TestPurefbInfo:
         mock_blade.get_buckets.return_value.total_item_count = 5
         mock_blade.get_file_systems.return_value.total_item_count = 10
         mock_blade.get_file_system_snapshots.return_value.total_item_count = 20
+        mock_blade.get_object_store_users.return_value.total_item_count = 3
+        mock_blade.get_object_store_accounts.return_value.total_item_count = 2
+        mock_blade.get_blades.return_value.total_item_count = 4
+        mock_blade.get_certificates.return_value.total_item_count = 1
+
+        # Mock space info
+        mock_space = Mock()
+        mock_space.capacity = 1000000000
+        mock_space.space = Mock()
+        mock_space.space.total_physical = 500000000
+        mock_space.space.unique = 300000000
+        mock_space.space.snapshots = 100000000
+        mock_space.space.virtual = 400000000
+        mock_blade.get_arrays_space.return_value.items = [mock_space]
 
         # Call function
         result = generate_default_dict(mock_blade)
@@ -345,41 +359,68 @@ class TestPurefbInfo:
         assert result["flashblade_name"] == "test-array"
         assert "purity_version" in result
         assert result["purity_version"] == "3.0.0"
-        assert "bucket_count" in result
-        assert result["bucket_count"] == 5
-        assert "filesystem_count" in result
-        assert result["filesystem_count"] == 10
-        assert "snapshot_count" in result
-        assert result["snapshot_count"] == 20
+        assert "buckets" in result
+        assert result["buckets"] == 5
+        assert "filesystems" in result
+        assert result["filesystems"] == 10
+        assert "snapshots" in result
+        assert result["snapshots"] == 20
+        assert "total_capacity" in result
+        assert result["total_capacity"] == 1000000000
 
     def test_generate_perf_dict(self):
         """Test generate_perf_dict function"""
         # Setup mock blade
         mock_blade = Mock()
 
-        # Mock performance data
+        # Mock performance data with all required attributes
         mock_total_perf = Mock()
         mock_total_perf.bytes_per_op = 4096
         mock_total_perf.bytes_per_read = 8192
         mock_total_perf.bytes_per_write = 4096
         mock_total_perf.read_bytes_per_sec = 1000000
         mock_total_perf.write_bytes_per_sec = 500000
+        mock_total_perf.reads_per_sec = 100
+        mock_total_perf.writes_per_sec = 50
+        mock_total_perf.usec_per_other_op = 10
+        mock_total_perf.usec_per_read_op = 20
+        mock_total_perf.usec_per_write_op = 30
 
         mock_http_perf = Mock()
+        mock_http_perf.bytes_per_op = 2048
+        mock_http_perf.bytes_per_read = 4096
+        mock_http_perf.bytes_per_write = 2048
         mock_http_perf.read_bytes_per_sec = 100000
         mock_http_perf.write_bytes_per_sec = 50000
+        mock_http_perf.reads_per_sec = 10
+        mock_http_perf.writes_per_sec = 5
+        mock_http_perf.usec_per_other_op = 5
+        mock_http_perf.usec_per_read_op = 10
+        mock_http_perf.usec_per_write_op = 15
 
         mock_s3_perf = Mock()
+        mock_s3_perf.bytes_per_op = 2048
+        mock_s3_perf.bytes_per_read = 4096
+        mock_s3_perf.bytes_per_write = 2048
         mock_s3_perf.read_bytes_per_sec = 200000
         mock_s3_perf.write_bytes_per_sec = 100000
+        mock_s3_perf.reads_per_sec = 20
+        mock_s3_perf.writes_per_sec = 10
+        mock_s3_perf.usec_per_other_op = 5
+        mock_s3_perf.usec_per_read_op = 10
+        mock_s3_perf.usec_per_write_op = 15
 
         mock_nfs_perf = Mock()
+        mock_nfs_perf.bytes_per_op = 2048
+        mock_nfs_perf.bytes_per_read = 4096
+        mock_nfs_perf.bytes_per_write = 2048
         mock_nfs_perf.read_bytes_per_sec = 300000
         mock_nfs_perf.write_bytes_per_sec = 150000
-
-        mock_smb_perf = Mock()
-        mock_smb_perf.read_bytes_per_sec = 400000
-        mock_smb_perf.write_bytes_per_sec = 200000
+        mock_nfs_perf.reads_per_sec = 30
+        mock_nfs_perf.writes_per_sec = 15
+        mock_nfs_perf.usec_per_other_op = 5
+        mock_nfs_perf.usec_per_read_op = 10
+        mock_nfs_perf.usec_per_write_op = 15
 
         # Setup return values for different protocol queries
         def get_perf_side_effect(protocol=None):
@@ -390,23 +431,26 @@ class TestPurefbInfo:
                 mock_result.items = [mock_s3_perf]
             elif protocol == "nfs":
                 mock_result.items = [mock_nfs_perf]
-            elif protocol == "smb":
-                mock_result.items = [mock_smb_perf]
             else:
                 mock_result.items = [mock_total_perf]
             return mock_result
 
         mock_blade.get_arrays_performance.side_effect = get_perf_side_effect
 
+        # Mock replication performance count
+        mock_blade.get_array_connections_performance_replication.return_value.total_item_count = (
+            0
+        )
+
         # Call function
         result = generate_perf_dict(mock_blade)
 
         # Verify
-        assert "total" in result
+        assert "aggregate" in result
         assert "http" in result
         assert "s3" in result
         assert "nfs" in result
-        assert result["total"]["read_bytes_per_sec"] == 1000000
+        assert result["aggregate"]["read_bytes_per_sec"] == 1000000
         assert result["http"]["read_bytes_per_sec"] == 100000
         assert result["s3"]["read_bytes_per_sec"] == 200000
         assert result["nfs"]["read_bytes_per_sec"] == 300000
@@ -423,6 +467,7 @@ class TestPurefbInfo:
 
         # Mock DNS
         mock_dns = Mock()
+        mock_dns.name = "management"
         mock_dns.domain = "example.com"
         mock_dns.nameservers = ["8.8.8.8", "8.8.4.4"]
         mock_blade.get_dns.return_value.items = [mock_dns]
@@ -433,6 +478,9 @@ class TestPurefbInfo:
         # Mock SMTP
         mock_blade.get_smtp_servers.return_value.items = []
 
+        # Mock alert watchers
+        mock_blade.get_alert_watchers.return_value.items = []
+
         # Mock SSL certs
         mock_blade.get_certificates.return_value.items = []
 
@@ -442,18 +490,20 @@ class TestPurefbInfo:
         # Mock directory services
         mock_blade.get_directory_services.return_value.items = []
 
-        # Mock alerts
-        mock_blade.get_alerts.return_value.items = []
+        # Mock syslog servers
+        mock_blade.get_syslog_servers.return_value.items = []
 
-        # Mock array connections
-        mock_blade.get_array_connections.return_value.items = []
+        # Mock arrays
+        mock_array = Mock()
+        mock_array.name = "test-array"
+        mock_blade.get_arrays.return_value.items = [mock_array]
 
         # Call function
         result = generate_config_dict(mock_blade)
 
         # Verify
         assert "dns" in result
-        assert result["dns"]["domain"] == "example.com"
-        assert result["dns"]["nameservers"] == ["8.8.8.8", "8.8.4.4"]
-
+        assert "management" in result["dns"]
+        assert result["dns"]["management"]["domain"] == "example.com"
+        assert result["dns"]["management"]["nameservers"] == ["8.8.8.8", "8.8.4.4"]
 
