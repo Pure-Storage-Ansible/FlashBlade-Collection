@@ -53,6 +53,10 @@ except ImportError:
 from os import environ
 import platform
 
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
+
 VERSION = "1.5"
 USER_AGENT_BASE = "Ansible"
 API_AGENT_VERSION = "1.5"
@@ -124,7 +128,7 @@ def get_system(module):
         if res.status_code != 200:
             module.fail_json(
                 msg="Pure Storage FlashBlade authentication failed. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     else:
