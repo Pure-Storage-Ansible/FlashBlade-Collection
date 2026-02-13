@@ -241,4 +241,3 @@ class TestPurefbBladename:
             mock_blade.reset_mock()
             mock_ansible_module.reset_mock()
             mock_get_system.reset_mock()
-
