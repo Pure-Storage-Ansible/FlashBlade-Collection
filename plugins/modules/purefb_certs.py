@@ -423,7 +423,9 @@ def import_cert(module, blade):
         )
     if res.status_code != 200:
         module.fail_json(
-            msg="Importing Certificate failed. Error: {0}".format(get_error_message(res))
+            msg="Importing Certificate failed. Error: {0}".format(
+                get_error_message(res)
+            )
         )
     module.exit_json(changed=changed)
 
