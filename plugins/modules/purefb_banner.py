@@ -71,6 +71,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def set_banner(module, blade):
@@ -84,7 +87,7 @@ def set_banner(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to set MOTD banner text. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -99,7 +102,7 @@ def delete_banner(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete current MOTD banner text. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

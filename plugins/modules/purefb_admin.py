@@ -68,6 +68,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def main():
@@ -122,7 +125,7 @@ def main():
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to change Global Admin settings. Error: {0}".format(
-                    res.errors[0].message
+                    get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

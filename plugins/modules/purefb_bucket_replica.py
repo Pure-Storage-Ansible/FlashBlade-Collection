@@ -125,6 +125,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def get_local_bucket(module, blade):
@@ -293,7 +296,7 @@ def update_rl_policy(module, blade, local_replica_link):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to update bucket replica link {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
@@ -320,7 +323,7 @@ def delete_rl_policy(module, blade, local_replica_link):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete bucket replica link {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

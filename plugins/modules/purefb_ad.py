@@ -239,6 +239,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 GC_SERVERS_API_VERSION = "2.12"
 SERVERS_API_VERSION = "2.16"
@@ -295,7 +298,7 @@ def create_account(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to add Active Directory Account {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     else:
@@ -329,7 +332,7 @@ def create_account(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to add Active Directory Account {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -401,7 +404,7 @@ def update_account(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update Active Directory Account {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -445,7 +448,7 @@ def rotate_account(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Keytab rotation failed for account {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=True)
