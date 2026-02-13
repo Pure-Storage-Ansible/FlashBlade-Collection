@@ -47,6 +47,39 @@ def remove_duplicates(items):
     return list(dict.fromkeys(items))
 
 
+def get_error_message(response, default="Unknown error"):
+    """Safely extract error message from API response.
+
+    Safely retrieves the first error message from a FlashBlade API response
+    object, avoiding IndexError if the errors list is empty or missing.
+
+    Args:
+        response: API response object with potential errors attribute
+        default: Default message to return if no error found (default: 'Unknown error')
+
+    Returns:
+        str: Error message from response.errors[0].message, or default if unavailable
+
+    Examples:
+        >>> # Safe - handles empty errors list
+        >>> res = blade.get_file_systems(names=['nonexistent'])
+        >>> error_msg = get_error_message(res)
+        >>> module.fail_json(msg=f"Failed to get filesystem: {error_msg}")
+        >>>
+        >>> # With custom default message
+        >>> error_msg = get_error_message(res, "Operation failed")
+
+    Note:
+        This function prevents IndexError crashes that occur when accessing
+        res.errors[0].message directly without checking if errors exist.
+    """
+    if hasattr(response, "errors") and response.errors:
+        errors = list(response.errors)
+        if errors:
+            return errors[0].message
+    return default
+
+
 def get_filesystem(module, blade):
     """Get filesystem from FlashBlade.
 
