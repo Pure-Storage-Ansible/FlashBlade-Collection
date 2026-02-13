@@ -409,4 +409,3 @@ class TestPurefbTimeout:
         mock_array_class.assert_called_once_with(idle_timeout=0)
         # disable_timeout calls exit_json(changed=True), which exits the module
         mock_module.exit_json.assert_called_once_with(changed=True)
-
