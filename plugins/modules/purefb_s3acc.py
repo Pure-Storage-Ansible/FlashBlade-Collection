@@ -114,7 +114,7 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURESTORAGE = True
+HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import (
         ObjectStoreAccountPatch,
@@ -122,7 +122,7 @@ try:
         PublicAccessConfig,
     )
 except ImportError:
-    HAS_PURESTORAGE = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule, human_to_bytes
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
@@ -425,7 +425,7 @@ def main():
     blade = get_system(module)
 
     if module.params["quota"] or module.params["default_quota"]:
-        if not HAS_PURESTORAGE:
+        if not HAS_PYPURECLIENT:
             module.fail_json(msg="py-pure-client sdk is required for to set quotas")
 
     upper = False
