@@ -117,6 +117,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 
 def rotate_keytab(module, blade):
@@ -148,7 +151,7 @@ def delete_keytab(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to delete keytab {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -171,7 +174,7 @@ def import_keytab(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to import keytab file {0}. Error: {1}".format(
-                    module.params["keytab_file"], res.errors[0].message
+                    module.params["keytab_file"], get_error_message(res)
                 )
             )
 
@@ -189,7 +192,7 @@ def export_keytab(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to export keytab {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
             else:

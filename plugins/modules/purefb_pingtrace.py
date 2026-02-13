@@ -118,6 +118,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 import re
 
 MIN_REQUIRED_API_VERSION = "2.6"
@@ -164,7 +167,7 @@ def run_ping(module, blade):
         )
     if res.status_code != 200:
         module.fail_json(
-            msg="Failed to run ping. Error: {0}".format(res.errors[0].message)
+            msg="Failed to run ping. Error: {0}".format(get_error_message(res))
         )
     else:
         responses = list(res.items)
@@ -239,7 +242,7 @@ def run_trace(module, blade):
         )
     if res.status_code != 200:
         module.fail_json(
-            msg="Failed to run trace. Error: {0}".format(res.errors[0].message)
+            msg="Failed to run trace. Error: {0}".format(get_error_message(res))
         )
     else:
         responses = list(res.items)
