@@ -7,13 +7,11 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from plugins.module_utils.common import (
     _findstr,
     remove_duplicates,
     get_error_message,
-    get_filesystem,
     human_to_bytes,
     human_to_real,
 )
