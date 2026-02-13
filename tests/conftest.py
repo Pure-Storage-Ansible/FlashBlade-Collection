@@ -141,4 +141,3 @@ def mock_api_exception():
     exception.status = 400
     exception.reason = "Bad Request"
     return exception
-

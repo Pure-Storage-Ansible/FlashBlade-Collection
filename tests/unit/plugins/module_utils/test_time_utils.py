@@ -172,4 +172,3 @@ class TestMillisecondsToTime:
         """Test that hours wrap around at 24."""
         assert milliseconds_to_time(86400000) == "00:00"  # 24 hours = 0:00
         assert milliseconds_to_time(90000000) == "01:00"  # 25 hours = 1:00
-

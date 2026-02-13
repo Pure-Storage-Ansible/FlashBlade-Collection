@@ -204,4 +204,3 @@ class TestHumanToReal:
         assert human_to_real("5K") == 5000
         assert human_to_real("2m") == 2000000
         assert human_to_real("2M") == 2000000
-
