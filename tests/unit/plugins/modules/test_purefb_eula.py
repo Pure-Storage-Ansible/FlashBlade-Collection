@@ -28,7 +28,11 @@ class TestPurefbEula:
     @patch("plugins.modules.purefb_eula.AnsibleModule")
     @patch("plugins.modules.purefb_eula.HAS_PYPURECLIENT", True)
     def test_set_eula_success(
-        self, mock_ansible_module, mock_get_system, mock_eula_class, mock_signature_class
+        self,
+        mock_ansible_module,
+        mock_get_system,
+        mock_eula_class,
+        mock_signature_class,
     ):
         """Test successful EULA signing"""
         # Setup mocks
@@ -50,7 +54,7 @@ class TestPurefbEula:
         mock_eula_response = Mock()
         mock_eula_response.signature = mock_current_signature
         mock_blade.get_arrays_eula.return_value.items = [mock_eula_response]
-        
+
         mock_response = Mock()
         mock_response.status_code = 200
         mock_blade.patch_arrays_eula.return_value = mock_response
@@ -101,7 +105,11 @@ class TestPurefbEula:
     @patch("plugins.modules.purefb_eula.AnsibleModule")
     @patch("plugins.modules.purefb_eula.HAS_PYPURECLIENT", True)
     def test_set_eula_failure(
-        self, mock_ansible_module, mock_get_system, mock_eula_class, mock_signature_class
+        self,
+        mock_ansible_module,
+        mock_get_system,
+        mock_eula_class,
+        mock_signature_class,
     ):
         """Test EULA signing failure"""
         # Setup mocks
@@ -123,7 +131,7 @@ class TestPurefbEula:
         mock_eula_response = Mock()
         mock_eula_response.signature = mock_current_signature
         mock_blade.get_arrays_eula.return_value.items = [mock_eula_response]
-        
+
         mock_response = Mock()
         mock_response.status_code = 400
         mock_blade.patch_arrays_eula.return_value = mock_response
@@ -206,7 +214,11 @@ class TestPurefbEula:
     @patch("plugins.modules.purefb_eula.AnsibleModule")
     @patch("plugins.modules.purefb_eula.HAS_PYPURECLIENT", True)
     def test_update_eula_company(
-        self, mock_ansible_module, mock_get_system, mock_eula_class, mock_signature_class
+        self,
+        mock_ansible_module,
+        mock_get_system,
+        mock_eula_class,
+        mock_signature_class,
     ):
         """Test updating EULA when company changes"""
         # Setup mocks
@@ -252,7 +264,11 @@ class TestPurefbEula:
     @patch("plugins.modules.purefb_eula.AnsibleModule")
     @patch("plugins.modules.purefb_eula.HAS_PYPURECLIENT", True)
     def test_update_eula_name(
-        self, mock_ansible_module, mock_get_system, mock_eula_class, mock_signature_class
+        self,
+        mock_ansible_module,
+        mock_get_system,
+        mock_eula_class,
+        mock_signature_class,
     ):
         """Test updating EULA when name changes"""
         # Setup mocks
@@ -298,7 +314,11 @@ class TestPurefbEula:
     @patch("plugins.modules.purefb_eula.AnsibleModule")
     @patch("plugins.modules.purefb_eula.HAS_PYPURECLIENT", True)
     def test_update_eula_title(
-        self, mock_ansible_module, mock_get_system, mock_eula_class, mock_signature_class
+        self,
+        mock_ansible_module,
+        mock_get_system,
+        mock_eula_class,
+        mock_signature_class,
     ):
         """Test updating EULA when title changes"""
         # Setup mocks
@@ -398,5 +418,3 @@ class TestPurefbEula:
 
         # Verify - should call set_eula with module and blade
         mock_set_eula.assert_called_once_with(mock_module, mock_blade)
-
-
