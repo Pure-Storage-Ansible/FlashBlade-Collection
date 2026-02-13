@@ -22,10 +22,13 @@ from plugins.modules.purefb_timeout import main, set_timeout, disable_timeout
 class TestPurefbTimeout:
     """Test cases for purefb_timeout module"""
 
+    @patch("plugins.modules.purefb_timeout.flashblade.Array")
     @patch("plugins.modules.purefb_timeout.get_system")
     @patch("plugins.modules.purefb_timeout.AnsibleModule")
     @patch("plugins.modules.purefb_timeout.HAS_PYPURECLIENT", True)
-    def test_set_timeout_success(self, mock_ansible_module, mock_get_system):
+    def test_set_timeout_success(
+        self, mock_ansible_module, mock_get_system, mock_array_class
+    ):
         """Test successful timeout set"""
         # Setup mocks
         mock_module = Mock()
@@ -44,8 +47,7 @@ class TestPurefbTimeout:
 
         # Verify
         mock_blade.patch_arrays.assert_called_once()
-        call_args = mock_blade.patch_arrays.call_args[0][0]
-        assert call_args.idle_timeout == 30 * 60000  # Convert minutes to milliseconds
+        mock_array_class.assert_called_once_with(idle_timeout=30 * 60000)
         mock_module.exit_json.assert_called_once_with(changed=True)
 
     @patch("plugins.modules.purefb_timeout.get_system")
@@ -94,10 +96,13 @@ class TestPurefbTimeout:
         call_args = mock_module.fail_json.call_args[1]
         assert "Failed to set GUI idle timeout" in call_args["msg"]
 
+    @patch("plugins.modules.purefb_timeout.flashblade.Array")
     @patch("plugins.modules.purefb_timeout.get_system")
     @patch("plugins.modules.purefb_timeout.AnsibleModule")
     @patch("plugins.modules.purefb_timeout.HAS_PYPURECLIENT", True)
-    def test_disable_timeout_success(self, mock_ansible_module, mock_get_system):
+    def test_disable_timeout_success(
+        self, mock_ansible_module, mock_get_system, mock_array_class
+    ):
         """Test successful timeout disable"""
         # Setup mocks
         mock_module = Mock()
@@ -115,8 +120,7 @@ class TestPurefbTimeout:
 
         # Verify
         mock_blade.patch_arrays.assert_called_once()
-        call_args = mock_blade.patch_arrays.call_args[0][0]
-        assert call_args.idle_timeout == 0
+        mock_array_class.assert_called_once_with(idle_timeout=0)
         mock_module.exit_json.assert_called_once_with(changed=True)
 
     @patch("plugins.modules.purefb_timeout.get_system")
@@ -223,6 +227,9 @@ class TestPurefbTimeout:
         mock_ansible_module.return_value = mock_module
 
         mock_blade = Mock()
+        mock_array = Mock()
+        mock_array.idle_timeout = 0
+        mock_blade.get_arrays.return_value.items = [mock_array]
         mock_get_system.return_value = mock_blade
 
         # Call main - should raise SystemExit
@@ -250,6 +257,9 @@ class TestPurefbTimeout:
         mock_ansible_module.return_value = mock_module
 
         mock_blade = Mock()
+        mock_array = Mock()
+        mock_array.idle_timeout = 0
+        mock_blade.get_arrays.return_value.items = [mock_array]
         mock_get_system.return_value = mock_blade
 
         # Call main - should raise SystemExit
@@ -326,10 +336,13 @@ class TestPurefbTimeout:
             mock_ansible_module.reset_mock()
             mock_get_system.reset_mock()
 
+    @patch("plugins.modules.purefb_timeout.flashblade.Array")
     @patch("plugins.modules.purefb_timeout.get_system")
     @patch("plugins.modules.purefb_timeout.AnsibleModule")
     @patch("plugins.modules.purefb_timeout.HAS_PYPURECLIENT", True)
-    def test_main_set_timeout_when_different(self, mock_ansible_module, mock_get_system):
+    def test_main_set_timeout_when_different(
+        self, mock_ansible_module, mock_get_system, mock_array_class
+    ):
         """Test main sets timeout when current value is different"""
         # Setup mocks
         mock_module = Mock()
@@ -351,14 +364,16 @@ class TestPurefbTimeout:
 
         # Verify - should call patch_arrays to update timeout
         mock_blade.patch_arrays.assert_called_once()
-        call_args = mock_blade.patch_arrays.call_args[0][0]
-        assert call_args.idle_timeout == 60 * 60000
+        mock_array_class.assert_called_once_with(idle_timeout=60 * 60000)
         mock_module.exit_json.assert_called_once_with(changed=True)
 
+    @patch("plugins.modules.purefb_timeout.flashblade.Array")
     @patch("plugins.modules.purefb_timeout.get_system")
     @patch("plugins.modules.purefb_timeout.AnsibleModule")
     @patch("plugins.modules.purefb_timeout.HAS_PYPURECLIENT", True)
-    def test_main_disable_timeout_when_enabled(self, mock_ansible_module, mock_get_system):
+    def test_main_disable_timeout_when_enabled(
+        self, mock_ansible_module, mock_get_system, mock_array_class
+    ):
         """Test main disables timeout when currently enabled"""
         # Setup mocks
         mock_module = Mock()
@@ -380,7 +395,5 @@ class TestPurefbTimeout:
 
         # Verify - should call patch_arrays to disable timeout
         mock_blade.patch_arrays.assert_called_once()
-        call_args = mock_blade.patch_arrays.call_args[0][0]
-        assert call_args.idle_timeout == 0
+        mock_array_class.assert_called_once_with(idle_timeout=0)
         mock_module.exit_json.assert_called_once_with(changed=True)
-
