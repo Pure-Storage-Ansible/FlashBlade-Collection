@@ -48,9 +48,9 @@ class TestPurefbArgumentSpec:
 class TestGetSystem:
     """Tests for get_system function."""
 
-    @patch("plugins.module_utils.purefb.flashblade")
+    @patch("pypureclient.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
-    def test_with_module_params(self, mock_flashblade):
+    def test_with_module_params(self, mock_client_class):
         """Test get_system with module parameters."""
         # Setup mock module
         mock_module = Mock()
@@ -65,14 +65,14 @@ class TestGetSystem:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_client.get_hardware.return_value = mock_response
-        mock_flashblade.Client.return_value = mock_client
+        mock_client_class.return_value = mock_client
 
         # Call function
         result = get_system(mock_module)
 
         # Verify client was created with correct params
-        mock_flashblade.Client.assert_called_once()
-        call_kwargs = mock_flashblade.Client.call_args[1]
+        mock_client_class.assert_called_once()
+        call_kwargs = mock_client_class.call_args[1]
         assert call_kwargs["target"] == "https://flashblade.example.com"
         assert call_kwargs["api_token"] == "test-token-123"
         assert "user_agent" in call_kwargs
@@ -83,10 +83,10 @@ class TestGetSystem:
         # Verify result is the client
         assert result == mock_client
 
-    @patch("plugins.module_utils.purefb.flashblade")
+    @patch("pypureclient.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     @patch("plugins.module_utils.purefb.environ")
-    def test_with_environment_vars(self, mock_environ, mock_flashblade):
+    def test_with_environment_vars(self, mock_environ, mock_client_class):
         """Test get_system with environment variables."""
         # Setup mock module without params
         mock_module = Mock()
@@ -108,14 +108,14 @@ class TestGetSystem:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_client.get_hardware.return_value = mock_response
-        mock_flashblade.Client.return_value = mock_client
+        mock_client_class.return_value = mock_client
 
         # Call function
         result = get_system(mock_module)
 
         # Verify client was created with env vars
-        mock_flashblade.Client.assert_called_once()
-        call_kwargs = mock_flashblade.Client.call_args[1]
+        mock_client_class.assert_called_once()
+        call_kwargs = mock_client_class.call_args[1]
         assert call_kwargs["target"] == "https://env-flashblade.example.com"
         assert call_kwargs["api_token"] == "env-token-456"
 
@@ -133,12 +133,17 @@ class TestGetSystem:
             "api_token": None,
             "disable_warnings": False,
         }
+        # Make fail_json raise an exception to stop execution
+        mock_module.fail_json.side_effect = SystemExit("fail_json called")
 
         # No environment variables
         mock_environ.get.return_value = None
 
         # Call function - should fail
-        get_system(mock_module)
+        try:
+            get_system(mock_module)
+        except SystemExit:
+            pass
 
         # Verify fail_json was called
         mock_module.fail_json.assert_called_once()
@@ -155,18 +160,23 @@ class TestGetSystem:
             "api_token": "test-token",
             "disable_warnings": False,
         }
+        # Make fail_json raise an exception to stop execution
+        mock_module.fail_json.side_effect = SystemExit("fail_json called")
 
         # Call function - should fail
-        get_system(mock_module)
+        try:
+            get_system(mock_module)
+        except SystemExit:
+            pass
 
         # Verify fail_json was called
         mock_module.fail_json.assert_called_once()
         call_args = mock_module.fail_json.call_args[1]
         assert "pypureclient SDK not installed" in call_args["msg"]
 
-    @patch("plugins.module_utils.purefb.flashblade")
+    @patch("pypureclient.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
-    def test_authentication_failure(self, mock_flashblade):
+    def test_authentication_failure(self, mock_client_class):
         """Test that authentication failure is handled."""
         # Setup mock module
         mock_module = Mock()
@@ -175,6 +185,8 @@ class TestGetSystem:
             "api_token": "invalid-token",
             "disable_warnings": False,
         }
+        # Make fail_json raise an exception to stop execution
+        mock_module.fail_json.side_effect = SystemExit("fail_json called")
 
         # Setup mock FlashBlade client with auth failure
         mock_client = Mock()
@@ -184,20 +196,23 @@ class TestGetSystem:
         mock_error.message = "Invalid API token"
         mock_response.errors = [mock_error]
         mock_client.get_hardware.return_value = mock_response
-        mock_flashblade.Client.return_value = mock_client
+        mock_client_class.return_value = mock_client
 
         # Call function - should fail
-        get_system(mock_module)
+        try:
+            get_system(mock_module)
+        except SystemExit:
+            pass
 
         # Verify fail_json was called with auth error
         mock_module.fail_json.assert_called_once()
         call_args = mock_module.fail_json.call_args[1]
         assert "authentication failed" in call_args["msg"].lower()
 
-    @patch("plugins.module_utils.purefb.flashblade")
+    @patch("urllib3.disable_warnings")
+    @patch("pypureclient.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
-    @patch("plugins.module_utils.purefb.urllib3")
-    def test_disable_warnings(self, mock_urllib3, mock_flashblade):
+    def test_disable_warnings(self, mock_client_class, mock_disable_warnings):
         """Test that warnings can be disabled."""
         # Setup mock module with disable_warnings=True
         mock_module = Mock()
@@ -212,19 +227,19 @@ class TestGetSystem:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_client.get_hardware.return_value = mock_response
-        mock_flashblade.Client.return_value = mock_client
+        mock_client_class.return_value = mock_client
 
         # Call function
         get_system(mock_module)
 
         # Verify urllib3.disable_warnings was called
-        mock_urllib3.disable_warnings.assert_called_once()
+        mock_disable_warnings.assert_called_once()
 
-    @patch("plugins.module_utils.purefb.flashblade")
+    @patch("distro.name")
+    @patch("pypureclient.flashblade.Client")
     @patch("plugins.module_utils.purefb.HAS_PYPURECLIENT", True)
     @patch("plugins.module_utils.purefb.HAS_DISTRO", True)
-    @patch("plugins.module_utils.purefb.distro")
-    def test_user_agent_with_distro(self, mock_distro, mock_flashblade):
+    def test_user_agent_with_distro(self, mock_client_class, mock_distro_name):
         """Test user agent string includes distro info when available."""
         # Setup mock module
         mock_module = Mock()
@@ -235,19 +250,19 @@ class TestGetSystem:
         }
 
         # Setup mock distro
-        mock_distro.name.return_value = "Ubuntu 22.04"
+        mock_distro_name.return_value = "Ubuntu 22.04"
 
         # Setup mock FlashBlade client
         mock_client = Mock()
         mock_response = Mock()
         mock_response.status_code = 200
         mock_client.get_hardware.return_value = mock_response
-        mock_flashblade.Client.return_value = mock_client
+        mock_client_class.return_value = mock_client
 
         # Call function
         get_system(mock_module)
 
         # Verify user_agent contains distro info
-        call_kwargs = mock_flashblade.Client.call_args[1]
+        call_kwargs = mock_client_class.call_args[1]
         assert "Ubuntu 22.04" in call_kwargs["user_agent"]
         assert "Ansible" in call_kwargs["user_agent"]
