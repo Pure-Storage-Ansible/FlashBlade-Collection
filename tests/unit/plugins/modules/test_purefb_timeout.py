@@ -348,6 +348,8 @@ class TestPurefbTimeout:
         mock_module = Mock()
         mock_module.params = {"timeout": 60, "state": "present"}
         mock_module.check_mode = False
+        # Make exit_json raise SystemExit to simulate actual module behavior
+        mock_module.exit_json.side_effect = SystemExit("exit_json called")
         mock_ansible_module.return_value = mock_module
 
         mock_blade = Mock()
@@ -359,8 +361,11 @@ class TestPurefbTimeout:
         mock_blade.patch_arrays.return_value = mock_response
         mock_get_system.return_value = mock_blade
 
-        # Call main - set_timeout will call exit_json and exit
-        main()
+        # Call main - set_timeout will call exit_json and raise SystemExit
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify - should call patch_arrays to update timeout
         mock_blade.patch_arrays.assert_called_once()
@@ -380,6 +385,8 @@ class TestPurefbTimeout:
         mock_module = Mock()
         mock_module.params = {"timeout": 30, "state": "absent"}
         mock_module.check_mode = False
+        # Make exit_json raise SystemExit to simulate actual module behavior
+        mock_module.exit_json.side_effect = SystemExit("exit_json called")
         mock_ansible_module.return_value = mock_module
 
         mock_blade = Mock()
@@ -391,11 +398,15 @@ class TestPurefbTimeout:
         mock_blade.patch_arrays.return_value = mock_response
         mock_get_system.return_value = mock_blade
 
-        # Call main - disable_timeout will call exit_json and exit
-        main()
+        # Call main - disable_timeout will call exit_json and raise SystemExit
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify - should call patch_arrays to disable timeout
         mock_blade.patch_arrays.assert_called_once()
         mock_array_class.assert_called_once_with(idle_timeout=0)
         # disable_timeout calls exit_json(changed=True), which exits the module
         mock_module.exit_json.assert_called_once_with(changed=True)
+
