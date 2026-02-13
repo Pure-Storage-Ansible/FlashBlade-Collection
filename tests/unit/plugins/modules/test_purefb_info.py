@@ -330,6 +330,7 @@ class TestPurefbInfo:
         mock_array.id = "12345"
         mock_array.os = "Purity//FB"
         mock_array.version = "3.0.0"
+        mock_array.idle_timeout = 600000  # 10 minutes in milliseconds
         mock_blade.get_arrays.return_value.items = [mock_array]
 
         # Mock counts
@@ -340,6 +341,19 @@ class TestPurefbInfo:
         mock_blade.get_object_store_accounts.return_value.total_item_count = 2
         mock_blade.get_blades.return_value.total_item_count = 4
         mock_blade.get_certificates.return_value.total_item_count = 1
+        mock_blade.get_policies.return_value.total_item_count = 6
+        mock_blade.get_certificate_groups.return_value.total_item_count = 2
+        mock_blade.get_file_system_replica_links.return_value.total_item_count = 0
+        mock_blade.get_object_store_remote_credentials.return_value.total_item_count = 0
+        mock_blade.get_bucket_replica_links.return_value.total_item_count = 0
+        mock_blade.get_array_connections.return_value.total_item_count = 0
+        mock_blade.get_targets.return_value.total_item_count = 0
+        mock_blade.get_keytabs.return_value.total_item_count = 0
+
+        # Mock items that use len()
+        mock_blade.get_syslog_servers.return_value.items = []
+        mock_blade.get_object_store_virtual_hosts.return_value.items = []
+        mock_blade.get_api_clients.return_value.items = []
 
         # Mock space info
         mock_space = Mock()
@@ -350,6 +364,12 @@ class TestPurefbInfo:
         mock_space.space.snapshots = 100000000
         mock_space.space.virtual = 400000000
         mock_blade.get_arrays_space.return_value.items = [mock_space]
+
+        # Mock EULA
+        mock_eula = Mock()
+        mock_eula.signature = Mock()
+        mock_eula.signature.accepted = True
+        mock_blade.get_arrays_eula.return_value.items = [mock_eula]
 
         # Call function
         result = generate_default_dict(mock_blade)
@@ -367,6 +387,8 @@ class TestPurefbInfo:
         assert result["snapshots"] == 20
         assert "total_capacity" in result
         assert result["total_capacity"] == 1000000000
+        assert "EULA" in result
+        assert result["EULA"] == "Signed"
 
     def test_generate_perf_dict(self):
         """Test generate_perf_dict function"""
@@ -472,31 +494,45 @@ class TestPurefbInfo:
         mock_dns.nameservers = ["8.8.8.8", "8.8.4.4"]
         mock_blade.get_dns.return_value.items = [mock_dns]
 
-        # Mock NTP
-        mock_blade.get_ntp_servers.return_value.items = []
-
         # Mock SMTP
         mock_blade.get_smtp_servers.return_value.items = []
 
         # Mock alert watchers
         mock_blade.get_alert_watchers.return_value.items = []
 
-        # Mock SSL certs
-        mock_blade.get_certificates.return_value.items = []
+        # Mock directory services - need at least management to avoid KeyError
+        mock_ds = Mock()
+        mock_ds.name = "management"
+        mock_ds.base_dn = "DC=example,DC=com"
+        mock_ds.bind_user = "admin"
+        mock_ds.ca_certificate = Mock()
+        mock_ds.ca_certificate.name = "ca-cert"
+        mock_ds.ca_certificate_group = Mock()
+        mock_ds.ca_certificate_group.name = "ca-group"
+        mock_ds.enabled = True
+        mock_ds.management = Mock()
+        mock_ds.management.user_login_attribute = "sAMAccountName"
+        mock_ds.management.user_object_class = "user"
+        mock_ds.nfs = Mock()
+        mock_ds.nfs.nis_servers = []
+        mock_ds.nfs.nis_domains = []
+        mock_ds.services = ["management"]
+        mock_ds.smb = Mock()
+        mock_ds.smb.join_ou = "OU=Computers"
+        mock_ds.uris = ["ldap://dc.example.com"]
+        mock_blade.get_directory_services.return_value.items = [mock_ds]
 
-        # Mock SNMP managers
-        mock_blade.get_snmp_managers.return_value.items = []
+        # Mock directory service roles
+        mock_blade.get_directory_services_roles.return_value.items = []
 
-        # Mock directory services
-        mock_blade.get_directory_services.return_value.items = []
-
-        # Mock syslog servers
-        mock_blade.get_syslog_servers.return_value.items = []
-
-        # Mock arrays
+        # Mock arrays for NTP
         mock_array = Mock()
         mock_array.name = "test-array"
+        mock_array.ntp_servers = ["time.google.com"]
         mock_blade.get_arrays.return_value.items = [mock_array]
+
+        # Mock SSL certs
+        mock_blade.get_certificates.return_value.items = []
 
         # Call function
         result = generate_config_dict(mock_blade)
@@ -506,4 +542,5 @@ class TestPurefbInfo:
         assert "management" in result["dns"]
         assert result["dns"]["management"]["domain"] == "example.com"
         assert result["dns"]["management"]["nameservers"] == ["8.8.8.8", "8.8.4.4"]
-
+        assert "management_directory_service" in result
+        assert "array_management" in result
