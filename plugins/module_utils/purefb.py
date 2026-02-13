@@ -59,7 +59,30 @@ API_AGENT_VERSION = "1.5"
 
 
 def get_system(module):
-    """Return System Object or Fail"""
+    """Get authenticated FlashBlade client connection.
+
+    Creates and returns an authenticated pypureclient FlashBlade client object.
+    Credentials can be provided via module parameters or environment variables.
+
+    Args:
+        module: Ansible module object with params:
+            - fb_url: FlashBlade management URL
+            - api_token: API authentication token
+            - disable_warnings: Whether to disable urllib3 warnings
+
+    Returns:
+        flashblade.Client: Authenticated FlashBlade client object
+
+    Raises:
+        AnsibleModule.fail_json: If authentication fails or pypureclient is not installed
+
+    Environment Variables:
+        PUREFB_URL: FlashBlade URL (alternative to fb_url parameter)
+        PUREFB_API: API token (alternative to api_token parameter)
+
+    Note:
+        Module parameters take precedence over environment variables.
+    """
     if module.params["disable_warnings"]:
         urllib3.disable_warnings()
     if HAS_DISTRO:
@@ -110,7 +133,25 @@ def get_system(module):
 
 
 def purefb_argument_spec():
-    """Return standard base dictionary used for the argument_spec argument in AnsibleModule"""
+    """Return standard argument specification for FlashBlade modules.
+
+    Provides the base argument_spec dictionary that should be used by all
+    FlashBlade modules for consistent authentication and connection handling.
+
+    Returns:
+        dict: Argument specification dictionary containing:
+            - fb_url: FlashBlade management URL (optional, can use env var)
+            - api_token: API authentication token (optional, can use env var, no_log=True)
+            - disable_warnings: Disable urllib3 warnings (bool, default=False)
+
+    Example:
+        >>> argument_spec = purefb_argument_spec()
+        >>> argument_spec.update(dict(
+        ...     name=dict(required=True, type='str'),
+        ...     state=dict(default='present', choices=['present', 'absent'])
+        ... ))
+        >>> module = AnsibleModule(argument_spec=argument_spec)
+    """
 
     return dict(
         fb_url=dict(),
