@@ -371,6 +371,22 @@ class TestPurefbInfo:
         mock_eula.signature.accepted = True
         mock_blade.get_arrays_eula.return_value.items = [mock_eula]
 
+        # Mock admin settings
+        mock_admin_settings = Mock()
+        mock_admin_settings.max_login_attempts = 5
+        mock_admin_settings.min_password_length = 8
+        mock_admin_settings.lockout_duration = 30000  # 30 seconds in milliseconds
+        mock_blade.get_admins_settings.return_value.items = [mock_admin_settings]
+
+        # Add more attributes to array mock
+        mock_array.smb_mode = "native"
+        mock_array.time_zone = "America/Los_Angeles"
+        mock_array.product_type = "FlashBlade"
+        mock_array.encryption = Mock()
+        mock_array.encryption.data_at_rest = Mock()
+        mock_array.encryption.data_at_rest.enabled = True
+        mock_array.encryption.data_at_rest.algorithm = "AES-256"
+
         # Call function
         result = generate_default_dict(mock_blade)
 
@@ -533,6 +549,15 @@ class TestPurefbInfo:
 
         # Mock SSL certs
         mock_blade.get_certificates.return_value.items = []
+
+        # Mock certificate groups
+        mock_blade.get_certificate_groups.return_value.items = []
+
+        # Mock syslog servers
+        mock_blade.get_syslog_servers.return_value.items = []
+
+        # Mock SNMP agents
+        mock_blade.get_snmp_agents.return_value.items = []
 
         # Call function
         result = generate_config_dict(mock_blade)
