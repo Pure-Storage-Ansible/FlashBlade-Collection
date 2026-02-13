@@ -83,9 +83,23 @@ def get_filesystem(module, blade):
 
 
 def human_to_bytes(size):
-    """Given a human-readable byte string (e.g. 2G, 30M),
-    return the number of bytes.  Will return 0 if the argument has
-    unexpected form.
+    """Convert human-readable byte string to bytes.
+
+    Converts strings with size suffixes (K, M, G, T, P, B) to integer bytes.
+
+    Args:
+        size: Human-readable size string (e.g., '2G', '30M', '512K')
+
+    Returns:
+        int: Number of bytes, or 0 if format is invalid
+
+    Examples:
+        >>> human_to_bytes('2G')
+        2147483648
+        >>> human_to_bytes('512M')
+        536870912
+        >>> human_to_bytes('1K')
+        1024
     """
     bytes = size[:-1]
     unit = size[-1].upper()
@@ -111,9 +125,23 @@ def human_to_bytes(size):
 
 
 def human_to_real(iops):
-    """Given a human-readable string (e.g. 2K, 30M IOPs),
-    return the real number.  Will return 0 if the argument has
-    unexpected form.
+    """Convert human-readable IOPS string to real number.
+
+    Converts strings with K (thousands) or M (millions) suffixes to integers.
+
+    Args:
+        iops: Human-readable IOPS string (e.g., '2K', '30M', '5000')
+
+    Returns:
+        int: Real number of IOPS, or 0 if format is invalid
+
+    Examples:
+        >>> human_to_real('2K')
+        2000
+        >>> human_to_real('30M')
+        30000000
+        >>> human_to_real('5000')
+        5000
     """
     digit = iops[:-1]
     unit = iops[-1].upper()
@@ -133,14 +161,29 @@ def human_to_real(iops):
 
 
 def get_local_tz(module, timezone="UTC"):
-    """
-    We will attempt to get the local timezone of the server running the module and use that.
-    If we can't get the timezone then we will set the default to be UTC
+    """Get local timezone of the server running the module.
 
-    Linnux has been tested and other opersting systems should be OK.
-    Failures cause assumption of UTC
+    Attempts to detect the system timezone using platform-specific methods.
+    Falls back to UTC if detection fails or platform is unsupported.
 
-    Windows is not supported and will assume UTC
+    Supported platforms:
+        - Linux (via timedatectl or /etc/timezone)
+        - SunOS (via /etc/default/init)
+        - Darwin/macOS (via systemsetup)
+        - BSD variants (via /etc/timezone)
+        - AIX 6.1+ (via /etc/environment)
+
+    Args:
+        module: Ansible module object for running commands and warnings
+        timezone: Default timezone if detection fails (default: 'UTC')
+
+    Returns:
+        str: Timezone string (e.g., 'America/New_York', 'UTC')
+
+    Note:
+        Windows is not supported and will always return UTC.
+        Linux has been tested; other operating systems should work but may
+        fall back to UTC on failure.
     """
     if platform.system() == "Linux":
         timedatectl = get_bin_path("timedatectl")
