@@ -136,6 +136,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     get_filesystem,
+    get_error_message,
 )
 
 
@@ -199,7 +200,7 @@ def create_quota(module, blade):
                     msg="Failed to create quote for UID {0} on filesystem {1}. Error: {2}".format(
                         module.params["gid"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
         else:
@@ -225,7 +226,7 @@ def create_quota(module, blade):
                     msg="Failed to create quote for groupname {0} on filesystem {1}. Error: {2}".format(
                         module.params["gname"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)
@@ -262,7 +263,7 @@ def update_quota(module, blade):
                         msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
                             module.params["gid"],
                             module.params["name"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
             else:
@@ -288,7 +289,7 @@ def update_quota(module, blade):
                         msg="Failed to update quota for UID {0} on filesystem {1}. Error: {2}".format(
                             module.params["gname"],
                             module.params["name"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     module.exit_json(changed=changed)
@@ -334,7 +335,7 @@ def delete_quota(module, blade):
                     msg="Failed to delete quota for groupname {0} on filesystem {1}. Error: {2}".format(
                         module.params["gname"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     module.exit_json(changed=changed)

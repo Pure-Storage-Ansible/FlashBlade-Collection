@@ -326,6 +326,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
 )
 from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
     get_filesystem,
+    get_error_message,
 )
 
 EXPORT_POLICY_API_VERSION = "2.3"
@@ -411,7 +412,7 @@ def create_fs(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to create filesystem {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
         if module.params["policy"]:
@@ -444,7 +445,7 @@ def create_fs(module, blade):
                     msg="Failed to apply policy {0} when creating filesystem {1}. Error: {2}".format(
                         module.params["policy"],
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
         if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
@@ -469,7 +470,7 @@ def create_fs(module, blade):
                     "policy {1}. Error: {2}".format(
                         module.params["name"],
                         module.params["export_policy"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
         if SMB_POLICY_API_VERSION in api_version:
@@ -495,7 +496,7 @@ def create_fs(module, blade):
                         "policy {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["client_policy"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
             if module.params["share_policy"]:
@@ -519,7 +520,7 @@ def create_fs(module, blade):
                         "policy {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["share_policy"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
             if CA_API_VERSION in api_version:
@@ -545,7 +546,7 @@ def create_fs(module, blade):
                         msg="Filesystem {0} created, but failed to set continuous availability"
                         "Error: {1}".format(
                             module.params["name"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
             if GOWNER_API_VERSION in api_version and module.params["group_ownership"]:
@@ -567,7 +568,7 @@ def create_fs(module, blade):
                         msg="Filesystem {0} created, but failed to set group ownership"
                         "Error: {1}".format(
                             module.params["name"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
             if CONTEXT_API_VERSION in api_version and module.params["storage_class"]:
@@ -637,7 +638,7 @@ def modify_fs(module, blade):
                     msg="Failed to add filesystem {0} to policy {1}. Error: {2}".format(
                         module.params["name"],
                         module.params["policy"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if module.params["policy"] and module.params["policy_state"] == "absent":
@@ -678,7 +679,7 @@ def modify_fs(module, blade):
                         msg="Failed to remove filesystem {0} from policy {1}. Error: {2}".format(
                             module.params["name"],
                             module.params["policy"],
-                            res.errors[0].message,
+                            get_error_message(res),
                         )
                     )
     if module.params["user_quota"]:
@@ -795,7 +796,7 @@ def modify_fs(module, blade):
                     if delres.status_code != 200:
                         module.fail_json(
                             msg="Failed to update filesystem {0} deleted status. Error {1}".format(
-                                module.params["name"], res.errors[0].message
+                                module.params["name"], get_error_message(res)
                             )
                         )
                 res = blade.patch_file_systems(
@@ -833,7 +834,7 @@ def modify_fs(module, blade):
                     if delres.status_code != 200:
                         module.fail_json(
                             msg="Failed to update filesystem {0} deleted status. Error {1}".format(
-                                module.params["name"], res.errors[0].message
+                                module.params["name"], get_error_message(res)
                             )
                         )
                 res = blade.patch_file_systems(
@@ -864,7 +865,7 @@ def modify_fs(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to update filesystem {0}. Error {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     if CONTEXT_API_VERSION in api_version:
@@ -909,7 +910,7 @@ def modify_fs(module, blade):
                     "filesystem {0}. Error: {2}".format(
                         module.params["name"],
                         module.params["export_policy"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if SMB_POLICY_API_VERSION in api_version and module.params["client_policy"]:
@@ -940,7 +941,7 @@ def modify_fs(module, blade):
                     "filesystem {0}. Error: {2}".format(
                         module.params["name"],
                         module.params["client_policy"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if SMB_POLICY_API_VERSION in api_version and module.params["share_policy"]:
@@ -971,7 +972,7 @@ def modify_fs(module, blade):
                     "filesystem {0}. Error: {2}".format(
                         module.params["name"],
                         module.params["share_policy"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if CA_API_VERSION in api_version:
@@ -1003,7 +1004,7 @@ def modify_fs(module, blade):
                     msg="Failed to modify continuous availability for "
                     "filesystem {0}. Error: {1}".format(
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if GOWNER_API_VERSION in api_version:
@@ -1026,7 +1027,7 @@ def modify_fs(module, blade):
                     msg="Failed to modify group ownership for "
                     "filesystem {0}. Error: {1}".format(
                         module.params["name"],
-                        res.errors[0].message,
+                        get_error_message(res),
                     )
                 )
     if CONTEXT_API_VERSION in api_version and module.params["storage_class"]:
@@ -1071,7 +1072,7 @@ def _delete_fs(module, blade):
     if res.status_code != 200:
         module.fail_json(
             msg="Failed to delete filesystem {0}. Error: {1}".format(
-                module.params["name"], res.errors[0].message
+                module.params["name"], get_error_message(res)
             )
         )
 
@@ -1079,7 +1080,7 @@ def _delete_fs(module, blade):
     if res.status_code != 200:
         module.fail_json(
             msg="Failed to eradicate deleted filesystem {0}. Error: {1}".format(
-                module.params["name"], res.errors[0].message
+                module.params["name"], get_error_message(res)
             )
         )
 
@@ -1101,7 +1102,7 @@ def delete_fs(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete filesystem {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
         if module.params["eradicate"]:
@@ -1109,7 +1110,7 @@ def delete_fs(module, blade):
             if res.status_code != 200:
                 module.fail_json(
                     msg="Failed to eradicate filesystem {0}. Error: {1}".format(
-                        module.params["name"], res.errors[0].message
+                        module.params["name"], get_error_message(res)
                     )
                 )
     module.exit_json(changed=changed)
@@ -1123,7 +1124,7 @@ def eradicate_fs(module, blade):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to eradicate filesystem {0}. Error: {1}".format(
-                    module.params["name"], res.errors[0].message
+                    module.params["name"], get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)

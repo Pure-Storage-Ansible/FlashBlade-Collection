@@ -136,6 +136,9 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb impo
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.purestorage.flashblade.plugins.module_utils.common import (
+    get_error_message,
+)
 
 MIN_API_VERSION = "2.17"
 
@@ -198,7 +201,7 @@ def create_export(module, blade):
             msg="Failed to create export {0} for {1}. Error: {2}".format(
                 module.params["name"],
                 module.params["filesystem"],
-                res.errors[0].message,
+                get_error_message(res),
             )
         )
     module.exit_json(changed=changed)
@@ -241,7 +244,7 @@ def modify_export(module, blade, export):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update export {0}. Error: {1}".format(
-                            export.name, res.errors[0].message
+                            export.name, get_error_message(res)
                         )
                     )
     else:
@@ -285,7 +288,7 @@ def modify_export(module, blade, export):
                 if res.status_code != 200:
                     module.fail_json(
                         msg="Failed to update export {0}. Error: {1}".format(
-                            export.name, res.errors[0].message
+                            export.name, get_error_message(res)
                         )
                     )
 
@@ -300,7 +303,7 @@ def delete_export(module, blade, export):
         if res.status_code != 200:
             module.fail_json(
                 msg="Failed to delete export {0}. Error: {1}".format(
-                    export, res.errors[0].message
+                    export, get_error_message(res)
                 )
             )
     module.exit_json(changed=changed)
