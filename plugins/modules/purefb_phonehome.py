@@ -49,11 +49,11 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import Support
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.purestorage.flashblade.plugins.module_utils.purefb import (
@@ -132,7 +132,7 @@ def main():
 
     blade = get_system(module)
 
-    if not HAS_PURITY_FB:
+    if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client SDK is required for this module")
     support = list(blade.get_support().items)[0].phonehome_enabled
     if module.params["state"] == "present" and not support:

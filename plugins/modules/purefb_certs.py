@@ -187,7 +187,7 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURESTORAGE = True
+HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import (
         CertificatePost,
@@ -197,7 +197,7 @@ try:
         CertificatePatch,
     )
 except ImportError:
-    HAS_PURESTORAGE = False
+    HAS_PYPURECLIENT = False
 
 HAS_PYCOUNTRY = True
 try:
@@ -545,7 +545,7 @@ def main():
         supports_check_mode=True,
     )
 
-    if not HAS_PURESTORAGE:
+    if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     if not HAS_PYCOUNTRY:

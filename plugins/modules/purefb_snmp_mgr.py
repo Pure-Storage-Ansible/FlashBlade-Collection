@@ -120,11 +120,11 @@ RETURN = r"""
 """
 
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import SnmpManager, SnmpV2c, SnmpV3
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 
 from ansible.module_utils.basic import AnsibleModule
@@ -346,7 +346,7 @@ def main():
     state = module.params["state"]
     blade = get_system(module)
 
-    if not HAS_PURITY_FB:
+    if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client SDK is required for this module")
 
     mgr_configured = False

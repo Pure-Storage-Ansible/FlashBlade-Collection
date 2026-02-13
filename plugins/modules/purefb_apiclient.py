@@ -101,11 +101,11 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURESTORAGE = True
+HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import ApiClient, ApiClientsPost, ReferenceWritable
 except ImportError:
-    HAS_PURESTORAGE = False
+    HAS_PYPURECLIENT = False
 
 import re
 from ansible.module_utils.basic import AnsibleModule
@@ -216,7 +216,7 @@ def main():
                 module.params["name"]
             )
         )
-    if not HAS_PURESTORAGE:
+    if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)

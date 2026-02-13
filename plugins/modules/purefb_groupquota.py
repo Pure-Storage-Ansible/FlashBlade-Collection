@@ -121,11 +121,11 @@ EXAMPLES = """
 RETURN = """
 """
 
-HAS_PURITY_FB = True
+HAS_PYPURECLIENT = True
 try:
     from pypureclient.flashblade import GroupQuotaPost, GroupQuotaPatch
 except ImportError:
-    HAS_PURITY_FB = False
+    HAS_PYPURECLIENT = False
 
 CONTEXT_API_VERSION = "2.17"
 
@@ -362,7 +362,7 @@ def main():
         supports_check_mode=True,
     )
 
-    if not HAS_PURITY_FB:
+    if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     state = module.params["state"]
