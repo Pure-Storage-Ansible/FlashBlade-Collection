@@ -130,6 +130,7 @@ options:
     - The key algorithm used to generate the certificate.
     - This field can only be specified when creating a new self-signed certificate
     choices: [ rsa, ec, ed448, ed25519 ]
+    default: rsa
     version_added: "1.22.0"
 extends_documentation_fragment:
 - purestorage.flashblade.purestorage.fb
@@ -216,6 +217,7 @@ from ansible_collections.purestorage.flashblade.plugins.module_utils.common impo
 )
 
 CERT_TYPE_VERSION = "2.15"
+DAYS_API_VERSION = "2.18"
 CSR_API_VERSION = "2.20"
 
 
@@ -284,28 +286,35 @@ def update_cert(module, blade):
             new_cert.organizational_unit = getattr(
                 current_cert, "organizational_unit", None
             )
-        if module.params["key_algorithm"] and module.params["key_algorithm"] != getattr(
-            current_cert, "key_algorithm", None
-        ):
-            new_cert.key_algorithm = module.params["key_algorithm"]
-        else:
-            new_cert.key_algorithm = getattr(current_cert, "key_algorithm", None)
         if new_cert != current_cert:
             changed = True
-            certificate = CertificatePost(
-                certificate=new_cert.certificate,
-                certificate_type="array",
-                common_name=new_cert.common_name,
-                country=getattr(new_cert, "country", None),
-                email=getattr(new_cert, "email", None),
-                key_size=getattr(new_cert, "key_size", None),
-                locality=getattr(new_cert, "locality", None),
-                organization=getattr(new_cert, "organization", None),
-                organizational_unit=getattr(new_cert, "organizational_unit", None),
-                key_algorithm=getattr(new_cert, "key_algorithm", None),
-                state=getattr(new_cert, "state", None),
-                days=module.params["days"],
-            )
+            if DAYS_API_VERSION in api_versions:
+                certificate = CertificatePost(
+                    certificate=new_cert.certificate,
+                    certificate_type="array",
+                    common_name=new_cert.common_name,
+                    country=getattr(new_cert, "country", None),
+                    email=getattr(new_cert, "email", None),
+                    key_size=getattr(new_cert, "key_size", None),
+                    locality=getattr(new_cert, "locality", None),
+                    organization=getattr(new_cert, "organization", None),
+                    organizational_unit=getattr(new_cert, "organizational_unit", None),
+                    state=getattr(new_cert, "state", None),
+                    days=module.params["days"],
+                )
+            else:
+                certificate = CertificatePost(
+                    certificate=new_cert.certificate,
+                    certificate_type="array",
+                    common_name=new_cert.common_name,
+                    country=getattr(new_cert, "country", None),
+                    email=getattr(new_cert, "email", None),
+                    key_size=getattr(new_cert, "key_size", None),
+                    locality=getattr(new_cert, "locality", None),
+                    organization=getattr(new_cert, "organization", None),
+                    organizational_unit=getattr(new_cert, "organizational_unit", None),
+                    state=getattr(new_cert, "state", None),
+                )
             if not module.check_mode:
                 res = blade.patch_certificates(
                     names=[module.params["name"]],
@@ -341,7 +350,7 @@ def update_cert(module, blade):
 def create_cert(module, blade):
     changed = True
     api_versions = list(blade.get_versions().items)
-    if CERT_TYPE_VERSION in api_versions:
+    if DAYS_API_VERSION in api_versions:
         certificate = CertificatePost(
             certificate=module.params["certificate"],
             certificate_type="array",
@@ -369,7 +378,6 @@ def create_cert(module, blade):
             organizational_unit=module.params["org_unit"],
             state=module.params["province"],
             status="self-signed",
-            days=module.params["days"],
         )
     if not module.check_mode:
         res = blade.post_certificates(
@@ -532,7 +540,9 @@ def main():
             export_file=dict(type="str"),
             passphrase=dict(type="str", no_log=True),
             days=dict(type="int", default=3650),
-            key_algorithm=dict(type="str", choices=["rsa", "ec", "ed448", "ed25519"]),
+            key_algorithm=dict(
+                type="str", default="rsa", choices=["rsa", "ec", "ed448", "ed25519"]
+            ),
         )
     )
 
