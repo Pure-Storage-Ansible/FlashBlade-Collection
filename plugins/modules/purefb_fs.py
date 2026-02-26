@@ -448,7 +448,11 @@ def create_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-        if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
+        if (
+            EXPORT_POLICY_API_VERSION in api_version
+            and module.params["export_policy"]
+            and (module.params["nfsv3"] or module.params["nfsv4"])
+        ):
             export_attr = FileSystemPatch(
                 nfs=NfsPatch(
                     export_policy=Reference(name=module.params["export_policy"])
@@ -473,7 +477,7 @@ def create_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-        if SMB_POLICY_API_VERSION in api_version:
+        if SMB_POLICY_API_VERSION in api_version and module.params["smb"]:
             if module.params["client_policy"]:
                 export_attr = FileSystemPatch(
                     smb=Smb(
@@ -879,7 +883,11 @@ def modify_fs(module, blade):
         current_fs = list(
             blade.get_file_systems(filter="name='" + module.params["name"] + "'").items
         )[0]
-    if EXPORT_POLICY_API_VERSION in api_version and module.params["export_policy"]:
+    if (
+        EXPORT_POLICY_API_VERSION in api_version
+        and module.params["export_policy"]
+        and (current_fs.nfs.v3_enabled or current_fs.nfs.v4_1_enabled)
+    ):
         change_export = False
         if (
             current_fs.nfs.export_policy.name
@@ -913,7 +921,11 @@ def modify_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-    if SMB_POLICY_API_VERSION in api_version and module.params["client_policy"]:
+    if (
+        SMB_POLICY_API_VERSION in api_version
+        and module.params["client_policy"]
+        and current_fs.smb.enabled
+    ):
         if (
             current_fs.smb.client_policy.name
             and current_fs.smb.client_policy.name != module.params["client_policy"]
@@ -944,7 +956,11 @@ def modify_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-    if SMB_POLICY_API_VERSION in api_version and module.params["share_policy"]:
+    if (
+        SMB_POLICY_API_VERSION in api_version
+        and module.params["share_policy"]
+        and current_fs.smb.enabled
+    ):
         if (
             current_fs.smb.share_policy.name
             and current_fs.smb.share_policy.name != module.params["share_policy"]
@@ -975,7 +991,7 @@ def modify_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-    if CA_API_VERSION in api_version:
+    if CA_API_VERSION in api_version and current_fs.smb.enabled:
         if (
             module.params["continuous_availability"]
             != current_fs.smb.continuous_availability_enabled
