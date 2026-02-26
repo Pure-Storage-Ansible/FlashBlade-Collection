@@ -260,7 +260,9 @@ def create_local_user(module, blade, user):
                 if not module.check_mode:
                     res = blade.patch_admins(
                         names=[module.params["name"]],
-                        admin=AdminPatch(role=ReferenceWritable(name=module.params["role"])),
+                        admin=AdminPatch(
+                            role=ReferenceWritable(name=module.params["role"])
+                        ),
                     )
                     if res.status_code != 200:
                         module.fail_json(
