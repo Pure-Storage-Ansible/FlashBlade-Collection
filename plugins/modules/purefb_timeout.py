@@ -18,12 +18,12 @@ DOCUMENTATION = r"""
 ---
 module: purefb_timeout
 version_added: '1.6.0'
-short_description: Configure Pure Storage FlashBlade GUI idle timeout
+short_description: Configure Everpure FlashBlade GUI idle timeout
 description:
-- Configure GUI idle timeout for Pure Storage FlashBlade.
+- Configure GUI idle timeout for Everpure FlashBlade.
 - This does not affect existing GUI sessions.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

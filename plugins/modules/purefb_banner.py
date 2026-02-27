@@ -18,13 +18,13 @@ DOCUMENTATION = r"""
 ---
 module: purefb_banner
 version_added: '1.4.0'
-short_description: Configure Pure Storage FlashBlade GUI and SSH MOTD message
+short_description: Configure Everpure FlashBlade GUI and SSH MOTD message
 description:
-- Configure MOTD for Pure Storage FlashBlades.
+- Configure MOTD for Everpure FlashBlades.
 - This will be shown during an SSH or GUI login to the system.
 - Multiple line messages can be achieved using \\n.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

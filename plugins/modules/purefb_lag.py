@@ -22,7 +22,7 @@ short_description: Manage FlashBlade Link Aggregation Groups
 description:
 - Maintain FlashBlade Link Aggregation Groups
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

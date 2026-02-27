@@ -18,13 +18,13 @@ DOCUMENTATION = r"""
 ---
 module: purefb_alert
 version_added: '1.0.0'
-short_description: Configure Pure Storage FlashBlade alert email settings
+short_description: Configure Everpure FlashBlade alert email settings
 description:
-- Configure alert email configuration for Pure Storage FlashArrays.
+- Configure alert email configuration for Everpure FlashArrays.
 - Add or delete an individual syslog server to the existing
   list of serves.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     type: str

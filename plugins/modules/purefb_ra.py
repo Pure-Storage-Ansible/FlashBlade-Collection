@@ -18,11 +18,11 @@ DOCUMENTATION = r"""
 ---
 module: purefb_ra
 version_added: '1.0.0'
-short_description: Enable or Disable Pure Storage FlashBlade Remote Assist
+short_description: Enable or Disable Everpure FlashBlade Remote Assist
 description:
-- Enablke or Disable Remote Assist for a Pure Storage FlashBlade.
+- Enablke or Disable Remote Assist for a Everpure FlashBlade.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

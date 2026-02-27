@@ -20,10 +20,10 @@ DOCUMENTATION = """
 ---
 module: purefb_subnet
 version_added: "1.0.0"
-short_description:  Manage network subnets in a Pure Storage FlashBlade
+short_description:  Manage network subnets in a Everpure FlashBlade
 description:
-    - This module manages network subnets on Pure Storage FlashBlade.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+    - This module manages network subnets on Everpure FlashBlade.
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

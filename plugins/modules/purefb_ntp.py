@@ -18,11 +18,11 @@ DOCUMENTATION = r"""
 ---
 module: purefb_ntp
 version_added: '1.0.0'
-short_description: Configure Pure Storage FlashBlade NTP settings
+short_description: Configure Everpure FlashBlade NTP settings
 description:
-- Set or erase NTP configuration for Pure Storage FlashBlades.
+- Set or erase NTP configuration for Everpure FlashBlades.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

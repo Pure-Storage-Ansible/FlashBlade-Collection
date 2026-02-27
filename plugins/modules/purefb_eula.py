@@ -18,11 +18,11 @@ DOCUMENTATION = r"""
 ---
 module: purefb_eula
 version_added: '1.6.0'
-short_description: Sign Pure Storage FlashBlade EULA
+short_description: Sign Everpure FlashBlade EULA
 description:
 - Sign the FlashBlade EULA for Day 0 config, or change signatory.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   company:
     description:

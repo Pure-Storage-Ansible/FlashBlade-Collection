@@ -24,7 +24,7 @@ description:
 - This modules allows the management of both bucket access and cross-origin
   resource sharing policies and their associated rules.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

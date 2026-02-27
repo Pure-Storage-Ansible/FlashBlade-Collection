@@ -27,7 +27,7 @@ description:
   the first rule will be recovered as long replacement rule is added before
   the snapshot eradication period is exceeded (usuually 24 hours).
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:
@@ -382,7 +382,7 @@ options:
       - If set to I(locked) then values of the policy attributes are not allowed to change.
       - If set to I(locked) then values of the policy attributes can be changed.
       - Changing from I(unlocked) to I(locked) is allowed, but to change from I(locked) to I(unlocked)
-        will require support from Pure Storage Technical Services.
+        will require support from Everpure Technical Services.
     type: str
     choices: [ locked, unlocked ]
     version_added: '1.19.0'

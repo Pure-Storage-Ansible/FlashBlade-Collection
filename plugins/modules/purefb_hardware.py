@@ -22,7 +22,7 @@ short_description: Manage FlashBlade Hardware
 description:
 - Enable or disable FlashBlade visual identification lights and set connector parameters
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

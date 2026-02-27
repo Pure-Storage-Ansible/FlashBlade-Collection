@@ -18,13 +18,13 @@ DOCUMENTATION = r"""
 ---
 module: purefb_syslog
 version_added: '1.4.0'
-short_description: Configure Pure Storage FlashBlade syslog settings
+short_description: Configure Everpure FlashBlade syslog settings
 description:
-- Configure syslog configuration for Pure Storage FlashBlades.
+- Configure syslog configuration for Everpure FlashBlades.
 - Add or delete an individual syslog server to the existing
   list of serves.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:
