@@ -27,7 +27,7 @@ description:
   will always cause a change, even if the password given isn't different from
   the current. This makes this part of the module non-idempotent..
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

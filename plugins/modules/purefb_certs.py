@@ -22,7 +22,7 @@ short_description: Manage FlashBlade SSL Certificates
 description:
 - Create, delete, import and export FlashBlade SSL Certificates
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

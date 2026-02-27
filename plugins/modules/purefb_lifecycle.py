@@ -22,7 +22,7 @@ short_description: Manage FlashBlade object lifecycles
 description:
 - Manage lifecycles for object buckets
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

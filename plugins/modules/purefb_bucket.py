@@ -20,10 +20,10 @@ DOCUMENTATION = """
 ---
 module: purefb_bucket
 version_added: "1.0.0"
-short_description:  Manage Object Store Buckets on a  Pure Storage FlashBlade.
+short_description:  Manage Object Store Buckets on a  Everpure FlashBlade.
 description:
-    - This module managess object store (s3) buckets on Pure Storage FlashBlade.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+    - This module managess object store (s3) buckets on Everpure FlashBlade.
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

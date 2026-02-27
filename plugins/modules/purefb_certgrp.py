@@ -22,7 +22,7 @@ short_description: Manage FlashBlade Certifcate Groups
 description:
 - Manage certifcate groups for FlashBlades
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

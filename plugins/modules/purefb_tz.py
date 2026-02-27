@@ -18,11 +18,11 @@ DOCUMENTATION = r"""
 ---
 module: purefb_tz
 version_added: '1.10.0'
-short_description: Configure Pure Storage FlashBlade timezone
+short_description: Configure Everpure FlashBlade timezone
 description:
-- Configure the timezone for a Pure Storage FlashBlade.
+- Configure the timezone for a Everpure FlashBlade.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   timezone:
     description:

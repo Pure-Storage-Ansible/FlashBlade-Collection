@@ -16,7 +16,7 @@ short_description: Manage FlashBlade Kerberos Keytabs
 description:
 - Manage Kerberos Keytabs for FlashBlades
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

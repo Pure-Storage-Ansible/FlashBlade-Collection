@@ -19,15 +19,15 @@ DOCUMENTATION = r"""
 ---
 module: purefb_info
 version_added: '1.0.0'
-short_description: Collect information from Pure Storage FlashBlade
+short_description: Collect information from Everpure FlashBlade
 description:
-  - Collect information from a Pure Storage FlashBlade running the
+  - Collect information from a Everpure FlashBlade running the
     Purity//FB operating system. By default, the module will collect basic
     information including hosts, host groups, protection
     groups and volume counts. Additional information can be collected
     based on the configured set of arguements.
 author:
-  - Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+  - Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   gather_subset:
     description:

@@ -20,13 +20,13 @@ DOCUMENTATION = """
 ---
 module: purefb_network
 version_added: "1.0.0"
-short_description:  Manage network interfaces in a Pure Storage FlashBlade
+short_description:  Manage network interfaces in a Everpure FlashBlade
 description:
-    - This module manages network interfaces on Pure Storage FlashBlade.
+    - This module manages network interfaces on Everpure FlashBlade.
     - When creating a network interface a subnet must already exist with
       a network prefix that covers the IP address of the interface being
       created.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

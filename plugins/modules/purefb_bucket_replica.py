@@ -20,10 +20,10 @@ DOCUMENTATION = """
 ---
 module: purefb_bucket_replica
 version_added: '1.0.0'
-short_description:  Manage bucket replica links between Pure Storage FlashBlades
+short_description:  Manage bucket replica links between Everpure FlashBlades
 description:
-    - This module manages bucket replica links between Pure Storage FlashBlades.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+    - This module manages bucket replica links between Everpure FlashBlades.
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

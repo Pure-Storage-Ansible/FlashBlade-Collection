@@ -18,11 +18,11 @@ DOCUMENTATION = r"""
 ---
 module: purefb_phonehome
 version_added: '1.0.0'
-short_description: Enable or Disable Pure Storage FlashBlade Phone Home
+short_description: Enable or Disable Everpure FlashBlade Phone Home
 description:
-- Enablke or Disable Remote Phone Home for a Pure Storage FlashBlade.
+- Enablke or Disable Remote Phone Home for a Everpure FlashBlade.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

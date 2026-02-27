@@ -20,12 +20,12 @@ module: purefb_snmp_mgr
 version_added: '1.0.0'
 short_description: Configure FlashBlade SNMP Managers
 description:
-- Manage SNMP managers on a Pure Storage FlashBlade.
+- Manage SNMP managers on a Everpure FlashBlade.
 - This module is not idempotent and will always modify an
   existing SNMP manager due to hidden parameters that cannot
   be compared to the play parameters.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

@@ -22,7 +22,7 @@ short_description: Manage FlashBlade Object Store User Access Policies
 description:
 - Add or Remove FlashBlade Object Store Access Policies for Account User
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

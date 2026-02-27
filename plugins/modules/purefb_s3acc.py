@@ -22,7 +22,7 @@ short_description: Create or delete FlashBlade Object Store accounts
 description:
 - Create or delete object store accounts on a Pure Stoage FlashBlade.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

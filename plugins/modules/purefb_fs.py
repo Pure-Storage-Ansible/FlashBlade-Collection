@@ -20,10 +20,10 @@ DOCUMENTATION = """
 ---
 module: purefb_fs
 version_added: "1.0.0"
-short_description:  Manage filesystemon Pure Storage FlashBlade`
+short_description:  Manage filesystemon Everpure FlashBlade`
 description:
-    - This module manages filesystems on Pure Storage FlashBlade.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+    - This module manages filesystems on Everpure FlashBlade.
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

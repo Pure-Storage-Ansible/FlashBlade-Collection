@@ -24,7 +24,7 @@ description:
 - Use this for non-FlashBlade targets.
 - Use I(purestorage.flashblade.purefb_connect) for FlashBlade targets.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

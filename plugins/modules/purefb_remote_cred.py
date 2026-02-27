@@ -24,7 +24,7 @@ description:
 - You must have a correctly configured remote array or target
 - This module is B(not) idempotent when updating existing remote credentials
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:
