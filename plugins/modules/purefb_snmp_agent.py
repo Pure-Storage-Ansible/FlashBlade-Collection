@@ -20,12 +20,12 @@ module: purefb_snmp_agent
 version_added: '1.0.0'
 short_description: Configure the FlashBlade SNMP Agent
 description:
-- Configure the management SNMP Agent on a Pure Storage FlashBlade.
+- Configure the management SNMP Agent on a Everpure FlashBlade.
 - This module is not idempotent and will always modify the
   existing management SNMP agent due to hidden parameters that cannot
   be compared to the play parameters.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   auth_passphrase:
     type: str

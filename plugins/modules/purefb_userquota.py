@@ -22,8 +22,8 @@ module: purefb_userquota
 version_added: "1.7.0"
 short_description:  Manage filesystem user quotas
 description:
-    - This module manages user hard quotas for filesystems on Pure Storage FlashBlade.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+    - This module manages user hard quotas for filesystems on Everpure FlashBlade.
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

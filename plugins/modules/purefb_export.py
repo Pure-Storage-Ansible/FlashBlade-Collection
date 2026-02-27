@@ -20,10 +20,10 @@ DOCUMENTATION = """
 ---
 module: purefb_export
 version_added: "1.25.0"
-short_description:  Manage filesystem exports on Pure Storage FlashBlade`
+short_description:  Manage filesystem exports on Everpure FlashBlade`
 description:
-    - This module manages filesystem exports on Pure Storage FlashBlade.
-author: Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+    - This module manages filesystem exports on Everpure FlashBlade.
+author: Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

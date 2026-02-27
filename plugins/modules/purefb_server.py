@@ -22,7 +22,7 @@ short_description: Manage FlashBlade servers
 description:
 - Add, update or delete FlashBlade servers
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

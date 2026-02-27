@@ -22,7 +22,7 @@ short_description: Manage FlashBlade API Clients
 description:
 - Enable or disable FlashBlade API Clients
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

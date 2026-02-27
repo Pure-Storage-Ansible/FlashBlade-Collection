@@ -22,7 +22,7 @@ short_description: Manage replication connections between two FlashBlades
 description:
 - Manage replication connections to specified remote FlashBlade system
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

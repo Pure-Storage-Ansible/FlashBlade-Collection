@@ -23,7 +23,7 @@ description:
 - Set or erase configuration for the DNS settings.
 - Nameservers provided will overwrite any existing nameservers.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

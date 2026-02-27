@@ -18,12 +18,12 @@ DOCUMENTATION = r"""
 ---
 module: purefb_bladename
 version_added: '1.0.0'
-short_description: Configure Pure Storage FlashBlade name
+short_description: Configure Everpure FlashBlade name
 description:
-- Configure name of Pure Storage FlashBlades.
+- Configure name of Everpure FlashBlades.
 - Ideal for Day 0 initial configuration.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

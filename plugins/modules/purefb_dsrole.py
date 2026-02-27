@@ -22,7 +22,7 @@ short_description: Configure FlashBlade  Management Directory Service Roles
 description:
 - Set or erase directory services role configurations.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   state:
     description:

@@ -18,11 +18,11 @@ DOCUMENTATION = r"""
 ---
 module: purefb_admin
 version_added: '1.8.0'
-short_description: Configure Pure Storage FlashBlade Global Admin settings
+short_description: Configure Everpure FlashBlade Global Admin settings
 description:
 - Set global admin settings for the FlashBlade
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   max_login:
     description:

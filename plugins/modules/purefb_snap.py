@@ -18,13 +18,13 @@ DOCUMENTATION = r"""
 ---
 module: purefb_snap
 version_added: '1.0.0'
-short_description: Manage filesystem snapshots on Pure Storage FlashBlades
+short_description: Manage filesystem snapshots on Everpure FlashBlades
 description:
-- Create or delete volumes and filesystem snapshots on Pure Storage FlashBlades.
+- Create or delete volumes and filesystem snapshots on Everpure FlashBlades.
 - Restoring a filesystem from a snapshot is only supported using
   the latest snapshot.
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   name:
     description:

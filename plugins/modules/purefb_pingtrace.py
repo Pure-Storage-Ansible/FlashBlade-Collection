@@ -22,7 +22,7 @@ short_description: Employ the internal FlashBlade ping and trace mechanisms
 description:
 - Ping or trace a destination
 author:
-- Pure Storage Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
+- Everpure Ansible Team (@sdodsley) <pure-ansible-team@purestorage.com>
 options:
   action:
     description:
