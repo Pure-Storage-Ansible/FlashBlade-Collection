@@ -5,16 +5,16 @@
 <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 <img src="https://img.shields.io/badge/tests-passing-brightgreen.svg"></a>
     
-# Pure Storage FlashBlade Collection
+# Everpure FlashBlade Collection
 
 ## Description
 
-The Pure Storage FlashBlade collection consists of the latest versions of the FlashBlade modules.
+The Everpure FlashBlade collection consists of the latest versions of the FlashBlade modules.
 
 ## Requirements
 
 - Ansible 2.15 or later
-- Pure Storage FlashBlade system running Purity//FB 3.3.3 or later
+- Everpure FlashBlade system running Purity//FB 3.3.3 or later
 - py-pure-client >=v1.67.2
 - python >=3.9
 - netaddr
@@ -80,7 +80,7 @@ Only the latest release of this collection is supported.
 
 For support please raise a GitHub Issue on this repository.
 
-If you are a Pure Storage customer, you may log a support call with the Pure Storage Support team ([support\@purestorage.com](mailto:support@purestorage.com?subject=FlashBlade-Ansible-Collection))
+If you are a Everpure customer, you may log a support call with the Everpure Support team ([support\@purestorage.com](mailto:support@purestorage.com?subject=FlashBlade-Ansible-Collection))
 
 If you have a Red Hat Ansible support contract, as this is a Certified collection, you may log a support call with Red Hat directly.
   
@@ -156,4 +156,4 @@ All modules are idempotent with the exception of modules that change or set pass
 
 ## Author
 
-This collection was created in 2019 by [Simon Dodsley](@sdodsley) for, and on behalf of, the [Pure Storage Ansible Team](pure-ansible-team@purestorage.com)
+This collection was created in 2019 by [Simon Dodsley](@sdodsley) for, and on behalf of, the [Everpure Ansible Team](pure-ansible-team@purestorage.com)
