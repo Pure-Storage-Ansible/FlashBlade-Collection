@@ -227,13 +227,21 @@ def update_cert(module, blade):
         current_cert = list(
             blade.get_certificates(names=[module.params["name"]]).items
         )[0]
-        new_cert = current_cert
+        new_cert = current_cert.copy()
         if module.params["certificate"] and module.params["certificate"] != getattr(
             current_cert, "certificate", None
         ):
             new_cert.certificate = module.params["certificate"]
         else:
             new_cert.certificate = getattr(current_cert, "certificate", None)
+        if module.params["intermediate_cert"] and module.params[
+            "intermediate_cert"
+        ] != getattr(current_cert, "intermediate_certificate", None):
+            new_cert.intermediate_certificate = module.params["intermediate_cert"]
+        else:
+            new_cert.intermediate_certificate = getattr(
+                current_cert, "intermediate_certificate", None
+            )
         if module.params["common_name"] and module.params["common_name"] != getattr(
             current_cert, "common_name", None
         ):
@@ -294,13 +302,15 @@ def update_cert(module, blade):
             changed = True
             certificate = CertificatePost(
                 certificate=new_cert.certificate,
-                certificate_type="array",
                 common_name=new_cert.common_name,
                 country=getattr(new_cert, "country", None),
                 email=getattr(new_cert, "email", None),
                 key_size=getattr(new_cert, "key_size", None),
                 locality=getattr(new_cert, "locality", None),
                 organization=getattr(new_cert, "organization", None),
+                intermediate_certificate=getattr(
+                    new_cert, "intermediate_certificate", None
+                ),
                 organizational_unit=getattr(new_cert, "organizational_unit", None),
                 key_algorithm=getattr(new_cert, "key_algorithm", None),
                 state=getattr(new_cert, "state", None),
@@ -322,7 +332,7 @@ def update_cert(module, blade):
         changed = True
         certificate = CertificatePatch(
             certificate=module.params["certificate"],
-            intermeadiate_certificate=module.params["intermeadiate_cert"],
+            intermediate_certificate=module.params["intermediate_cert"],
             private_key=module.params["key"],
             passphrase=module.params["passphrase"],
         )
@@ -344,7 +354,8 @@ def create_cert(module, blade):
     if CERT_TYPE_VERSION in api_versions:
         certificate = CertificatePost(
             certificate=module.params["certificate"],
-            certificate_type="array",
+            intermediate_certificate=module.params["intermediate_cert"],
+            certificate_type="appliance",
             common_name=module.params["common_name"],
             country=module.params["country"],
             email=module.params["email"],
@@ -359,7 +370,8 @@ def create_cert(module, blade):
     else:
         certificate = CertificatePost(
             certificate=module.params["certificate"],
-            certificate_type="array",
+            intermediate_certificate=module.params["intermediate_cert"],
+            certificate_type="appliance",
             common_name=module.params["common_name"],
             country=module.params["country"],
             email=module.params["email"],
