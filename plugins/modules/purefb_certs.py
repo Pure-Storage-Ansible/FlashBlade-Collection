@@ -302,7 +302,6 @@ def update_cert(module, blade):
             changed = True
             certificate = CertificatePost(
                 certificate=new_cert.certificate,
-                certificate_type="appliance",
                 common_name=new_cert.common_name,
                 country=getattr(new_cert, "country", None),
                 email=getattr(new_cert, "email", None),
