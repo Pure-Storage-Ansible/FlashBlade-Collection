@@ -300,21 +300,13 @@ def update_cert(module, blade):
             new_cert.key_algorithm = getattr(current_cert, "key_algorithm", None)
         if new_cert != current_cert:
             changed = True
-            certificate = CertificatePost(
+            certificate = CertificatePatch(
                 certificate=new_cert.certificate,
-                common_name=new_cert.common_name,
-                country=getattr(new_cert, "country", None),
-                email=getattr(new_cert, "email", None),
-                key_size=getattr(new_cert, "key_size", None),
-                locality=getattr(new_cert, "locality", None),
-                organization=getattr(new_cert, "organization", None),
                 intermediate_certificate=getattr(
                     new_cert, "intermediate_certificate", None
                 ),
-                organizational_unit=getattr(new_cert, "organizational_unit", None),
-                key_algorithm=getattr(new_cert, "key_algorithm", None),
-                state=getattr(new_cert, "state", None),
-                days=module.params["days"],
+                private_key=module.params["key"],
+                passphrase=module.params["passphrase"],
             )
             if not module.check_mode:
                 res = blade.patch_certificates(
@@ -433,12 +425,12 @@ def import_cert(module, blade):
         res = blade.post_certificates(
             names=[module.params["name"]], certificate=certificate
         )
-    if res.status_code != 200:
-        module.fail_json(
-            msg="Importing Certificate failed. Error: {0}".format(
-                get_error_message(res)
+        if res.status_code != 200:
+            module.fail_json(
+                msg="Importing Certificate failed. Error: {0}".format(
+                    get_error_message(res)
+                )
             )
-        )
     module.exit_json(changed=changed)
 
 
