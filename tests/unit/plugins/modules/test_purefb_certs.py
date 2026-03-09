@@ -72,6 +72,9 @@ class TestPurefbCerts:
         """Test creating a certificate with intermediate certificate"""
         # Setup mock module
         mock_module = Mock()
+        # Make exit_json and fail_json raise exceptions to stop execution
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
         mock_module.params = {
             "state": "present",
             "name": "test-cert",
@@ -120,8 +123,11 @@ class TestPurefbCerts:
         mock_country = Mock()
         mock_pycountry.countries.get.return_value = mock_country
 
-        # Call main
-        main()
+        # Call main - expect SystemExit from exit_json
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify certificate was created
         mock_blade.post_certificates.assert_called_once()
@@ -140,6 +146,9 @@ class TestPurefbCerts:
         """Test BUG #4 fix: update_cert uses CertificatePatch, not CertificatePost"""
         # Setup mock module
         mock_module = Mock()
+        # Make exit_json and fail_json raise exceptions to stop execution
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
         mock_module.params = {
             "state": "present",
             "name": "management",
@@ -218,8 +227,11 @@ class TestPurefbCerts:
 
         mock_get_system.return_value = mock_blade
 
-        # Call main
-        main()
+        # Call main - expect SystemExit from exit_json
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify patch_certificates was called (not post_certificates)
         mock_blade.patch_certificates.assert_called_once()
@@ -235,6 +247,9 @@ class TestPurefbCerts:
         """Test BUG #3 fix: import_cert doesn't raise NameError in check_mode"""
         # Setup mock module
         mock_module = Mock()
+        # Make exit_json and fail_json raise exceptions to stop execution
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
         mock_module.params = {
             "state": "import",
             "name": "test-cert",
@@ -269,8 +284,11 @@ class TestPurefbCerts:
 
         mock_get_system.return_value = mock_blade
 
-        # Call main - should NOT raise NameError
-        main()
+        # Call main - should NOT raise NameError, expect SystemExit from exit_json
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify post_certificates was NOT called in check mode
         mock_blade.post_certificates.assert_not_called()
@@ -290,6 +308,9 @@ class TestPurefbCerts:
         """Test delete_cert fails when trying to delete management certificate"""
         # Setup mock module
         mock_module = Mock()
+        # Make exit_json and fail_json raise exceptions to stop execution
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
         mock_module.params = {
             "state": "absent",
             "name": "management",
@@ -324,8 +345,11 @@ class TestPurefbCerts:
 
         mock_get_system.return_value = mock_blade
 
-        # Call main
-        main()
+        # Call main - expect SystemExit from fail_json
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify fail_json was called
         mock_module.fail_json.assert_called_once()
@@ -340,6 +364,9 @@ class TestPurefbCerts:
         """Test delete_cert successfully deletes non-management certificate"""
         # Setup mock module
         mock_module = Mock()
+        # Make exit_json and fail_json raise exceptions to stop execution
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
         mock_module.params = {
             "state": "absent",
             "name": "test-cert",
@@ -379,8 +406,11 @@ class TestPurefbCerts:
 
         mock_get_system.return_value = mock_blade
 
-        # Call main
-        main()
+        # Call main - expect SystemExit from exit_json
+        try:
+            main()
+        except SystemExit:
+            pass
 
         # Verify delete_certificates was called
         mock_blade.delete_certificates.assert_called_once_with(names=["test-cert"])
