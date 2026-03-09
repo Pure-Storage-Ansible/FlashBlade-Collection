@@ -45,9 +45,15 @@ sys.modules["ansible_collections"] = MagicMock()
 sys.modules["ansible_collections.purestorage"] = MagicMock()
 sys.modules["ansible_collections.purestorage.flashblade"] = MagicMock()
 sys.modules["ansible_collections.purestorage.flashblade.plugins"] = MagicMock()
-sys.modules["ansible_collections.purestorage.flashblade.plugins.module_utils"] = MagicMock()
-sys.modules["ansible_collections.purestorage.flashblade.plugins.module_utils.purefb"] = MagicMock()
-sys.modules["ansible_collections.purestorage.flashblade.plugins.module_utils.common"] = MagicMock()
+sys.modules["ansible_collections.purestorage.flashblade.plugins.module_utils"] = (
+    MagicMock()
+)
+sys.modules[
+    "ansible_collections.purestorage.flashblade.plugins.module_utils.purefb"
+] = MagicMock()
+sys.modules[
+    "ansible_collections.purestorage.flashblade.plugins.module_utils.common"
+] = MagicMock()
 
 from plugins.modules.purefb_certs import main
 
@@ -173,7 +179,9 @@ class TestPurefbCerts:
 
         # Mock existing certificate
         mock_cert = Mock()
-        mock_cert.certificate = "-----BEGIN CERTIFICATE-----\nOLD\n-----END CERTIFICATE-----"
+        mock_cert.certificate = (
+            "-----BEGIN CERTIFICATE-----\nOLD\n-----END CERTIFICATE-----"
+        )
         mock_cert.intermediate_certificate = None
         mock_cert.common_name = "old.example.com"
         mock_cert.country = "US"
@@ -223,9 +231,7 @@ class TestPurefbCerts:
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
-    def test_main_import_cert_check_mode(
-        self, mock_ansible_module, mock_get_system
-    ):
+    def test_main_import_cert_check_mode(self, mock_ansible_module, mock_get_system):
         """Test BUG #3 fix: import_cert doesn't raise NameError in check_mode"""
         # Setup mock module
         mock_module = Mock()
@@ -330,9 +336,7 @@ class TestPurefbCerts:
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
-    def test_main_delete_cert_success(
-        self, mock_ansible_module, mock_get_system
-    ):
+    def test_main_delete_cert_success(self, mock_ansible_module, mock_get_system):
         """Test delete_cert successfully deletes non-management certificate"""
         # Setup mock module
         mock_module = Mock()
@@ -385,4 +389,3 @@ class TestPurefbCerts:
         mock_module.exit_json.assert_called_once()
         call_args = mock_module.exit_json.call_args[1]
         assert call_args["changed"] is True
-
