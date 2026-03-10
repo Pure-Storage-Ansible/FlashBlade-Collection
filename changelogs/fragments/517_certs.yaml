@@ -3,4 +3,4 @@ bugfixes:
    was not be applied to certificates.
  - purefb_certs - Corrects typos in the parameter name.
  - purefb_certs - Fixes certificate_type name from array to appliance
-Removes immutable field certificate_type for the patch operation.
+ - purefb_certs - Removes immutable field certificate_type for the patch operation.
