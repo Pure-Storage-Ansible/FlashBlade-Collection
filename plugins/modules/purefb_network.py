@@ -73,7 +73,6 @@ options:
           - Only 1 server per Network Interface.
         required: false
         type: str
-
 extends_documentation_fragment:
     - everpure.flashblade.everpure.fb
 """
