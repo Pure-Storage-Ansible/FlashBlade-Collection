@@ -59,12 +59,12 @@ options:
     choices: [ "vip" ]
     default: vip
     type: str
-  attached_servers:
+  attached_server:
     description:
-      - Lists of server that the interface should attach to.
+      - Server that the interface should attach to.
     required: false
-    type: list
-    elements: dict
+    type: dict
+    elements: str
     options:
       name:
         description:
@@ -91,8 +91,8 @@ EXAMPLES = """
   everpure.flashblade.purefb_network:
     name: foo
     address: 10.21.200.23
-    attached_servers:
-      - name: realm-1::server-1
+    attached_server:
+      name: realm-1::server-1
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
@@ -150,7 +150,7 @@ def create_iface(module, blade):
                 address=module.params["address"],
                 services=[module.params["services"]],
                 type=module.params["itype"],
-                attached_servers=module.params["attached_servers"],
+                attached_servers=[module.params["attached_server"]],
             ),
         )
         if res.status_code != 200:
@@ -207,7 +207,7 @@ def main():
             address=dict(type="str"),
             services=dict(type="str", default="data", choices=["data", "replication"]),
             itype=dict(type="str", default="vip", choices=["vip"]),
-            attached_servers=dict(type="list", required=False),
+            attached_server=dict(type="dict", required=False),
         )
     )
 
