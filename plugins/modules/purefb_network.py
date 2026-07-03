@@ -206,7 +206,7 @@ def main():
             address=dict(type="str"),
             services=dict(type="str", default="data", choices=["data", "replication"]),
             itype=dict(type="str", default="vip", choices=["vip"]),
-            attached_server=dict(type="dict", required=False),
+            attached_server=dict(type="dict", elements="str"),
         )
     )
 
