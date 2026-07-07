@@ -64,8 +64,7 @@ options:
       - Server that the interface should attach to.
     required: false
     type: dict
-    elements: str
-    options:
+    suboptions:
       name:
         description:
           - Name of the server you want to attach to the interface
@@ -143,14 +142,16 @@ def create_iface(module, blade):
     """Create Network Interface"""
     changed = True
     if not module.check_mode:
+        network_interface = NetworkInterface(
+            address=module.params["address"],
+            services=[module.params["services"]],
+            type=module.params["itype"],
+        )
+        if module.params["attached_server"]:
+            network_interface.attached_servers = [module.params["attached_server"]]
         res = blade.post_network_interfaces(
             names=[module.params["name"]],
-            network_interface=NetworkInterface(
-                address=module.params["address"],
-                services=[module.params["services"]],
-                type=module.params["itype"],
-                attached_servers=[module.params["attached_server"]],
-            ),
+            network_interface=network_interface,
         )
         if res.status_code != 200:
             module.fail_json(
@@ -206,7 +207,10 @@ def main():
             address=dict(type="str"),
             services=dict(type="str", default="data", choices=["data", "replication"]),
             itype=dict(type="str", default="vip", choices=["vip"]),
-            attached_server=dict(type="dict", elements="str"),
+            attached_server=dict(
+                type="dict",
+                options=dict(name=dict(type="str")),
+            ),
         )
     )
 
