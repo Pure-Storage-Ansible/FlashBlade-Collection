@@ -49,7 +49,7 @@ options:
     required: true
   scope_name:
     description:
-      - The name of the scope, that should be using the resource. 
+      - The name of the scope, that should be using the resource.
       - You can not rename a resource access.
       - Resource access are immuteable. You have to delete it and then create a new one.
     type: str
@@ -157,7 +157,7 @@ def create_resource_access(module, blade):
         res = blade.post_resource_accesses_batch(items=[resource])
         if res.status_code != 200:
             module.fail_json(
-                msg="Create resource access between {0} and {1} failed. Error: {0}".format(
+                msg="Create resource access between {0} and {1} failed. Error: {2}".format(
                     module.params["scope_name"],
                     module.params["resource_type"],
                     get_error_message(res),
@@ -173,7 +173,7 @@ def delete_resource_access(module, blade, id):
         res = blade.delete_resource_accesses(ids=[id])
         if res.status_code != 200:
             module.fail_json(
-                msg="Delete resource access between {0} and {1} failed. Error: {0}".format(
+                msg="Delete resource access between {0} and {1} failed. Error: {2}".format(
                     module.params["scope_name"],
                     module.params["resource_type"],
                     get_error_message(res),
