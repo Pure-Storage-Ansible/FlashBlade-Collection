@@ -34,6 +34,7 @@ options:
       - The name of the resource you want to target.
     type: str
     version_added: '1.27.0'
+    required: true
   state:
     description:
       - Define whether the realm should exist or not.
@@ -45,12 +46,14 @@ options:
       - The type of scopes.
       - When using Realms, this value will be 'realms'
     type : str
+    required: true
   scope_name:
     description:
       - The name of the scope, that should be using the resource. 
       - You can not rename a resource access.
       - Resource access are immuteable. You have to delete it and then create a new one.
     type: str
+    required: true
 extends_documentation_fragment:
 - everpure.flashblade.everpure.fb
 """
@@ -184,7 +187,7 @@ def main():
     argument_spec.update(
         dict(
             resource_type=dict(type="str", required=True),
-            resource_name=dict(type="bool", default=False),
+            resource_name=dict(type="str", required=True),
             state=dict(type="str", default="present", choices=["absent", "present"]),
             scope_type=dict(type="str", required=True),
             scope_name=dict(type="str", required=True),
