@@ -92,7 +92,6 @@ EXAMPLES = r"""
     scope_name: realm_foo
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
-
 """
 
 RETURN = r"""
