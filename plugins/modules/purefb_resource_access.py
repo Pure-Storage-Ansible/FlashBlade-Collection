@@ -134,7 +134,6 @@ def get_resource_access(module, blade):
         + "'"
     )
     res = blade.get_resource_accesses(filter=filter_string)
-    print("This is res = " + str(res))
     if res.status_code == 200 and res.total_item_count:
         items = list(res.items)
         for item in items:
