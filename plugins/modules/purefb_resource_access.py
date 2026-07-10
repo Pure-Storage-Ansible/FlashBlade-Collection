@@ -17,12 +17,13 @@ ANSIBLE_METADATA = {
 DOCUMENTATION = r"""
 ---
 module: purefb_resource_access
-version_added: '1.27.0'
+version_added: '1.28.0'
 short_description: Manage Resource Access on Everpure FlashBlades
 description:
-- Create or delete resource access on Everpure FlashBlades.
+    - Create or delete resource access on Everpure FlashBlades.
 author:
-- Everpure Ansible Team (@sdodsley) <pure-ansible-team@everpuredata.com>
+    - Everpure Ansible Team (@sdodsley) <pure-ansible-team@everpuredata.com>
+    - Leo Wahlandt (@valen98) <wahlandtleo@gmail.com> 
 options:
   resource_type:
     description:
@@ -33,11 +34,10 @@ options:
     description:
       - The name of the resource you want to target.
     type: str
-    version_added: '1.27.0'
     required: true
   state:
     description:
-      - Define whether the realm should exist or not.
+      - Define whether the resource access should exist or not.
     type: str
     default: present
     choices: [ absent, present ]
@@ -60,7 +60,7 @@ extends_documentation_fragment:
 
 EXAMPLES = r"""
 - name: Create new resource access for between realm and subnet
-  everpure.flashblade.purefb_realm:
+  everpure.flashblade.purefb_resource_access:
     resource: subnets
     resource_name: subnet_foo
     scope: realms
@@ -69,7 +69,7 @@ EXAMPLES = r"""
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Create new resource access for between realm and management DNS
-  everpure.flashblade.purefb_realm:
+  everpure.flashblade.purefb_resource_access:
     resource: dns
     resource_name: management
     scope: realms
@@ -78,7 +78,7 @@ EXAMPLES = r"""
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Delete resource access for between realm and subnet (Not deleting the subnet)
-  everpure.flashblade.purefb_realm:
+  everpure.flashblade.purefb_resource_access:
     resource: subnets
     resource_name: subnet_foo
     scope: realms
@@ -88,7 +88,7 @@ EXAMPLES = r"""
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Create new resource access for between realm and DNS (Not deleting the DNS)
-  everpure.flashblade.purefb_realm:
+  everpure.flashblade.purefb_resource_access:
     resource: dns
     resource_name: management
     scope: realms
@@ -131,9 +131,10 @@ def get_resource_access(module, blade):
         + module.params["scope_name"]
         + "' and scope.resource_type='"
         + module.params["scope_type"]
+        + "'"
     )
     res = blade.get_resource_accesses(filter=filter_string)
-    if res.status_code == 200 and res.total_item_count > 0:
+    if res.status_code == 200 and res.total_item_count == True:
         for item in list(res.items):
             if item.resource.name == module.params["resource_name"]:
                 return True, item.id
@@ -166,11 +167,11 @@ def create_resource_access(module, blade):
     module.exit_json(changed=changed)
 
 
-def delete_resource_access(module, blade, id):
+def delete_resource_access(module, blade, access_id):
     """Delete resource access"""
     changed = True
     if not module.check_mode:
-        res = blade.delete_resource_accesses(ids=[id])
+        res = blade.delete_resource_accesses(ids=[access_id])
         if res.status_code != 200:
             module.fail_json(
                 msg="Delete resource access between {0} and {1} failed. Error: {2}".format(
@@ -201,14 +202,14 @@ def main():
     api_version = get_rest_api_version(blade)
     if LooseVersion(MINIMUM_API_VERSION) > LooseVersion(api_version):
         module.fail_json(
-            msg="Realms are not supported. Purity//FB 4.6.1, or higher, is required."
+            msg="Resource Access are not supported. Purity//FB 4.6.1, or higher, is required."
         )
-    resource, id = get_resource_access(module, blade)
+    resource, access_id = get_resource_access(module, blade)
 
     if not resource and state == "present":
         create_resource_access(module, blade)
     elif resource and state == "absent":
-        delete_resource_access(module, blade, id)
+        delete_resource_access(module, blade, access_id)
 
     module.exit_json(changed=False)
 

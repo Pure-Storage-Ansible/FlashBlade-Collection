@@ -1,2 +1,0 @@
-minor_changes:
-  - purefb_resource_access - Add new module for Resource Accesses. Available from REST 2.19+.
