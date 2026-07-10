@@ -134,11 +134,13 @@ def get_resource_access(module, blade):
         + "'"
     )
     res = blade.get_resource_accesses(filter=filter_string)
-    if res.status_code == 200 and res.total_item_count == True:
-        for item in list(res.items):
+    print("This is res = " + str(res))
+    if res.status_code == 200 and res.total_item_count:
+        items = list(res.items)
+        for item in items:
             if item.resource.name == module.params["resource_name"]:
                 return True, item.id
-    return None, None
+    return False, False
 
 
 def create_resource_access(module, blade):

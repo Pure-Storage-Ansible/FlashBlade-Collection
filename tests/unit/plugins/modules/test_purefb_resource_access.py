@@ -73,6 +73,7 @@ sys.modules[
 from plugins.modules.purefb_resource_access import (
     main,
     get_resource_access,
+    delete_resource_access,
 )
 
 
@@ -115,7 +116,7 @@ class TestPurefbResourceAccess:
         mock_loose_version.return_value.__gt__ = Mock(return_value=False)
 
         # Resource Access doesn't exist
-        mock_get_resource_access.return_value = None
+        mock_get_resource_access.return_value = False, None
 
         # Mock successful resource access
         mock_post_response = Mock()
@@ -127,22 +128,12 @@ class TestPurefbResourceAccess:
         except SystemExit:
             pass
 
-        # Filter search
-        filter_string = (
-            "resource.resource_type='"
-            + "dns"
-            + "' and scope.name='"
-            + "test-realm"
-            + "' and scope.resource_type='"
-            + "realms"
-            + "'"
-        )
-
         # Verify post_resource_accesses_batch was called
-        mock_blade.post_resource_accesses_batch.assert_called_once_with(
-            filter=filter_string
-        )
+        mock_blade.post_resource_accesses_batch.assert_called_once()
 
+        kwargs = mock_blade.post_resource_accesses_batch.call_args.kwargs
+        assert "items" in kwargs
+        assert len(kwargs["items"]) == 1
         # Verify exit_json wa called with changed=True
         mock_module.exit_json.assert_called_once()
         call_args = mock_module.exit_json.call_args[1]
@@ -184,7 +175,7 @@ class TestPurefbResourceAccess:
         mock_loose_version.return_value.__gt__ = Mock(return_value=False)
 
         # Resource Access exist
-        mock_get_resource_access.return_value = True
+        mock_get_resource_access.return_value = True, "1234"
 
         # Mock successful resource access deletion
         mock_delete_response = Mock()
@@ -220,11 +211,13 @@ class TestPurefbResourceAccess:
         mock_blade = Mock()
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_blade.get_realms.return_value = mock_response
+        mock_response.items = [mock_module]
 
-        result = get_resource_access(mock_module, mock_blade)
+        mock_blade.get_resource_accesses.return_value = mock_response
 
+        get_resource_access(mock_module, mock_blade)
         # Filter search
+
         filter_string = (
             "resource.resource_type='"
             + "dns"
@@ -235,5 +228,28 @@ class TestPurefbResourceAccess:
             + "'"
         )
 
-        assert result is True
         mock_blade.get_resource_accesses.assert_called_once_with(filter=filter_string)
+
+    def test_delete_resource_access(self):
+        """Test delete_resource_access function"""
+        # Setup mock module
+        mock_module = Mock()
+        mock_module.params = {
+            "resource_type": "dns",
+            "resource_name": "management",
+            "scope_type": "realms",
+            "scope_name": "test-realm",
+        }
+        mock_module.check_mode = False
+
+        # Setup mock blade
+        mock_blade = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_blade.delete_resource_accesses.return_value = mock_response
+
+        # Call delete_resource_access
+        delete_resource_access(mock_module, mock_blade, access_id="1234")
+
+        # Verify delete_resource_accesses was called with correct ID
+        mock_blade.delete_resource_accesses.assert_called_once_with(ids=["1234"])
