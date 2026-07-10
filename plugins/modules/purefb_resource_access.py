@@ -23,7 +23,7 @@ description:
     - Create or delete resource access on Everpure FlashBlades.
 author:
     - Everpure Ansible Team (@sdodsley) <pure-ansible-team@everpuredata.com>
-    - Leo Wahlandt (@valen98) <wahlandtleo@gmail.com> 
+    - Leo Wahlandt (@valen98) <wahlandtleo@gmail.com>
 options:
   resource_type:
     description:
