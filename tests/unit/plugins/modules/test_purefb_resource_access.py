@@ -57,18 +57,18 @@ sys.modules["ansible_collections"] = MagicMock()
 sys.modules["ansible_collections.everpure"] = MagicMock()
 sys.modules["ansible_collections.everpure.flashblade"] = MagicMock()
 sys.modules["ansible_collections.everpure.flashblade.plugins"] = MagicMock()
-sys.modules[
-    "ansible_collections.everpure.flashblade.plugins.module_utils"
-] = MagicMock()
-sys.modules[
-    "ansible_collections.everpure.flashblade.plugins.module_utils.purefb"
-] = MagicMock()
-sys.modules[
-    "ansible_collections.everpure.flashblade.plugins.module_utils.common"
-] = MagicMock()
-sys.modules[
-    "ansible_collections.everpure.flashblade.plugins.module_utils.version"
-] = MagicMock()
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.purefb"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.common"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.version"] = (
+    MagicMock()
+)
 
 from plugins.modules.purefb_resource_access import (
     main,
