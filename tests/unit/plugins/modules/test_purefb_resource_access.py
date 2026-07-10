@@ -79,7 +79,7 @@ from plugins.modules.purefb_resource_access import (
 class TestPurefbResourceAccess:
     """Test cases for purefb_resource_access module"""
 
-    @patch("plugins.modules.purefb_resource_access.get_realm")
+    @patch("plugins.modules.purefb_resource_access.get_resource_access")
     @patch("plugins.modules.purefb_resource_access.LooseVersion")
     @patch("plugins.modules.purefb_resource_access.get_system")
     @patch("plugins.modules.purefb_resource_access.AnsibleModule")
@@ -148,7 +148,7 @@ class TestPurefbResourceAccess:
         call_args = mock_module.exit_json.call_args[1]
         assert call_args["changed"] is True
 
-    @patch("plugins.modules.purefb_resource_access.get_realm")
+    @patch("plugins.modules.purefb_resource_access.get_resource_access")
     @patch("plugins.modules.purefb_resource_access.LooseVersion")
     @patch("plugins.modules.purefb_resource_access.get_system")
     @patch("plugins.modules.purefb_resource_access.AnsibleModule")
