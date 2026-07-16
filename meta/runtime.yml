@@ -54,6 +54,7 @@ action_groups:
    - purefb_syslog
    - purefb_target
    - purefb_timeout
+   - purefb_tls_policy
    - purefb_tz
    - purefb_user
    - purefb_userpolicy

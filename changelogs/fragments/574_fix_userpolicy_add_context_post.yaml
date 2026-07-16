@@ -1,0 +1,2 @@
+bugfixes:
+  - purefb_userpolicy - Fix adding a policy to an existing user silently failing to persist on REST 2.17+ while still reporting changed, due to a stray second non-context POST

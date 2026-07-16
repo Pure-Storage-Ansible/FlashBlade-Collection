@@ -1,0 +1,2 @@
+bugfixes:
+ - purefb_info - Fix AttributeError in `snapshot_policies` subset when a policy has no rules, or when an older py-pure-client returns a policy object without a `rules` attribute

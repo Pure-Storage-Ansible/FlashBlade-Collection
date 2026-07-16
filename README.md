@@ -144,6 +144,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_syslog - manage FlashBlade syslog server configuration
 - purefb_target - manage remote S3-capable targets for a FlashBlade
 - purefb_timeout - manage FlashBlade GUI timeout
+- purefb_tls_policy - manage FlashBlade TLS policies and their network interface attachments
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 - purefb_userpolicy - manage FlashBlade Object Store User Access Policies
 - purefb_userquota - manage individual user quotas on FlashBlade filesystems

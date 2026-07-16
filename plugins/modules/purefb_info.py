@@ -802,12 +802,13 @@ def generate_policies_dict(blade):
             "policy_type": policy.policy_type,
             "rules": {},
         }
-        if policy.rules:
+        rules = getattr(policy, "rules", None)
+        if rules:
             policies_info[policy_name]["rules"] = {
-                "at": getattr(policy.rules[0], "at", None),
-                "every": getattr(policy.rules[0], "every", None),
-                "keep_for": getattr(policy.rules[0], "keep_for", None),
-                "time_zone": getattr(policy.rules[0], "time_zone", None),
+                "at": getattr(rules[0], "at", None),
+                "every": getattr(rules[0], "every", None),
+                "keep_for": getattr(rules[0], "keep_for", None),
+                "time_zone": getattr(rules[0], "time_zone", None),
             }
     return policies_info
 

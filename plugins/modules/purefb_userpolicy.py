@@ -155,22 +155,23 @@ def add_policy(module, blade):
             )
         if not list(res.items):
             if not module.check_mode:
-                changed = True
                 if CONTEXT_API_VERSION in api_version and module.params["context"]:
                     res = blade.post_object_store_access_policies_object_store_users(
                         member_names=[username],
                         policy_names=[policy],
                         context_names=[module.params["context"]],
                     )
+                else:
                     res = blade.post_object_store_access_policies_object_store_users(
                         member_names=[username], policy_names=[policy]
                     )
-                    if res.status_code != 200:
-                        module.fail_json(
-                            msg="Failed to add policy {0}. Error: {1}".format(
-                                policy, get_error_message(res)
-                            )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to add policy {0} to account user {1}. Error: {2}".format(
+                            policy, username, get_error_message(res)
                         )
+                    )
+                changed = True
                 if CONTEXT_API_VERSION in api_version and module.params["context"]:
                     user_policies = list(
                         blade.get_object_store_access_policies_object_store_users(
@@ -186,12 +187,6 @@ def add_policy(module, blade):
                     )
                 for user_policy in user_policies:
                     user_policy_list.append(user_policy.policy.name)
-                if res.status_code != 200:
-                    module.fail_json(
-                        msg="Failed to add policy {0} to account user {1}. Error: {2}".format(
-                            policy, username, get_error_message(res)
-                        )
-                    )
     module.exit_json(changed=changed, policy_list=user_policy_list)
 
 
