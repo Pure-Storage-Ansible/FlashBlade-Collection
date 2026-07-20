@@ -45,7 +45,7 @@ options:
     description:
       - The type of scopes.
       - When using Realms, this value will be 'realms'
-    type : str
+    type: str
     required: true
   scope_name:
     description:
@@ -103,7 +103,7 @@ RETURN = r"""
 try:
     from pypureclient.flashblade import ResourceAccessPost
 except ImportError:
-    HAS_PURESTORAGE = False
+    pass
 
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import (
