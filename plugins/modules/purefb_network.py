@@ -132,6 +132,7 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.common import 
 
 CONTEXT_API_VERSION = "2.16"
 
+
 def get_iface(module, blade):
     """Return Filesystem or None"""
     res = blade.get_network_interfaces(names=[module.params["name"]])
