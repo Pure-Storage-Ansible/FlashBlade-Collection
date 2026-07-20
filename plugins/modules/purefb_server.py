@@ -116,7 +116,7 @@ def update_server(module, blade):
             changed = True
             res = blade.patch_servers(
                 names=[module.params["name"]],
-                server=Server(dns=[Reference(name=module.params["dns"])]),
+                server=Server(dns=[Reference(name=d) for d in module.params["dns"]]),
             )
             if res.status_code != 200:
                 module.fail_json(
@@ -134,7 +134,11 @@ def update_server(module, blade):
             changed = True
             res = blade.patch_servers(
                 names=[module.params["name"]],
-                server=Server(dns=[Reference(name=module.params["directory_service"])]),
+                server=Server(
+                    directory_services=[
+                        Reference(name=ds) for ds in module.params["directory_service"]
+                    ]
+                ),
             )
             if res.status_code != 200:
                 module.fail_json(
