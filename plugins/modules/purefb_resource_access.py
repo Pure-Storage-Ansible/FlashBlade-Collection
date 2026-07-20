@@ -51,7 +51,7 @@ options:
     description:
       - The name of the scope, that should be using the resource.
       - You can not rename a resource access.
-      - Resource access are immuteable. You have to delete it and then create a new one.
+      - Resource access are immutable. You have to delete it and then create a new one.
     type: str
     required: true
 extends_documentation_fragment:
@@ -61,27 +61,27 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Create new resource access for between realm and subnet
   everpure.flashblade.purefb_resource_access:
-    resource: subnets
+    resource_type: subnets
     resource_name: subnet_foo
-    scope: realms
+    scope_type: realms
     scope_name: realm_foo
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Create new resource access for between realm and management DNS
   everpure.flashblade.purefb_resource_access:
-    resource: dns
+    resource_type: dns
     resource_name: management
-    scope: realms
+    scope_type: realms
     scope_name: realm_foo
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
 
 - name: Delete resource access for between realm and subnet (Not deleting the subnet)
   everpure.flashblade.purefb_resource_access:
-    resource: subnets
+    resource_type: subnets
     resource_name: subnet_foo
-    scope: realms
+    scope_type: realms
     scope_name: realm_foo
     state: absent
     fb_url: 10.10.10.2
@@ -89,9 +89,9 @@ EXAMPLES = r"""
 
 - name: Create new resource access for between realm and DNS (Not deleting the DNS)
   everpure.flashblade.purefb_resource_access:
-    resource: dns
+    resource_type: dns
     resource_name: management
-    scope: realms
+    scope_type: realms
     scope_name: realm_foo
     fb_url: 10.10.10.2
     api_token: T-9f276a18-50ab-446e-8a0c-666a3529a1b6
@@ -100,7 +100,6 @@ EXAMPLES = r"""
 RETURN = r"""
 """
 
-HAS_PURESTORAGE = True
 try:
     from pypureclient.flashblade import ResourceAccessPost
 except ImportError:
