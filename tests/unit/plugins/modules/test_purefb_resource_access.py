@@ -84,7 +84,6 @@ class TestPurefbResourceAccess:
     @patch("plugins.modules.purefb_resource_access.LooseVersion")
     @patch("plugins.modules.purefb_resource_access.get_system")
     @patch("plugins.modules.purefb_resource_access.AnsibleModule")
-    @patch("plugins.modules.purefb_resource_access.HAS_PURESTORAGE", True)
     def test_main_create_resource_access(
         self,
         mock_ansible_module,
@@ -143,7 +142,6 @@ class TestPurefbResourceAccess:
     @patch("plugins.modules.purefb_resource_access.LooseVersion")
     @patch("plugins.modules.purefb_resource_access.get_system")
     @patch("plugins.modules.purefb_resource_access.AnsibleModule")
-    @patch("plugins.modules.purefb_resource_access.HAS_PURESTORAGE", True)
     def test_main_delete_resource_access(
         self,
         mock_ansible_module,
