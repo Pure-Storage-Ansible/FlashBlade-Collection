@@ -1,2 +1,0 @@
-bugfixes:
-  - purefb_network - Creating a new Network interface, the module always defaulted to the default server. Attached_server is now added to point to which server the chosen Network Interface.

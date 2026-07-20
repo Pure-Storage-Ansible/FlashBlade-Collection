@@ -62,6 +62,7 @@ options:
   attached_server:
     description:
       - Server that the interface should attach to.
+      - Only works when creating a new interface.
     required: false
     type: dict
     suboptions:
@@ -129,6 +130,7 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.common import 
     get_error_message,
 )
 
+CONTEXT_API_VERSION = "2.16"
 
 def get_iface(module, blade):
     """Return Filesystem or None"""
@@ -140,6 +142,7 @@ def get_iface(module, blade):
 
 def create_iface(module, blade):
     """Create Network Interface"""
+    api_version = list(blade.get_versions().items)
     changed = True
     if not module.check_mode:
         network_interface = NetworkInterface(
@@ -147,7 +150,7 @@ def create_iface(module, blade):
             services=[module.params["services"]],
             type=module.params["itype"],
         )
-        if module.params["attached_server"]:
+        if CONTEXT_API_VERSION in api_version and module.params["attached_server"]:
             network_interface.attached_servers = [module.params["attached_server"]]
         res = blade.post_network_interfaces(
             names=[module.params["name"]],
