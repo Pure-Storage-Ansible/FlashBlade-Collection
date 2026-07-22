@@ -45,6 +45,10 @@ options:
     - The directory service configuration to be used for this server
     type: list
     elements: str
+  local_directory_service:
+    description:
+    - The local directory service configuration to be used for this server
+    type: str
 extends_documentation_fragment:
 - everpure.flashblade.everpure.fb
 """
@@ -81,6 +85,10 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
+)
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
 )
 
 MIN_REQUIRED_API_VERSION = "2.16"
@@ -114,17 +122,20 @@ def update_server(module, blade):
             current_dns.append(getattr(dns, "name", None))
         if set(module.params["dns"]) != set(current_dns):
             changed = True
-            res = blade.patch_servers(
-                names=[module.params["name"]],
-                server=Server(dns=[Reference(name=d) for d in module.params["dns"]]),
-            )
-            if res.status_code != 200:
-                module.fail_json(
-                    msg="Failed to update DNS config for server {0}. Error: {1}".format(
-                        module.params["name"],
-                        get_error_message(res),
-                    )
+            if not module.check_mode:
+                res = blade.patch_servers(
+                    names=[module.params["name"]],
+                    server=Server(
+                        dns=[Reference(name=d) for d in module.params["dns"]]
+                    ),
                 )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to update DNS config for server {0}. Error: {1}".format(
+                            module.params["name"],
+                            get_error_message(res),
+                        )
+                    )
     if module.params["directory_service"] is not None:
         ds_list = server_info.directory_services
         current_ds = []
@@ -132,21 +143,45 @@ def update_server(module, blade):
             current_ds.append(getattr(ds, "name", None))
         if set(module.params["directory_service"]) != set(current_ds):
             changed = True
-            res = blade.patch_servers(
-                names=[module.params["name"]],
-                server=Server(
-                    directory_services=[
-                        Reference(name=ds) for ds in module.params["directory_service"]
-                    ]
-                ),
-            )
-            if res.status_code != 200:
-                module.fail_json(
-                    msg="Failed to update directory services for server {0}. Error: {1}".format(
-                        module.params["name"],
-                        get_error_message(res),
-                    )
+            if not module.check_mode:
+                res = blade.patch_servers(
+                    names=[module.params["name"]],
+                    server=Server(
+                        directory_services=[
+                            Reference(name=ds)
+                            for ds in module.params["directory_service"]
+                        ]
+                    ),
                 )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to update directory services for server {0}. Error: {1}".format(
+                            module.params["name"],
+                            get_error_message(res),
+                        )
+                    )
+    if module.params["local_directory_service"] is not None:
+        current_lds = getattr(
+            getattr(server_info, "local_directory_service", None), "name", None
+        )
+        if module.params["local_directory_service"] != current_lds:
+            changed = True
+            if not module.check_mode:
+                res = blade.patch_servers(
+                    names=[module.params["name"]],
+                    server=Server(
+                        local_directory_service=Reference(
+                            name=module.params["local_directory_service"]
+                        )
+                    ),
+                )
+                if res.status_code != 200:
+                    module.fail_json(
+                        msg="Failed to update local directory service for server {0}. Error: {1}".format(
+                            module.params["name"],
+                            get_error_message(res),
+                        )
+                    )
     module.exit_json(changed=changed)
 
 
@@ -162,14 +197,16 @@ def add_server(module, blade):
         if module.params["directory_service"]:
             for dserv in module.params["directory_service"]:
                 final_dserv.append(Reference(name=dserv))
-        if final_dns and final_dserv:
-            server = ServerPost(directory_services=final_dserv, dns=final_dns)
-        elif not final_dns and final_dserv:
-            server = ServerPost(directory_services=final_dserv)
-        elif final_dns and not final_dserv:
-            server = ServerPost(dns=final_dns)
-        else:
-            server = ServerPost()
+        server_kwargs = {}
+        if final_dns:
+            server_kwargs["dns"] = final_dns
+        if final_dserv:
+            server_kwargs["directory_services"] = final_dserv
+        if module.params["local_directory_service"]:
+            server_kwargs["local_directory_service"] = Reference(
+                name=module.params["local_directory_service"]
+            )
+        server = ServerPost(**server_kwargs)
         res = blade.post_servers(
             names=[module.params["name"]],
             server=server,
@@ -193,6 +230,7 @@ def main():
             name=dict(type="str", required=True),
             dns=dict(type="list", elements="str"),
             directory_service=dict(type="list", elements="str"),
+            local_directory_service=dict(type="str"),
         )
     )
 
@@ -200,9 +238,8 @@ def main():
     if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client sdk is required for this module")
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-
-    if MIN_REQUIRED_API_VERSION not in api_version:
+    api_version = get_rest_api_version(blade)
+    if LooseVersion(MIN_REQUIRED_API_VERSION) > LooseVersion(api_version):
         module.fail_json(
             msg="FlashBlade REST version not supported. "
             "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)
