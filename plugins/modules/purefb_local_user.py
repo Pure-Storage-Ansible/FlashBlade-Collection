@@ -218,9 +218,12 @@ def _lds_filter(local_ds_name, extra=None):
     The FB GET endpoints for local users / members do not accept
     ``local_directory_service_names``; scoping must go through ``filter``.
     """
-    # FB's filter grammar is OData-flavored: a single quote embedded in a
-    # string literal is escaped by doubling it, not backslash-escaping.
-    expr = "local_directory_service.name='{0}'".format(local_ds_name.replace("'", "''"))
+    # Per Pure's REST filter grammar, string literals are single-quoted and
+    # the backslash is the escape character: escape backslashes first, then
+    # single quotes.
+    escaped = local_ds_name.replace("\\", "\\\\").replace("'", "\\'")
+
+    expr = "local_directory_service.name='{0}'".format(escaped)
     if extra:
         expr = "({0}) and ({1})".format(expr, extra)
     return expr
