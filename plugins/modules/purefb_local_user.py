@@ -67,8 +67,11 @@ options:
   enabled:
     description:
     - Whether the user account is enabled.
+    - At create time, if unset the user is created enabled.
+    - On update, this field is only applied when explicitly set. This lets
+      you idempotently manage other attributes of a disabled user without
+      accidentally re-enabling the account.
     type: bool
-    default: true
   password:
     description:
     - Password for the user.
@@ -215,9 +218,9 @@ def _lds_filter(local_ds_name, extra=None):
     The FB GET endpoints for local users / members do not accept
     ``local_directory_service_names``; scoping must go through ``filter``.
     """
-    expr = "local_directory_service.name='{0}'".format(
-        local_ds_name.replace("'", "\\'")
-    )
+    # FB's filter grammar is OData-flavored: a single quote embedded in a
+    # string literal is escaped by doubling it, not backslash-escaping.
+    expr = "local_directory_service.name='{0}'".format(local_ds_name.replace("'", "''"))
     if extra:
         expr = "({0}) and ({1})".format(expr, extra)
     return expr
@@ -358,7 +361,10 @@ def delete_user(module, blade, local_ds_name, user):
 
 
 def create_user(module, blade, local_ds_name):
-    if module.params["enabled"] and not module.params["password"]:
+    # enabled is not defaulted in the argument spec so update paths stay
+    # idempotent; at create time an unset value means "enabled".
+    enabled = module.params["enabled"] if module.params["enabled"] is not None else True
+    if enabled and not module.params["password"]:
         module.fail_json(
             msg="'password' is required when creating an enabled local user"
         )
@@ -367,7 +373,7 @@ def create_user(module, blade, local_ds_name):
         body_kwargs = {}
         if module.params["email"] is not None:
             body_kwargs["email"] = module.params["email"]
-        body_kwargs["enabled"] = module.params["enabled"]
+        body_kwargs["enabled"] = enabled
         if module.params["password"]:
             body_kwargs["password"] = module.params["password"]
         body_kwargs["primary_group"] = ReferenceWritable(
@@ -437,7 +443,9 @@ def update_user(module, blade, local_ds_name, user):
         patch_kwargs["email"] = module.params["email"]
         identity_changes.append("email")
 
-    if module.params["enabled"] != getattr(user, "enabled", None):
+    if module.params["enabled"] is not None and module.params["enabled"] != getattr(
+        user, "enabled", None
+    ):
         # false -> true transition needs a password.
         if module.params["enabled"] and not getattr(user, "enabled", False):
             if not module.params["password"]:
@@ -536,7 +544,7 @@ def main():
             new_name=dict(type="str"),
             uid=dict(type="int"),
             email=dict(type="str"),
-            enabled=dict(type="bool", default=True),
+            enabled=dict(type="bool"),
             password=dict(type="str", no_log=True),
             force_password_reset=dict(type="bool", default=False, no_log=False),
             primary_group=dict(type="str"),
