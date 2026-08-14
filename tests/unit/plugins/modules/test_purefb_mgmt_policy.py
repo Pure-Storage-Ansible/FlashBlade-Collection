@@ -1,0 +1,1536 @@
+# Copyright: (c) 2026, Pure Storage Ansible Team <pure-ansible-team@everpuredata.com>
+# GNU General Public License v3.0+ (see COPYING.GPLv3 or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+"""Unit tests for purefb_mgmt_policy module."""
+
+from __future__ import absolute_import, division, print_function
+
+__metaclass__ = type
+
+import sys
+import multiprocessing
+import ctypes
+from unittest.mock import Mock, patch, MagicMock
+
+# Mock multiprocessing context for Windows
+if sys.platform == "win32":
+    original_get_context = multiprocessing.get_context
+
+    def mock_get_context(method=None):
+        if method == "fork":
+            return original_get_context("spawn")
+        return original_get_context(method)
+
+    multiprocessing.get_context = mock_get_context
+
+    # Mock ctypes LoadLibrary to prevent Windows errors
+    original_load_library = ctypes.cdll.LoadLibrary
+
+    def mock_load_library(name):
+        if name is None or not isinstance(name, str):
+            return MagicMock()
+        try:
+            return original_load_library(name)
+        except (OSError, TypeError):
+            return MagicMock()
+
+    ctypes.cdll.LoadLibrary = mock_load_library
+
+# Mock external dependencies before importing module
+sys.modules["pypureclient"] = MagicMock()
+sys.modules["pypureclient.flashblade"] = MagicMock()
+sys.modules["urllib3"] = MagicMock()
+sys.modules["distro"] = MagicMock()
+# Mock Unix-specific modules for Windows compatibility
+sys.modules["grp"] = MagicMock()
+sys.modules["fcntl"] = MagicMock()
+sys.modules["pwd"] = MagicMock()
+sys.modules["syslog"] = MagicMock()
+# Mock termios with required constants
+mock_termios = MagicMock()
+mock_termios.TCSAFLUSH = 2
+sys.modules["termios"] = mock_termios
+sys.modules["tty"] = MagicMock()
+
+# Mock ansible_collections module structure
+sys.modules["ansible_collections"] = MagicMock()
+sys.modules["ansible_collections.everpure"] = MagicMock()
+sys.modules["ansible_collections.everpure.flashblade"] = MagicMock()
+sys.modules["ansible_collections.everpure.flashblade.plugins"] = MagicMock()
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.purefb"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.common"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.version"] = (
+    MagicMock()
+)
+
+from plugins.modules.purefb_mgmt_policy import (
+    main,
+    _ctx,
+    _rule_key,
+    _desired_rules_by_key,
+    _validate_rules,
+    _get_policy,
+    _get_current_rules,
+    _members_attached,
+    _build_post_rules,
+    _reconcile_rules,
+    create_policy,
+    update_policy,
+    delete_policy,
+)
+
+
+def _base_params(**overrides):
+    """Return a full params dict with sane defaults, patched by overrides."""
+    params = {
+        "name": "tenant-a-ops",
+        "state": "present",
+        "enabled": None,
+        "aggregation_strategy": None,
+        "rules": None,
+        "context": "",
+    }
+    params.update(overrides)
+    return params
+
+
+class TestPurefbMgmtPolicy:
+    """Test cases for purefb_mgmt_policy module"""
+
+    # ---------------- _ctx tests ----------------
+
+    def test_ctx_empty_when_context_unset(self):
+        """Test _ctx returns {} when context is empty string"""
+        mock_module = Mock()
+        mock_module.params = {"context": ""}
+        assert _ctx(mock_module, "2.19") == {}
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    def test_ctx_returns_context_names_when_supported(self, mock_loose_version):
+        """Test _ctx returns context_names dict when API supports it"""
+        # CONTEXT_API_VERSION <= api_version → context is honored
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
+        mock_module = Mock()
+        mock_module.params = {"context": "fleet1"}
+        assert _ctx(mock_module, "2.19") == {"context_names": ["fleet1"]}
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    def test_ctx_silently_drops_context_when_api_too_old(self, mock_loose_version):
+        """Test _ctx returns {} when API is too old, even if context is set"""
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
+        mock_module = Mock()
+        mock_module.params = {"context": "fleet1"}
+        assert _ctx(mock_module, "2.16") == {}
+
+    # ---------------- key / desired-key helpers ----------------
+
+    def test_rule_key_is_normalized_tuple(self):
+        """Test _rule_key lowercases all three parts of the identity tuple"""
+        assert _rule_key("VIEWER", "arrays", "FB1") == ("viewer", "arrays", "fb1")
+        assert _rule_key("viewer", "arrays", "fb1") == ("viewer", "arrays", "fb1")
+
+    def test_desired_rules_by_key_builds_map(self):
+        """Test _desired_rules_by_key maps identity keys to the original rule dicts"""
+        rules = [
+            {
+                "role": "Viewer",
+                "scope": {"name": "FB1", "resource_type": "arrays"},
+            },
+            {
+                "role": "backup",
+                "scope": {"name": "realm-a", "resource_type": "realms"},
+            },
+        ]
+        by_key = _desired_rules_by_key(rules)
+        assert set(by_key) == {
+            ("viewer", "arrays", "fb1"),
+            ("backup", "realms", "realm-a"),
+        }
+        # The user's spelling must be preserved in the mapped value.
+        assert by_key[("viewer", "arrays", "fb1")]["role"] == "Viewer"
+        assert by_key[("viewer", "arrays", "fb1")]["scope"]["name"] == "FB1"
+
+    def test_desired_rules_by_key_first_spelling_wins(self):
+        """Test _desired_rules_by_key collapses case-variant repeats keeping the first"""
+        rules = [
+            {"role": "viewer", "scope": {"name": "fb1", "resource_type": "arrays"}},
+            {"role": "VIEWER", "scope": {"name": "FB1", "resource_type": "arrays"}},
+        ]
+        by_key = _desired_rules_by_key(rules)
+        assert set(by_key) == {("viewer", "arrays", "fb1")}
+        assert by_key[("viewer", "arrays", "fb1")]["role"] == "viewer"
+
+    # ---------------- _validate_rules ----------------
+
+    def test_validate_rules_rejects_duplicates(self):
+        """Test _validate_rules fails on two rules with the same identity"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+            ]
+        )
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        try:
+            _validate_rules(mock_module)
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "Duplicate rule" in msg
+        assert "role=viewer" in msg
+        assert "arrays/fb1" in msg
+
+    def test_validate_rules_rejects_case_variant_duplicates(self):
+        """Test _validate_rules treats case variants of the same rule as duplicates"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+                {
+                    "role": "VIEWER",
+                    "scope": {"name": "FB1", "resource_type": "arrays"},
+                },
+            ]
+        )
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        try:
+            _validate_rules(mock_module)
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert "Duplicate rule" in mock_module.fail_json.call_args[1]["msg"]
+
+    def test_validate_rules_accepts_distinct_rules(self):
+        """Test _validate_rules passes rules that differ in role or scope"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+                {
+                    "role": "viewer",
+                    "scope": {"name": "realm-a", "resource_type": "realms"},
+                },
+                {
+                    "role": "storage",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+            ]
+        )
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        _validate_rules(mock_module)
+        mock_module.fail_json.assert_not_called()
+
+    def test_validate_rules_noop_on_none_and_empty(self):
+        """Test _validate_rules ignores rules=None and rules=[]"""
+        mock_module = Mock()
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_module.params = _base_params(rules=None)
+        _validate_rules(mock_module)
+
+        mock_module.params = _base_params(rules=[])
+        _validate_rules(mock_module)
+
+        mock_module.fail_json.assert_not_called()
+
+    # ---------------- _get_policy ----------------
+
+    def test_get_policy_returns_first_item(self):
+        """Test _get_policy returns the first policy when present"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        existing = Mock()
+        existing.name = "tenant-a-ops"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [existing]
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        out = _get_policy(mock_module, mock_blade, {})
+        assert out is existing
+        mock_blade.get_management_access_policies.assert_called_once_with(
+            names=["tenant-a-ops"]
+        )
+
+    def test_get_policy_returns_none_when_empty(self):
+        """Test _get_policy returns None when items list is empty"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        assert _get_policy(mock_module, mock_blade, {}) is None
+
+    def test_get_policy_returns_none_on_error(self):
+        """Test _get_policy returns None on non-200 status"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 400
+        get_response.items = []
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        assert _get_policy(mock_module, mock_blade, {}) is None
+
+    def test_get_policy_forwards_context_kwargs(self):
+        """Test _get_policy forwards context_names when provided by _ctx"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        _get_policy(mock_module, mock_blade, {"context_names": ["fleet1"]})
+        mock_blade.get_management_access_policies.assert_called_once_with(
+            names=["tenant-a-ops"], context_names=["fleet1"]
+        )
+
+    # ---------------- _get_current_rules ----------------
+
+    def test_get_current_rules_returns_items(self):
+        """Test _get_current_rules returns list of rule objects on 200"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        rule = Mock()
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [rule]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        out = _get_current_rules(mock_module, mock_blade, {})
+        assert out == [rule]
+        mock_blade.get_management_access_policies_rules.assert_called_once_with(
+            policy_names=["tenant-a-ops"]
+        )
+
+    def test_get_current_rules_fails_on_error(self):
+        """Test _get_current_rules calls fail_json on non-200"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 400
+        get_response.items = []
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        try:
+            _get_current_rules(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert (
+            "Failed to list rules for policy"
+            in mock_module.fail_json.call_args[1]["msg"]
+        )
+
+    # ---------------- _members_attached ----------------
+
+    def test_members_attached_true_when_items(self):
+        """Test _members_attached returns True when at least one member is attached"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        member = Mock()
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [member]
+        mock_blade.get_management_access_policies_members.return_value = get_response
+
+        assert _members_attached(mock_module, mock_blade, {}) is True
+
+    def test_members_attached_false_when_empty(self):
+        """Test _members_attached returns False when no members are attached"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies_members.return_value = get_response
+
+        assert _members_attached(mock_module, mock_blade, {}) is False
+
+    def test_members_attached_false_on_error(self):
+        """Test _members_attached returns False on non-200 status"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 400
+        get_response.items = []
+        mock_blade.get_management_access_policies_members.return_value = get_response
+
+        assert _members_attached(mock_module, mock_blade, {}) is False
+
+    # ---------------- _build_post_rules ----------------
+
+    def test_build_post_rules_none_returns_none(self):
+        """Test _build_post_rules returns None when rules is None"""
+        assert _build_post_rules(None) is None
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyRule")
+    @patch("plugins.modules.purefb_mgmt_policy.ReferenceWritable")
+    def test_build_post_rules_builds_list(self, mock_ref, mock_rule_cls):
+        """Test _build_post_rules builds one ManagementAccessPolicyRule per input rule"""
+        rules = [
+            {"role": "viewer", "scope": {"name": "fb1", "resource_type": "arrays"}},
+        ]
+        out = _build_post_rules(rules)
+        assert len(out) == 1
+        mock_rule_cls.assert_called_once()
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyRule")
+    @patch("plugins.modules.purefb_mgmt_policy.ReferenceWritable")
+    def test_build_post_rules_preserves_user_spelling(self, mock_ref, mock_rule_cls):
+        """Test _build_post_rules sends the user's spelling verbatim on create"""
+        rules = [
+            {
+                "role": "Backup-Operator",
+                "scope": {"name": "Realm-A", "resource_type": "realms"},
+            },
+        ]
+        _build_post_rules(rules)
+        ref_calls = mock_ref.call_args_list
+        assert any(c.kwargs.get("name") == "Backup-Operator" for c in ref_calls)
+        assert any(
+            c.kwargs.get("name") == "Realm-A"
+            and c.kwargs.get("resource_type") == "realms"
+            for c in ref_calls
+        )
+
+    # ---------------- _reconcile_rules ----------------
+
+    def test_reconcile_none_returns_false(self):
+        """Test _reconcile_rules returns False (untouched) when rules param is None"""
+        mock_module = Mock()
+        mock_module.params = _base_params(rules=None)
+        mock_module.check_mode = False
+
+        mock_blade = Mock()
+        assert _reconcile_rules(mock_module, mock_blade, {}) is False
+        mock_blade.get_management_access_policies_rules.assert_not_called()
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyRule")
+    @patch("plugins.modules.purefb_mgmt_policy.ReferenceWritable")
+    def test_reconcile_adds_missing_rules(self, mock_ref, mock_rule_cls):
+        """Test _reconcile_rules POSTs rules that are in desired but not on the blade"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        post_response = Mock()
+        post_response.status_code = 200
+        mock_blade.post_management_access_policies_rules.return_value = post_response
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        assert changed is True
+        mock_blade.post_management_access_policies_rules.assert_called_once()
+        mock_blade.delete_management_access_policies_rules.assert_not_called()
+
+    def test_reconcile_removes_orphan_rules(self):
+        """Test _reconcile_rules DELETEs rules that are on the blade but not in desired"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        keep = Mock()
+        keep.name = "rule-keep"
+        keep.role = Mock()
+        keep.role.name = "viewer"
+        keep.scope = Mock()
+        keep.scope.name = "fb1"
+        keep.scope.resource_type = "arrays"
+
+        drop = Mock()
+        drop.name = "rule-drop"
+        drop.id = "8a2f0c1e-9d4b-4e6a-b1c3-5f7e9a0d2b4c"
+        drop.role = Mock()
+        drop.role.name = "backup"
+        drop.scope = Mock()
+        drop.scope.name = "realm-a"
+        drop.scope.resource_type = "realms"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [keep, drop]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        delete_response = Mock()
+        delete_response.status_code = 200
+        mock_blade.delete_management_access_policies_rules.return_value = (
+            delete_response
+        )
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        assert changed is True
+        mock_blade.delete_management_access_policies_rules.assert_called_once()
+        call_kwargs = mock_blade.delete_management_access_policies_rules.call_args[1]
+        # Rule names (<policy>.<index>) renumber when a lower-indexed rule
+        # is deleted, so deleting by a snapshot name can remove the wrong
+        # rule; the module must address rules by immutable id. The delete
+        # endpoint also takes no policy_names parameter (SDK rejects it).
+        assert call_kwargs["ids"] == [drop.id]
+        assert "names" not in call_kwargs
+        assert "policy_names" not in call_kwargs
+        mock_blade.post_management_access_policies_rules.assert_not_called()
+
+    def test_reconcile_idempotent_when_match(self):
+        """Test _reconcile_rules makes no writes when desired matches current"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        current = Mock()
+        current.name = "rule-viewer"
+        current.role = Mock()
+        current.role.name = "viewer"
+        current.scope = Mock()
+        current.scope.name = "fb1"
+        current.scope.resource_type = "arrays"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [current]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        assert changed is False
+        mock_blade.post_management_access_policies_rules.assert_not_called()
+        mock_blade.delete_management_access_policies_rules.assert_not_called()
+
+    def test_reconcile_case_variant_is_idempotent(self):
+        """Test _reconcile_rules treats a case variant of a stored rule as the same rule"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "VIEWER",
+                    "scope": {"name": "FB1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        current = Mock()
+        current.name = "rule-viewer"
+        current.role = Mock()
+        current.role.name = "viewer"
+        current.scope = Mock()
+        current.scope.name = "fb1"
+        current.scope.resource_type = "arrays"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [current]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        # Before the fix this deleted and re-created the rule on every run.
+        assert changed is False
+        mock_blade.post_management_access_policies_rules.assert_not_called()
+        mock_blade.delete_management_access_policies_rules.assert_not_called()
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyRule")
+    @patch("plugins.modules.purefb_mgmt_policy.ReferenceWritable")
+    def test_reconcile_normalizes_array_side_spelling(self, mock_ref, mock_rule_cls):
+        """Test the ARRAY-side case variant is matched: mixed list adds only the new rule"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+                {
+                    "role": "backup",
+                    "scope": {"name": "realm-a", "resource_type": "realms"},
+                },
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        # The stored rule carries the case-preserved spelling from the array.
+        current = Mock()
+        current.name = "rule-viewer"
+        current.role = Mock()
+        current.role.name = "Viewer"
+        current.scope = Mock()
+        current.scope.name = "FB1"
+        current.scope.resource_type = "arrays"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [current]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        post_response = Mock()
+        post_response.status_code = 200
+        mock_blade.post_management_access_policies_rules.return_value = post_response
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        # Only the genuinely new rule is added; the case-variant match is
+        # neither deleted nor re-created.
+        assert changed is True
+        mock_blade.delete_management_access_policies_rules.assert_not_called()
+        mock_blade.post_management_access_policies_rules.assert_called_once()
+        ref_calls = mock_ref.call_args_list
+        assert any(c.kwargs.get("name") == "backup" for c in ref_calls)
+        assert not any(c.kwargs.get("name") == "viewer" for c in ref_calls)
+
+    def test_reconcile_remove_failure_reports_stored_names(self):
+        """Test a failed rule DELETE reports the array's stored spelling in the message"""
+        mock_module = Mock()
+        mock_module.params = _base_params(rules=[])
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        current = Mock()
+        current.name = "rule-1"
+        current.id = "rule-id-1"
+        current.role = Mock()
+        current.role.name = "Viewer"
+        current.scope = Mock()
+        current.scope.name = "FB1"
+        current.scope.resource_type = "arrays"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [current]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        delete_response = Mock()
+        delete_response.status_code = 400
+        delete_response.errors = []
+        mock_blade.delete_management_access_policies_rules.return_value = (
+            delete_response
+        )
+
+        try:
+            _reconcile_rules(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "Failed to remove rule" in msg
+        assert "role=Viewer" in msg
+        assert "arrays/FB1" in msg
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyRule")
+    @patch("plugins.modules.purefb_mgmt_policy.ReferenceWritable")
+    def test_reconcile_add_preserves_user_spelling(self, mock_ref, mock_rule_cls):
+        """Test _reconcile_rules POSTs a new rule with the user's spelling, not the lowercased key"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "Backup-Operator",
+                    "scope": {"name": "Realm-A", "resource_type": "realms"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        post_response = Mock()
+        post_response.status_code = 200
+        mock_blade.post_management_access_policies_rules.return_value = post_response
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        assert changed is True
+        ref_calls = mock_ref.call_args_list
+        assert any(c.kwargs.get("name") == "Backup-Operator" for c in ref_calls)
+        assert any(
+            c.kwargs.get("name") == "Realm-A"
+            and c.kwargs.get("resource_type") == "realms"
+            for c in ref_calls
+        )
+
+    def test_reconcile_empty_desired_removes_all(self):
+        """Test _reconcile_rules with rules=[] deletes every existing rule"""
+        mock_module = Mock()
+        mock_module.params = _base_params(rules=[])
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        current = Mock()
+        current.name = "rule-1"
+        current.role = Mock()
+        current.role.name = "viewer"
+        current.scope = Mock()
+        current.scope.name = "fb1"
+        current.scope.resource_type = "arrays"
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [current]
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        delete_response = Mock()
+        delete_response.status_code = 200
+        mock_blade.delete_management_access_policies_rules.return_value = (
+            delete_response
+        )
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        assert changed is True
+        mock_blade.delete_management_access_policies_rules.assert_called_once()
+
+    def test_reconcile_check_mode_skips_writes(self):
+        """Test _reconcile_rules reports changed but skips writes in check mode"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = True
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        changed = _reconcile_rules(mock_module, mock_blade, {})
+
+        assert changed is True
+        mock_blade.post_management_access_policies_rules.assert_not_called()
+        mock_blade.delete_management_access_policies_rules.assert_not_called()
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyRule")
+    @patch("plugins.modules.purefb_mgmt_policy.ReferenceWritable")
+    def test_reconcile_add_failure_calls_fail_json(self, mock_ref, mock_rule_cls):
+        """Test _reconcile_rules surfaces backend errors on add via fail_json"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies_rules.return_value = get_response
+
+        post_response = Mock()
+        post_response.status_code = 400
+        post_response.errors = []
+        mock_blade.post_management_access_policies_rules.return_value = post_response
+
+        try:
+            _reconcile_rules(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert "Failed to add rule" in mock_module.fail_json.call_args[1]["msg"]
+
+    # ---------------- create_policy ----------------
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyPost")
+    def test_create_policy_defaults_enabled_true(self, mock_post_cls):
+        """Test create_policy sends enabled=True when the caller didn't specify"""
+        mock_module = Mock()
+        mock_module.params = _base_params(enabled=None)
+        mock_module.check_mode = False
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        post_response = Mock()
+        post_response.status_code = 200
+        mock_blade.post_management_access_policies.return_value = post_response
+
+        try:
+            create_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_post_cls.assert_called_once()
+        assert mock_post_cls.call_args[1]["enabled"] is True
+        assert "aggregation_strategy" not in mock_post_cls.call_args[1]
+        assert "rules" not in mock_post_cls.call_args[1]
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyPost")
+    def test_create_policy_includes_aggregation_and_rules(self, mock_post_cls):
+        """Test create_policy passes aggregation_strategy and rules when provided"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            enabled=False,
+            aggregation_strategy="least-common-permission",
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ],
+        )
+        mock_module.check_mode = False
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        post_response = Mock()
+        post_response.status_code = 200
+        mock_blade.post_management_access_policies.return_value = post_response
+
+        try:
+            create_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        kw = mock_post_cls.call_args[1]
+        assert kw["enabled"] is False
+        assert kw["aggregation_strategy"] == "least-common-permission"
+        assert len(kw["rules"]) == 1
+
+    def test_create_policy_check_mode_skips_post(self):
+        """Test create_policy reports changed but skips POST in check mode"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+        mock_module.check_mode = True
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+
+        try:
+            create_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_blade.post_management_access_policies.assert_not_called()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyPost")
+    def test_create_policy_failure_calls_fail_json(self, mock_post_cls):
+        """Test create_policy surfaces backend errors via fail_json"""
+        mock_module = Mock()
+        mock_module.params = _base_params()
+        mock_module.check_mode = False
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        post_response = Mock()
+        post_response.status_code = 400
+        post_response.errors = []
+        mock_blade.post_management_access_policies.return_value = post_response
+
+        try:
+            create_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert "Failed to create policy" in mock_module.fail_json.call_args[1]["msg"]
+
+    # ---------------- update_policy ----------------
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicy")
+    def test_update_policy_patches_enabled(self, mock_patch_cls):
+        """Test update_policy PATCHes when enabled differs"""
+        mock_module = Mock()
+        mock_module.params = _base_params(enabled=False)
+        mock_module.check_mode = False
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        existing = Mock()
+        existing.enabled = True
+        existing.aggregation_strategy = None
+
+        mock_blade = Mock()
+        patch_response = Mock()
+        patch_response.status_code = 200
+        mock_blade.patch_management_access_policies.return_value = patch_response
+
+        try:
+            update_policy(mock_module, mock_blade, {}, existing)
+        except SystemExit:
+            pass
+
+        mock_blade.patch_management_access_policies.assert_called_once()
+        assert mock_patch_cls.call_args[1] == {"enabled": False}
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicy")
+    def test_update_policy_patches_aggregation_strategy(self, mock_patch_cls):
+        """Test update_policy PATCHes when aggregation_strategy differs"""
+        mock_module = Mock()
+        mock_module.params = _base_params(
+            aggregation_strategy="least-common-permission"
+        )
+        mock_module.check_mode = False
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+
+        existing = Mock()
+        existing.enabled = True
+        existing.aggregation_strategy = "all-permissions"
+
+        mock_blade = Mock()
+        patch_response = Mock()
+        patch_response.status_code = 200
+        mock_blade.patch_management_access_policies.return_value = patch_response
+
+        try:
+            update_policy(mock_module, mock_blade, {}, existing)
+        except SystemExit:
+            pass
+
+        mock_blade.patch_management_access_policies.assert_called_once()
+        assert (
+            mock_patch_cls.call_args[1]["aggregation_strategy"]
+            == "least-common-permission"
+        )
+
+    def test_update_policy_idempotent_when_no_diff(self):
+        """Test update_policy exits changed=False when nothing differs"""
+        mock_module = Mock()
+        mock_module.params = _base_params(enabled=True, aggregation_strategy=None)
+        mock_module.check_mode = False
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        existing = Mock()
+        existing.enabled = True
+        existing.aggregation_strategy = None
+
+        mock_blade = Mock()
+
+        try:
+            update_policy(mock_module, mock_blade, {}, existing)
+        except SystemExit:
+            pass
+
+        mock_blade.patch_management_access_policies.assert_not_called()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+
+    def test_update_policy_check_mode_skips_patch(self):
+        """Test update_policy reports changed but skips PATCH in check mode"""
+        mock_module = Mock()
+        mock_module.params = _base_params(enabled=False)
+        mock_module.check_mode = True
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        existing = Mock()
+        existing.enabled = True
+        existing.aggregation_strategy = None
+
+        mock_blade = Mock()
+
+        try:
+            update_policy(mock_module, mock_blade, {}, existing)
+        except SystemExit:
+            pass
+
+        mock_blade.patch_management_access_policies.assert_not_called()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    # ---------------- delete_policy ----------------
+
+    def test_delete_policy_fails_when_members_attached(self):
+        """Test delete_policy fails with a hand-off message when members are attached"""
+        mock_module = Mock()
+        mock_module.params = _base_params(state="absent")
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        member = Mock()
+        mock_blade = Mock()
+        members_response = Mock()
+        members_response.status_code = 200
+        members_response.items = [member]
+        mock_blade.get_management_access_policies_members.return_value = (
+            members_response
+        )
+
+        try:
+            delete_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "is attached to one or more members" in msg
+        assert "purefb_mgmt_role" in msg
+        mock_blade.delete_management_access_policies.assert_not_called()
+
+    def test_delete_policy_success(self):
+        """Test delete_policy DELETEs when no members are attached"""
+        mock_module = Mock()
+        mock_module.params = _base_params(state="absent")
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        members_response = Mock()
+        members_response.status_code = 200
+        members_response.items = []
+        mock_blade.get_management_access_policies_members.return_value = (
+            members_response
+        )
+
+        delete_response = Mock()
+        delete_response.status_code = 200
+        mock_blade.delete_management_access_policies.return_value = delete_response
+
+        try:
+            delete_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_blade.delete_management_access_policies.assert_called_once_with(
+            names=["tenant-a-ops"]
+        )
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    def test_delete_policy_check_mode_skips_delete(self):
+        """Test delete_policy reports changed but skips DELETE in check mode"""
+        mock_module = Mock()
+        mock_module.params = _base_params(state="absent")
+        mock_module.check_mode = True
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        members_response = Mock()
+        members_response.status_code = 200
+        members_response.items = []
+        mock_blade.get_management_access_policies_members.return_value = (
+            members_response
+        )
+
+        try:
+            delete_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_blade.delete_management_access_policies.assert_not_called()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    def test_delete_policy_failure_calls_fail_json(self):
+        """Test delete_policy surfaces backend errors via fail_json"""
+        mock_module = Mock()
+        mock_module.params = _base_params(state="absent")
+        mock_module.check_mode = False
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+
+        mock_blade = Mock()
+        members_response = Mock()
+        members_response.status_code = 200
+        members_response.items = []
+        mock_blade.get_management_access_policies_members.return_value = (
+            members_response
+        )
+
+        delete_response = Mock()
+        delete_response.status_code = 400
+        delete_response.errors = []
+        mock_blade.delete_management_access_policies.return_value = delete_response
+
+        try:
+            delete_policy(mock_module, mock_blade, {})
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert "Failed to delete policy" in mock_module.fail_json.call_args[1]["msg"]
+
+    # ---------------- main() flows ----------------
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.ManagementAccessPolicyPost")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_creates_policy(
+        self,
+        mock_ansible_module,
+        mock_get_system,
+        mock_post_cls,
+        mock_loose_version,
+    ):
+        """Test main creates a new policy when it doesn't exist"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params()
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.26"]
+        mock_get_system.return_value = mock_blade
+
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        post_response = Mock()
+        post_response.status_code = 200
+        mock_blade.post_management_access_policies.return_value = post_response
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_blade.post_management_access_policies.assert_called_once()
+        call_kwargs = mock_blade.post_management_access_policies.call_args[1]
+        assert call_kwargs["names"] == ["tenant-a-ops"]
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_delete_idempotent_when_absent(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main is a no-op when state=absent and the policy doesn't exist"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(state="absent")
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.26"]
+        mock_get_system.return_value = mock_blade
+
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = []
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_blade.delete_management_access_policies.assert_not_called()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_deletes_existing_policy(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main DELETEs the policy when state=absent and no members attached"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(state="absent")
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.26"]
+        mock_get_system.return_value = mock_blade
+
+        existing = Mock()
+        existing.name = "tenant-a-ops"
+
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [existing]
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        members_response = Mock()
+        members_response.status_code = 200
+        members_response.items = []
+        mock_blade.get_management_access_policies_members.return_value = (
+            members_response
+        )
+
+        delete_response = Mock()
+        delete_response.status_code = 200
+        mock_blade.delete_management_access_policies.return_value = delete_response
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_blade.delete_management_access_policies.assert_called_once_with(
+            names=["tenant-a-ops"]
+        )
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_fails_when_policy_api_too_old(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main fails when the array is older than the policy header API version"""
+        # policy gate: LooseVersion(MIN_POLICY_API_VERSION) > LooseVersion(api_version) → True
+        mock_loose_version.return_value.__gt__ = Mock(return_value=True)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params()
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.18"]
+        mock_get_system.return_value = mock_blade
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "does not support management access policies" in msg
+        assert "2.19+" in msg
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_fails_when_rules_requested_on_2_19(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main fails when rules param is set but API is < 2.26"""
+        # policy gate passes (False), rule gate fails (True)
+        mock_loose_version.return_value.__gt__ = Mock(side_effect=[False, True])
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                }
+            ]
+        )
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.19"]
+        mock_get_system.return_value = mock_blade
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "does not support rule management on policies" in msg
+        assert "2.26+" in msg
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_refuses_to_modify_builtin_policy(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main fails immediately when a mutation is attempted on a built-in policy"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(name="array_admin", enabled=False)
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "Built-in policy array_admin cannot be modified or deleted" in msg
+        mock_get_system.assert_not_called()
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_readonly_no_mutation_on_builtin_is_allowed(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main lets a bare state=present with no mutation through even on a built-in policy"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        # No enabled / aggregation / rules → no mutation, state=present → the
+        # built-in check should not fire.
+        mock_module.params = _base_params(name="array_admin")
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.26"]
+        mock_get_system.return_value = mock_blade
+
+        existing = Mock()
+        existing.name = "array_admin"
+        existing.enabled = True
+        existing.aggregation_strategy = "all-permissions"
+
+        get_response = Mock()
+        get_response.status_code = 200
+        get_response.items = [existing]
+        mock_blade.get_management_access_policies.return_value = get_response
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        # No patch, no post, no delete — pure no-op
+        mock_blade.patch_management_access_policies.assert_not_called()
+        mock_blade.post_management_access_policies.assert_not_called()
+        mock_blade.delete_management_access_policies.assert_not_called()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_refuses_to_modify_builtin_policy_case_variant(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test the built-in guard matches case variants of a built-in name"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(name="Readonly", enabled=False)
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        msg = mock_module.fail_json.call_args[1]["msg"]
+        assert "Built-in policy Readonly cannot be modified or deleted" in msg
+        mock_get_system.assert_not_called()
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_rejects_duplicate_rules_before_connecting(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main fails on duplicate rules before any connection is made"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(
+            rules=[
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+                {
+                    "role": "viewer",
+                    "scope": {"name": "fb1", "resource_type": "arrays"},
+                },
+            ]
+        )
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert "Duplicate rule" in mock_module.fail_json.call_args[1]["msg"]
+        mock_get_system.assert_not_called()
+
+    @patch("plugins.modules.purefb_mgmt_policy.LooseVersion")
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", True)
+    def test_main_refuses_to_delete_builtin_policy(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
+        """Test main refuses to delete a built-in policy"""
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
+
+        mock_module = Mock()
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params(name="readonly", state="absent")
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert (
+            "Built-in policy readonly cannot be modified or deleted"
+            in mock_module.fail_json.call_args[1]["msg"]
+        )
+
+    @patch("plugins.modules.purefb_mgmt_policy.get_system")
+    @patch("plugins.modules.purefb_mgmt_policy.AnsibleModule")
+    @patch("plugins.modules.purefb_mgmt_policy.HAS_PYPURECLIENT", False)
+    def test_main_fails_when_sdk_missing(self, mock_ansible_module, mock_get_system):
+        """Test main fails clearly when py-pure-client is not installed"""
+        mock_module = Mock()
+        mock_module.fail_json = Mock(side_effect=SystemExit)
+        mock_module.exit_json = Mock(side_effect=SystemExit)
+        mock_module.params = _base_params()
+        mock_module.check_mode = False
+        mock_ansible_module.return_value = mock_module
+
+        try:
+            main()
+        except SystemExit:
+            pass
+
+        mock_module.fail_json.assert_called_once()
+        assert (
+            "py-pure-client sdk is required"
+            in mock_module.fail_json.call_args[1]["msg"]
+        )
