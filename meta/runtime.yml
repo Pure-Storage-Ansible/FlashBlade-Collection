@@ -34,6 +34,8 @@ action_groups:
    - purefb_local_group
    - purefb_local_user
    - purefb_messages
+   - purefb_mgmt_policy
+   - purefb_mgmt_role
    - purefb_network
    - purefb_ntp
    - purefb_phonehome

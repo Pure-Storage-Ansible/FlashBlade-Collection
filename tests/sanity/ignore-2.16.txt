@@ -40,6 +40,10 @@ plugins/modules/purefb_local_group.py import-2.7
 plugins/modules/purefb_local_user.py compile-2.7
 plugins/modules/purefb_local_user.py import-2.7
 plugins/modules/purefb_messages.py import-2.7
+plugins/modules/purefb_mgmt_policy.py compile-2.7
+plugins/modules/purefb_mgmt_policy.py import-2.7
+plugins/modules/purefb_mgmt_role.py compile-2.7
+plugins/modules/purefb_mgmt_role.py import-2.7
 plugins/modules/purefb_network.py import-2.7
 plugins/modules/purefb_ntp.py import-2.7
 plugins/modules/purefb_phonehome.py import-2.7

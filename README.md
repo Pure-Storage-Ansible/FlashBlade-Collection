@@ -123,6 +123,8 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_local_group - manage local groups in a FlashBlade Local Directory Service
 - purefb_local_user - manage local users in a FlashBlade Local Directory Service
 - purefb_messages - list FlashBlade alert messages
+- purefb_mgmt_policy - manage FlashBlade management access policies and their rules
+- purefb_mgmt_role - manage FlashBlade custom management roles, permissions, and policy attachment
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade
 - purefb_phonehome - manage the phone home settings for a FlashBlade
