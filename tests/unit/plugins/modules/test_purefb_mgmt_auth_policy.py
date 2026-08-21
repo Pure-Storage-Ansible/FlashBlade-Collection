@@ -81,7 +81,6 @@ from plugins.modules.purefb_mgmt_auth_policy import (
     _desired_ssh_config,
     _current_ssh_config,
     _build_ssh_config,
-    _warn_if_live,
     reconcile_members,
     create_policy,
     update_policy,
