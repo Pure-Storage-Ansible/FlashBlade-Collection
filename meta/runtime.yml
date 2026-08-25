@@ -30,7 +30,13 @@ action_groups:
    - purefb_kmip
    - purefb_lag
    - purefb_lifecycle
+   - purefb_local_ds
+   - purefb_local_group
+   - purefb_local_user
    - purefb_messages
+   - purefb_mgmt_auth_policy
+   - purefb_mgmt_policy
+   - purefb_mgmt_role
    - purefb_network
    - purefb_ntp
    - purefb_phonehome
@@ -54,6 +60,7 @@ action_groups:
    - purefb_syslog
    - purefb_target
    - purefb_timeout
+   - purefb_tls_policy
    - purefb_tz
    - purefb_user
    - purefb_userpolicy

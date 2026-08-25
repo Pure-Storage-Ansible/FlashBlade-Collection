@@ -119,7 +119,13 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_kmip - manage FlashBlade KMIP servers
 - purefb_lag - manage FlashBlade Link Aggregation Groups
 - purefb_lifecycle - manage FlashBlade Bucket Lifecycle Rules
+- purefb_local_ds - manage FlashBlade Local Directory Services
+- purefb_local_group - manage local groups in a FlashBlade Local Directory Service
+- purefb_local_user - manage local users in a FlashBlade Local Directory Service
 - purefb_messages - list FlashBlade alert messages
+- purefb_mgmt_auth_policy - manage FlashBlade management authentication policies and their members
+- purefb_mgmt_policy - manage FlashBlade management access policies and their rules
+- purefb_mgmt_role - manage FlashBlade custom management roles, permissions, and policy attachment
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade
 - purefb_phonehome - manage the phone home settings for a FlashBlade
@@ -143,6 +149,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_syslog - manage FlashBlade syslog server configuration
 - purefb_target - manage remote S3-capable targets for a FlashBlade
 - purefb_timeout - manage FlashBlade GUI timeout
+- purefb_tls_policy - manage FlashBlade TLS policies and their network interface attachments
 - purefb_user - manage local *pureuser* account password on a FlashBlade
 - purefb_userpolicy - manage FlashBlade Object Store User Access Policies
 - purefb_userquota - manage individual user quotas on FlashBlade filesystems

@@ -1,0 +1,3 @@
+bugfixes:
+ - purefb_server - Fix ``ValidationError`` on ``state=present`` when ``dns`` or ``directory_service`` is set — the update path passed the whole list to ``Reference(name=...)`` instead of iterating.
+ - purefb_server - Correct the ``directory_service`` update path which wrote to ``Server.dns`` instead of ``Server.directory_services`` and could silently replace the DNS list.
