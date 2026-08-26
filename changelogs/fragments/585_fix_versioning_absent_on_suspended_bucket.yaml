@@ -1,0 +1,2 @@
+bugfixes:
+  - purefb_bucket - Fixed idempotency error when ``versioning`` is ``absent`` and the bucket's versioning is already ``suspended``. The module sent the literal string ``absent`` to the API, which rejected it with "Versioning can only be set to 'enabled' or 'suspended'".

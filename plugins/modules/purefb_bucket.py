@@ -690,7 +690,13 @@ def update_bucket(module, blade, bucket):
                 )
 
     if bucket.versioning != "none":
-        if module.params["versioning"] == "absent" and bucket.versioning == "enabled":
+        # Once versioning has been enabled it can never return to "none", and
+        # "absent" is only the module's sentinel, not a valid API value — so
+        # regardless of whether the bucket is currently "enabled" or already
+        # "suspended", "absent" must map to "suspended" here. Passing the
+        # literal "absent" through is rejected by the API ("Versioning can
+        # only be set to 'enabled' or 'suspended'").
+        if module.params["versioning"] == "absent":
             versioning = "suspended"
         else:
             versioning = module.params["versioning"]
