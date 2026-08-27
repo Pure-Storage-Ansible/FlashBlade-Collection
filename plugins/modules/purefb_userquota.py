@@ -132,9 +132,13 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
-    get_filesystem,
     get_error_message,
+    get_filesystem,
+    get_rest_api_version,
 )
 
 CONTEXT_API_VERSION = "2.17"
@@ -142,9 +146,12 @@ CONTEXT_API_VERSION = "2.17"
 
 def get_quota(module, blade):
     """Return Filesystem User Quota or None"""
-    versions = list(blade.get_versions().items)
+    versions = get_rest_api_version(blade)
     if module.params["uid"]:
-        if CONTEXT_API_VERSION in versions and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+            and module.params["context"]
+        ):
             res = blade.get_quotas_users(
                 file_system_names=[module.params["name"]],
                 filter="user.id=" + str(module.params["uid"]),
@@ -156,7 +163,10 @@ def get_quota(module, blade):
                 filter="user.id=" + str(module.params["uid"]),
             )
     else:
-        if CONTEXT_API_VERSION in versions and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+            and module.params["context"]
+        ):
             res = blade.get_quotas_users(
                 file_system_names=[module.params["name"]],
                 filter="user.name='" + module.params["uname"] + "'",
@@ -175,11 +185,14 @@ def get_quota(module, blade):
 def create_quota(module, blade):
     """Create Filesystem User Quota"""
     changed = True
-    versions = list(blade.get_versions().items)
+    versions = get_rest_api_version(blade)
     quota = int(human_to_bytes(module.params["quota"]))
     if not module.check_mode:
         if module.params["uid"]:
-            if CONTEXT_API_VERSION in versions and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+                and module.params["context"]
+            ):
                 res = blade.post_quotas_users(
                     file_system_names=[module.params["name"]],
                     uids=[module.params["uid"]],
@@ -193,7 +206,10 @@ def create_quota(module, blade):
                     quota=UserQuotaPost(quota=quota),
                 )
         else:
-            if CONTEXT_API_VERSION in versions and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+                and module.params["context"]
+            ):
                 res = blade.post_quotas_users(
                     file_system_names=[module.params["name"]],
                     user_names=[module.params["uname"]],
@@ -229,14 +245,17 @@ def create_quota(module, blade):
 def update_quota(module, blade):
     """Upodate Filesystem User Quota"""
     changed = False
-    versions = list(blade.get_versions().items)
+    versions = get_rest_api_version(blade)
     current_quota = get_quota(module, blade)
     quota = int(human_to_bytes(module.params["quota"]))
     if current_quota.quota != quota:
         changed = True
         if not module.check_mode:
             if module.params["uid"]:
-                if CONTEXT_API_VERSION in versions and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+                    and module.params["context"]
+                ):
                     res = blade.patch_quotas_users(
                         file_system_names=[module.params["name"]],
                         uids=[module.params["uid"]],
@@ -258,7 +277,10 @@ def update_quota(module, blade):
                         )
                     )
             else:
-                if CONTEXT_API_VERSION in versions and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+                    and module.params["context"]
+                ):
                     res = blade.patch_quotas_users(
                         file_system_names=[module.params["name"]],
                         user_names=[module.params["uname"]],
@@ -285,10 +307,13 @@ def update_quota(module, blade):
 def delete_quota(module, blade):
     """Delete Filesystem User Quota"""
     changed = True
-    versions = list(blade.get_versions().items)
+    versions = get_rest_api_version(blade)
     if not module.check_mode:
         if module.params["uid"]:
-            if CONTEXT_API_VERSION in versions and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+                and module.params["context"]
+            ):
                 res = blade.delete_quotas_users(
                     file_system_names=[module.params["name"]],
                     uids=[module.params["uid"]],
@@ -300,7 +325,10 @@ def delete_quota(module, blade):
                     uids=[module.params["uid"]],
                 )
         else:
-            if CONTEXT_API_VERSION in versions and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+                and module.params["context"]
+            ):
                 res = blade.delete_quotas_users(
                     file_system_names=[module.params["name"]],
                     user_names=[module.params["uname"]],
@@ -358,8 +386,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    versions = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in versions and not module.params["context"]:
+    versions = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(versions)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):

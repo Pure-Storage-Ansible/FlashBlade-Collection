@@ -225,8 +225,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 CERT_TYPE_VERSION = "2.15"
@@ -235,9 +239,9 @@ CSR_API_VERSION = "2.20"
 
 def update_cert(module, blade):
     """Update existing SSL Certificate"""
-    api_versions = list(blade.get_versions().items)
+    api_versions = get_rest_api_version(blade)
 
-    if CSR_API_VERSION in api_versions:
+    if LooseVersion(CSR_API_VERSION) <= LooseVersion(api_versions):
         changed = True
         certificate = CertificatePatch(
             certificate=module.params["certificate"],
@@ -295,8 +299,8 @@ def update_cert(module, blade):
 def create_cert(module, blade):
     # let the rest-api itself deal with errors
     changed = True
-    api_versions = list(blade.get_versions().items)
-    if CSR_API_VERSION in api_versions:
+    api_versions = get_rest_api_version(blade)
+    if LooseVersion(CSR_API_VERSION) <= LooseVersion(api_versions):
         certificate = CertificatePost(
             certificate_type=module.params["certificate_type"],
             certificate=module.params["certificate"],
@@ -315,7 +319,7 @@ def create_cert(module, blade):
             subject_alternative_names=module.params["subject_alternative_names"],
         )
     else:
-        if CERT_TYPE_VERSION in api_versions:
+        if LooseVersion(CERT_TYPE_VERSION) <= LooseVersion(api_versions):
             certificate = CertificatePost(
                 certificate_type=module.params["certificate_type"],
                 certificate=module.params["certificate"],
@@ -463,7 +467,7 @@ def main():
 
     email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     blade = get_system(module)
-    api_versions = list(blade.get_versions().items)
+    api_versions = get_rest_api_version(blade)
 
     if module.params["email"]:
         if not re.search(email_pattern, module.params["email"]):
@@ -498,7 +502,7 @@ def main():
     elif exists and state == "present":
         update_cert(module, blade)
     elif state == "sign":
-        if CSR_API_VERSION not in api_versions:
+        if LooseVersion(CSR_API_VERSION) > LooseVersion(api_versions):
             module.fail_json(msg="Purity//FB 4.6.3+ is required for CSRs")
         create_csr(module, blade)
     elif not exists and state == "import":

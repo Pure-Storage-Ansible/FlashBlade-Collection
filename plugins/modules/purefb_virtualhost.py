@@ -72,6 +72,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
+from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
+    get_rest_api_version,
+)
 
 MAX_HOST_COUNT = 10
 CONTEXT_API_VERSION = "2.17"
@@ -80,13 +86,16 @@ CONTEXT_API_VERSION = "2.17"
 def delete_host(module, blade):
     """Delete Object Store Virtual Host"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if module.params["name"] == "s3.amazonaws.com":
         module.warn("s3.amazonaws.com is a reserved name and cannot be deleted")
     else:
         changed = True
         if not module.check_mode:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.delete_object_store_virtual_hosts(
                     names=[module.params["name"]],
                     context_names=[module.params["context"]],
@@ -107,9 +116,12 @@ def delete_host(module, blade):
 def add_host(module, blade):
     """Add Object Store Virtual Host"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.post_object_store_virtual_hosts(
                 names=[module.params["name"]], context_names=[module.params["context"]]
             )
@@ -137,15 +149,21 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):
             module.params["context"] = list(blade.get_arrays().items)[0].name
     state = module.params["state"]
 
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         exists = bool(
             blade.get_object_store_virtual_hosts(
                 names=[module.params["name"]], context_names=[module.params["context"]]
@@ -159,7 +177,10 @@ def main():
             ).status_code
             == 200
         )
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         vhosts = blade.get_object_store_virtual_hosts(
             context_names=[module.params["context"]]
         )

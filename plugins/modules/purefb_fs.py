@@ -352,9 +352,13 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
-    get_filesystem,
     get_error_message,
+    get_filesystem,
+    get_rest_api_version,
 )
 
 EXPORT_POLICY_API_VERSION = "2.3"
@@ -368,7 +372,7 @@ REALM_API_VERSION = "2.19"
 def create_fs(module, blade):
     """Create Filesystem"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
         # Determine realm from either realm parameter or name prefix (realm::fs)
         realm_name = None
@@ -380,7 +384,7 @@ def create_fs(module, blade):
 
         # Validate realm if present
         if realm_name:
-            if REALM_API_VERSION not in api_version:
+            if LooseVersion(REALM_API_VERSION) > LooseVersion(api_version):
                 module.fail_json(
                     msg="Realm support requires Purity//FB 4.6.1+ (REST API 2.19+)"
                 )
@@ -478,7 +482,10 @@ def create_fs(module, blade):
         }
 
         # Add context if API supports it
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             post_kwargs["context_names"] = [module.params["context"]]
 
         # Add default_exports=[""] for realm filesystems (empty string)
@@ -493,7 +500,10 @@ def create_fs(module, blade):
                 )
             )
         if module.params["policy"]:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.get_policies(
                     names=[module.params["policy"]],
                     context_names=[module.params["context"]],
@@ -505,7 +515,10 @@ def create_fs(module, blade):
                 module.fail_json(
                     msg="Policy {0} doesn't exist.".format(module.params["policy"])
                 )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_policies_file_systems(
                     policy_names=[module.params["policy"]],
                     member_names=[fs_name],
@@ -526,7 +539,7 @@ def create_fs(module, blade):
                     )
                 )
         if (
-            EXPORT_POLICY_API_VERSION in api_version
+            LooseVersion(EXPORT_POLICY_API_VERSION) <= LooseVersion(api_version)
             and module.params["export_policy"]
             and (module.params["nfsv3"] or module.params["nfsv4"])
         ):
@@ -535,7 +548,10 @@ def create_fs(module, blade):
                     export_policy=Reference(name=module.params["export_policy"])
                 )
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_file_systems(
                     names=[fs_name],
                     file_system=export_attr,
@@ -552,14 +568,20 @@ def create_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-        if SMB_POLICY_API_VERSION in api_version and module.params["smb"]:
+        if (
+            LooseVersion(SMB_POLICY_API_VERSION) <= LooseVersion(api_version)
+            and module.params["smb"]
+        ):
             if module.params["client_policy"]:
                 export_attr = FileSystemPatch(
                     smb=Smb(
                         client_policy=Reference(name=module.params["client_policy"])
                     )
                 )
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_file_systems(
                         names=[fs_name],
                         file_system=export_attr,
@@ -582,7 +604,10 @@ def create_fs(module, blade):
                 export_attr = FileSystemPatch(
                     smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
                 )
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_file_systems(
                         names=[fs_name],
                         file_system=export_attr,
@@ -602,7 +627,7 @@ def create_fs(module, blade):
                             get_error_message(res),
                         )
                     )
-            if CA_API_VERSION in api_version:
+            if LooseVersion(CA_API_VERSION) <= LooseVersion(api_version):
                 ca_attr = FileSystemPatch(
                     smb=Smb(
                         continuous_availability_enabled=module.params[
@@ -610,7 +635,10 @@ def create_fs(module, blade):
                         ]
                     )
                 )
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_file_systems(
                         names=[fs_name],
                         file_system=ca_attr,
@@ -626,11 +654,17 @@ def create_fs(module, blade):
                             get_error_message(res),
                         )
                     )
-            if GOWNER_API_VERSION in api_version and module.params["group_ownership"]:
+            if (
+                LooseVersion(GOWNER_API_VERSION) <= LooseVersion(api_version)
+                and module.params["group_ownership"]
+            ):
                 go_attr = FileSystemPatch(
                     group_ownership=module.params["group_ownership"]
                 )
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_file_systems(
                         names=[fs_name],
                         file_system=go_attr,
@@ -646,7 +680,10 @@ def create_fs(module, blade):
                             get_error_message(res),
                         )
                     )
-            if CONTEXT_API_VERSION in api_version and module.params["storage_class"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["storage_class"]
+            ):
                 sc_patch = {
                     "names": [fs_name],
                     "file_system": FileSystemPatch(
@@ -684,9 +721,12 @@ def modify_fs(module, blade):
     fs_name = module.params["name"]
     if realm_name and "::" not in fs_name:
         fs_name = "{0}::{1}".format(realm_name, fs_name)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if module.params["policy"] and module.params["policy_state"] == "present":
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_policies(
                 names=[module.params["policy"]],
                 context_names=[module.params["context"]],
@@ -697,7 +737,10 @@ def modify_fs(module, blade):
             module.fail_json(
                 msg="Policy {0} doesn't exist.".format(module.params["policy"])
             )
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_policies_file_systems(
                 policy_names=[module.params["policy"]],
                 member_names=[fs_name],
@@ -709,7 +752,10 @@ def modify_fs(module, blade):
                 member_names=[fs_name],
             )
         if res.status_code != 200 or getattr(res, "total_item_count", 0) == 0:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_policies_file_systems(
                     policy_names=[module.params["policy"]],
                     member_names=[fs_name],
@@ -730,7 +776,10 @@ def modify_fs(module, blade):
                     )
                 )
     if module.params["policy"] and module.params["policy_state"] == "absent":
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_policies(
                 names=[module.params["policy"]],
                 context_names=[module.params["context"]],
@@ -738,7 +787,10 @@ def modify_fs(module, blade):
         else:
             res = blade.get_policies(names=[module.params["policy"]])
         if res.status_code == 200:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.get_policies_file_systems(
                     policy_names=[module.params["policy"]],
                     member_names=[fs_name],
@@ -750,7 +802,10 @@ def modify_fs(module, blade):
                     member_names=[fs_name],
                 )
             if res.status_code == 200:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.delete_policies_file_systems(
                         policy_names=[module.params["policy"]],
                         member_names=[fs_name],
@@ -849,7 +904,10 @@ def modify_fs(module, blade):
             mod_fs = True
         if not module.params["promote"] and fsys.promotion_status == "promoted":
             # Demotion only allowed on filesystems in a replica-link
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.get_file_system_replica_links(
                     local_file_system_names=[fs_name],
                     context_names=[module.params["context"]],
@@ -869,7 +927,10 @@ def modify_fs(module, blade):
     if mod_fs:
         changed = True
         if not module.check_mode:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 if new_fsys["destroyed"] != fsys.destroyed:
                     delres = blade.patch_file_systems(
                         names=[fs_name],
@@ -949,7 +1010,10 @@ def modify_fs(module, blade):
                         fs_name, get_error_message(res)
                     )
                 )
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         current_fs = list(
             blade.get_file_systems(
                 context_names=[module.params["context"]],
@@ -961,7 +1025,7 @@ def modify_fs(module, blade):
             blade.get_file_systems(filter="name='" + fs_name + "'").items
         )[0]
     if (
-        EXPORT_POLICY_API_VERSION in api_version
+        LooseVersion(EXPORT_POLICY_API_VERSION) <= LooseVersion(api_version)
         and module.params["export_policy"]
         and (current_fs.nfs.v3_enabled or current_fs.nfs.v4_1_enabled)
     ):
@@ -979,7 +1043,10 @@ def modify_fs(module, blade):
                     export_policy=Reference(name=module.params["export_policy"])
                 )
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_file_systems(
                     names=[fs_name],
                     file_system=export_attr,
@@ -1013,7 +1080,10 @@ def modify_fs(module, blade):
                 rules_attr = FileSystemPatch(
                     nfs=NfsPatch(rules=module.params["nfs_rules"])
                 )
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_file_systems(
                         names=[fs_name],
                         file_system=rules_attr,
@@ -1032,7 +1102,7 @@ def modify_fs(module, blade):
                         )
                     )
     if (
-        SMB_POLICY_API_VERSION in api_version
+        LooseVersion(SMB_POLICY_API_VERSION) <= LooseVersion(api_version)
         and module.params["client_policy"]
         and current_fs.smb.enabled
     ):
@@ -1047,7 +1117,10 @@ def modify_fs(module, blade):
             client_attr = FileSystemPatch(
                 smb=Smb(client_policy=Reference(name=module.params["client_policy"]))
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_file_systems(
                     names=[fs_name],
                     file_system=client_attr,
@@ -1065,7 +1138,7 @@ def modify_fs(module, blade):
                     )
                 )
     if (
-        SMB_POLICY_API_VERSION in api_version
+        LooseVersion(SMB_POLICY_API_VERSION) <= LooseVersion(api_version)
         and module.params["share_policy"]
         and current_fs.smb.enabled
     ):
@@ -1080,7 +1153,10 @@ def modify_fs(module, blade):
             share_attr = FileSystemPatch(
                 smb=Smb(share_policy=Reference(name=module.params["share_policy"]))
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_file_systems(
                     names=[fs_name],
                     file_system=share_attr,
@@ -1097,7 +1173,10 @@ def modify_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-    if CA_API_VERSION in api_version and current_fs.smb.enabled:
+    if (
+        LooseVersion(CA_API_VERSION) <= LooseVersion(api_version)
+        and current_fs.smb.enabled
+    ):
         if (
             module.params["continuous_availability"]
             != current_fs.smb.continuous_availability_enabled
@@ -1111,7 +1190,10 @@ def modify_fs(module, blade):
                     ]
                 )
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_file_systems(
                     names=[fs_name],
                     file_system=ca_attr,
@@ -1127,12 +1209,15 @@ def modify_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-    if GOWNER_API_VERSION in api_version:
+    if LooseVersion(GOWNER_API_VERSION) <= LooseVersion(api_version):
         if module.params["group_ownership"] != current_fs.group_ownership:
             change_go = True
         if not module.check_mode and change_go:
             go_attr = FileSystemPatch(group_ownership=module.params["group_ownership"])
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_file_systems(
                     names=[fs_name],
                     file_system=go_attr,
@@ -1148,7 +1233,10 @@ def modify_fs(module, blade):
                         get_error_message(res),
                     )
                 )
-    if CONTEXT_API_VERSION in api_version and module.params["storage_class"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["storage_class"]
+    ):
         if module.params["storage_class"] != current_fs.storage_class:
             change_sc = True
         sc_patch = {
@@ -1333,8 +1421,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # Only default the context to the local array name when this array is a
         # member of a fleet. A standalone array is "not in a fleet" and rejects
         # fleet context, so leave context unset - no context_names is then sent.

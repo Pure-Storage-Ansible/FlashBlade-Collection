@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 import sys
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock, MagicMock, patch
 
 # Mock external dependencies before importing module
 sys.modules["pypureclient"] = MagicMock()
@@ -117,10 +117,13 @@ def _blade(existing_rule):
 class TestUpdateNfsPolicyRule:
     """Regression tests for NFS export policy rule idempotency."""
 
-    def test_access_change_triggers_patch(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_access_change_triggers_patch(self, mock_loose_version):
         """Changing only access (root-squash -> no-squash) must PATCH the rule."""
         import plugins.modules.purefb_policy as pol
 
+        # Context API version absent: context feature gate OFF
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
         module = _module(access="no-squash")
         blade = _blade(_existing_rule(access="root-squash"))
 
@@ -137,8 +140,11 @@ class TestUpdateNfsPolicyRule:
         assert rule_kwargs["permission"] == "rw"
         module.exit_json.assert_called_once_with(changed=True)
 
-    def test_no_change_is_idempotent(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_no_change_is_idempotent(self, mock_loose_version):
         """Identical desired state (incl. access) must not PATCH the rule."""
+        # Context API version absent: context feature gate OFF
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
         module = _module(access="root-squash")
         blade = _blade(_existing_rule(access="root-squash"))
 
@@ -147,10 +153,13 @@ class TestUpdateNfsPolicyRule:
         blade.patch_nfs_export_policies_rules.assert_not_called()
         module.exit_json.assert_called_once_with(changed=False)
 
-    def test_access_change_preserves_unspecified_anon(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_access_change_preserves_unspecified_anon(self, mock_loose_version):
         """An access-only change must not reset anonuid/anongid left unset."""
         import plugins.modules.purefb_policy as pol
 
+        # Context API version absent: context feature gate OFF
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
         module = _module(access="no-squash")
         # Task changes access only and does not re-specify the anon mappings.
         module.params["anonuid"] = None
@@ -224,11 +233,14 @@ def _snap_blade(existing_rule):
 class TestUpdateSnapPolicy:
     """Regression tests for snapshot policy rule partial updates."""
 
-    def test_retention_change_preserves_at_schedule(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_retention_change_preserves_at_schedule(self, mock_loose_version):
         """Updating every/keep_for on an at-scheduled policy must preserve the
         existing ``at`` time and timezone, not drop them to an interval rule."""
         import plugins.modules.purefb_policy as pol
 
+        # Context API version absent: context feature gate OFF
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
         # Existing rule keeps snapshots taken daily at 10:00 in a named tz.
         # The task changes retention/interval but does not re-specify at/timezone
         # (the guards require every and keep_for to be supplied together).
@@ -254,8 +266,11 @@ class TestUpdateSnapPolicy:
         assert rule_kwargs["time_zone"] == "America/New_York"
         module.exit_json.assert_called_once_with(changed=True)
 
-    def test_no_change_is_idempotent(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_no_change_is_idempotent(self, mock_loose_version):
         """Identical desired schedule must not PATCH the policy."""
+        # Context API version absent: context feature gate OFF
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
         module = _snap_module(keep_for=86400, every=86400)
         blade = _snap_blade(_snap_rule(every=86400000, keep_for=86400000))
 
@@ -291,8 +306,11 @@ def _ctx_blade():
 class TestPolicyContextGating:
     """context_names must only be sent when a context is set."""
 
-    def test_no_context_omits_context_names(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_no_context_omits_context_names(self, mock_loose_version):
         """Standalone array (no context) must not send context_names."""
+        # Context API version present (2.17): gate ON, context param decides
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
         module = _ctx_module(context="")
         blade = _ctx_blade()
 
@@ -302,8 +320,11 @@ class TestPolicyContextGating:
         assert "context_names" not in blade.patch_smb_share_policies.call_args[1]
         module.exit_json.assert_called_once_with(changed=True)
 
-    def test_with_context_sends_context_names(self):
+    @patch("plugins.modules.purefb_policy.LooseVersion")
+    def test_with_context_sends_context_names(self, mock_loose_version):
         """When a context is set, context_names must be sent."""
+        # Context API version present (2.17): gate ON, context param decides
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
         module = _ctx_module(context="member-array")
         blade = _ctx_blade()
 

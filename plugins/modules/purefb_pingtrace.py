@@ -118,8 +118,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 import re
 
@@ -278,9 +282,9 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
 
-    if MIN_REQUIRED_API_VERSION not in api_version:
+    if LooseVersion(MIN_REQUIRED_API_VERSION) > LooseVersion(api_version):
         module.fail_json(
             msg="FlashBlade REST version not supported. "
             "Minimum version required: {0}".format(MIN_REQUIRED_API_VERSION)

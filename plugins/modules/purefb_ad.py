@@ -239,8 +239,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 GC_SERVERS_API_VERSION = "2.12"
@@ -264,9 +268,9 @@ def delete_account(module, blade):
 def create_account(module, blade):
     """Create Active Directory Account"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.params["existing"]:
-        if GC_SERVERS_API_VERSION in api_version:
+        if LooseVersion(GC_SERVERS_API_VERSION) <= LooseVersion(api_version):
             ad_config = ActiveDirectoryPost(
                 computer_name=module.params["computer"],
                 directory_servers=module.params["directory_servers"],
@@ -302,7 +306,7 @@ def create_account(module, blade):
                     )
                 )
     else:
-        if GC_SERVERS_API_VERSION in api_version:
+        if LooseVersion(GC_SERVERS_API_VERSION) <= LooseVersion(api_version):
             ad_config = ActiveDirectoryPost(
                 computer_name=module.params["computer"],
                 directory_servers=module.params["directory_servers"],
@@ -340,7 +344,7 @@ def create_account(module, blade):
 
 def update_account(module, blade):
     """Update Active Directory Account"""
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     changed = False
     mod_ad = False
     current_ad = list(blade.get_active_directory(names=[module.params["name"]]).items)[
@@ -384,7 +388,7 @@ def update_account(module, blade):
             ):
                 attr["service_principal_names"] = module.params["service_principals"]
                 mod_ad = True
-    if GC_SERVERS_API_VERSION in api_version:
+    if LooseVersion(GC_SERVERS_API_VERSION) <= LooseVersion(api_version):
         if module.params["global_catalog_servers"]:
             if current_ad.global_catalog_servers:
                 if sorted(current_ad.global_catalog_servers) != sorted(
@@ -516,8 +520,11 @@ def main():
 
     if not module.params["computer"]:
         module.params["computer"] = module.params["name"].replace("_", "-")
-    api_version = list(blade.get_versions().items)
-    if SERVERS_API_VERSION in api_version and module.params["server"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(SERVERS_API_VERSION) <= LooseVersion(api_version)
+        and module.params["server"]
+    ):
         if blade.get_servers(names=[module.params["server"]]).status_code != 200:
             module.fail_json(
                 msg="Server {0} does not exist on this FlashBlade.".format(

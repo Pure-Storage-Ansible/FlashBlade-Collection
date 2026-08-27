@@ -90,6 +90,13 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
+from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
+    get_error_message,
+    get_rest_api_version,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.time_utils import (
     milliseconds_to_time,
 )
@@ -124,7 +131,12 @@ def _bytes_to_human(bytes_number):
 
 def generate_default_dict(blade):
     default_info = {}
-    api_version = list(blade.get_versions().items)[0]
+    # NOTE(latent bug): this previously read list(blade.get_versions().items)[0]
+    # - a single version string - so the SECURITY/NAP/RA_DURATION gates below
+    # were substring checks that could never match as intended. The
+    # get_rest_api_version()/LooseVersion migration makes these gates evaluate
+    # correctly, so the gated sections can now appear where they never did.
+    api_version = get_rest_api_version(blade)
     defaults = list(blade.get_arrays().items)[0]
     default_info["flashblade_name"] = defaults.name
     default_info["purity_version"] = defaults.version
@@ -195,7 +207,7 @@ def generate_default_dict(blade):
     default_info["smb_mode"] = getattr(defaults, "smb_mode", None)
     default_info["timezone"] = defaults.time_zone
     default_info["product_type"] = getattr(defaults, "product_type", "Unknown")
-    if SECURITY_API_VERSION in api_version:
+    if LooseVersion(SECURITY_API_VERSION) <= LooseVersion(api_version):
         dar = defaults.encryption.data_at_rest
         default_info["encryption"] = {
             "data_at_rest_enabled": dar.enabled,
@@ -208,7 +220,7 @@ def generate_default_dict(blade):
             keyname = key.name
             default_info["support_keys"][keyname] = {key.verification_key}
         default_info["security_update"] = getattr(defaults, "security_update", None)
-    if NAP_API_VERSION in api_version:
+    if LooseVersion(NAP_API_VERSION) <= LooseVersion(api_version):
         default_info["network_access_protocol"] = getattr(
             defaults.network_access_policy, "name", "None"
         )
@@ -230,7 +242,7 @@ def generate_default_dict(blade):
         "ra_opened": ra_opened,
         "ra_status": ra_info.remote_assist_status,
     }
-    if RA_DURATION_API_VERSION in api_version:
+    if LooseVersion(RA_DURATION_API_VERSION) <= LooseVersion(api_version):
         default_info["remote_assist"]["ra_duration"] = ra_info.remote_assist_duration
     return default_info
 
@@ -321,7 +333,7 @@ def generate_perf_dict(blade):
 
 def generate_config_dict(blade):
     config_info = {}
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     config_info["dns"] = {}
     dns_configs = list(blade.get_dns().items)
     for config in dns_configs:
@@ -466,7 +478,7 @@ def generate_config_dict(blade):
             config_info["snmp_managers"][mgr_name]["user"] = getattr(
                 manager.v3, "user", None
             )
-    if SMTP_ENCRYPT_API_VERSION in api_version:
+    if LooseVersion(SMTP_ENCRYPT_API_VERSION) <= LooseVersion(api_version):
         config_info["saml2sso"] = {}
         saml2 = list(blade.get_sso_saml2_idps().items)
         if saml2:
@@ -707,7 +719,7 @@ def generate_capacity_dict(blade):
 def generate_snap_dict(blade):
     snap_info = {}
     snaps = list(blade.get_file_system_snapshots().items)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     for snap in snaps:
         snapshot = snap.name
         snap_info[snapshot] = {
@@ -727,7 +739,7 @@ def generate_snap_dict(blade):
             "source_location": snap.source.location.name,
             "policies": [],
         }
-        if PUBLIC_API_VERSION in api_version:
+        if LooseVersion(PUBLIC_API_VERSION) <= LooseVersion(api_version):
             if hasattr(snap, "policies"):
                 for policy in snap.policies:
                     snap_info[snapshot]["policies"].append(
@@ -1354,7 +1366,7 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_system(module)
-    api_versions = list(blade.get_versions().items)
+    api_versions = get_rest_api_version(blade)
 
     if not module.params["gather_subset"]:
         module.params["gather_subset"] = ["minimum"]
@@ -1432,19 +1444,27 @@ def main():
         info["kerberos"] = generate_kerb_dict(blade)
     if "policies" in subset or "all" in subset:
         info["access_policies"] = generate_object_store_access_policies_dict(blade)
-        if PUBLIC_API_VERSION in api_versions:
+        if LooseVersion(PUBLIC_API_VERSION) <= LooseVersion(api_versions):
             info["bucket_access_policies"] = generate_bucket_access_policies_dict(blade)
             info["bucket_cross_origin_policies"] = (
                 generate_bucket_cross_object_policies_dict(blade)
             )
         info["export_policies"] = generate_nfs_export_policies_dict(blade)
-        if SMB_CLIENT_API_VERSION in api_versions:
+        if LooseVersion(SMB_CLIENT_API_VERSION) <= LooseVersion(api_versions):
             info["share_policies"] = generate_smb_client_policies_dict(blade)
-        if FLEET_API_VERSION in api_versions:
+        if LooseVersion(FLEET_API_VERSION) <= LooseVersion(api_versions):
             info["fleet"] = generate_fleet_dict(blade)
-    if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_versions:
+    if (
+        "drives" in subset
+        or "all" in subset
+        and LooseVersion(DRIVES_API_VERSION) <= LooseVersion(api_versions)
+    ):
         info["drives"] = generate_drives_dict(blade)
-    if "servers" in subset or "all" in subset and SERVERS_API_VERSION in api_versions:
+    if (
+        "servers" in subset
+        or "all" in subset
+        and LooseVersion(SERVERS_API_VERSION) <= LooseVersion(api_versions)
+    ):
         info["servers"] = generate_servers_dict(blade)
     module.exit_json(changed=False, purefb_info=info)
 

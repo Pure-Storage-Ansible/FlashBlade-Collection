@@ -69,8 +69,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 SMTP_ENCRYPT_API_VERSION = "2.15"
@@ -96,7 +100,9 @@ def set_smtp(module, blade):
         encrypt = module.params["encryption"]
         changed = True
     if changed and not module.check_mode:
-        if SMTP_ENCRYPT_API_VERSION in list(blade.get_versions().items):
+        if LooseVersion(SMTP_ENCRYPT_API_VERSION) <= LooseVersion(
+            get_rest_api_version(blade)
+        ):
             res = blade.patch_smtp_servers(
                 smtp=SmtpServer(
                     relay_host=relay_host, sender_domain=domain, encryption_mode=encrypt
@@ -128,10 +134,13 @@ def main():
     module = AnsibleModule(argument_spec, supports_check_mode=True)
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not HAS_PYPURECLIENT:
         module.fail_json(msg="py-pure-client SDK is required for this module")
-    if SMTP_ENCRYPT_API_VERSION not in api_version and module.params["encryption"]:
+    if (
+        LooseVersion(SMTP_ENCRYPT_API_VERSION) > LooseVersion(api_version)
+        and module.params["encryption"]
+    ):
         module.fail_json(msg="Purity//FB must be upgraded to support encryption.")
 
     set_smtp(module, blade)

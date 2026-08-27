@@ -136,8 +136,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 MIN_API_VERSION = "2.17"
@@ -339,8 +343,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if MIN_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(MIN_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):

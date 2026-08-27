@@ -1,0 +1,34 @@
+minor_changes:
+  - purefb_ad - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_admin - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_bucket - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_bucket_access - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_bucket_replica - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_certs - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_connect - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_dns - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_ds - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_export - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_fs - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_fs_replica - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_groupquota - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_hardware - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_info - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_inventory - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_lifecycle - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_pingtrace - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_policy - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_ra - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_remote_cred - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_s3acc - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_s3user - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_saml - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_smtp - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_snap - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_syslog - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_user - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_userpolicy - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_userquota - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+  - purefb_virtualhost - Migrate REST API version checks to get_rest_api_version and LooseVersion comparisons
+bugfixes:
+  - purefb_info - Default subset version gating previously compared against a single version string instead of the supported-versions list, so encryption, network access protocol and remote assist duration details were never reported; these now appear when the array supports them

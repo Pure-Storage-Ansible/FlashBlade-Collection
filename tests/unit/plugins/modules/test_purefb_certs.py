@@ -54,6 +54,9 @@ sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.purefb
 sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.common"] = (
     MagicMock()
 )
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.version"] = (
+    MagicMock()
+)
 
 from plugins.modules.purefb_certs import main
 
@@ -62,12 +65,13 @@ class TestPurefbCerts:
     """Test cases for purefb_certs module"""
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_create_cert_with_intermediate(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test creating a certificate with intermediate certificate"""
         # Setup mock module
@@ -106,6 +110,9 @@ class TestPurefbCerts:
         mock_version.version = "2.15"
         mock_blade.get_versions.return_value.items = [mock_version]
 
+        # Mock API version checks - all feature gates OFF (pre-2.15 behavior)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
+
         # Mock array name
         mock_array = Mock()
         mock_array.name = "test-array"
@@ -138,12 +145,13 @@ class TestPurefbCerts:
         assert call_args["changed"] is True
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_update_cert_uses_patch(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test BUG #4 fix: update_cert uses CertificatePatch, not CertificatePost"""
         # Setup mock module
@@ -181,6 +189,9 @@ class TestPurefbCerts:
         mock_version = Mock()
         mock_version.version = "2.20"
         mock_blade.get_versions.return_value.items = [mock_version]
+
+        # Mock API version check - CSR feature gate OFF (old unconfigured-mock behavior)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
 
         # Mock array name
         mock_array = Mock()
@@ -243,11 +254,14 @@ class TestPurefbCerts:
         call_args = mock_module.exit_json.call_args[1]
         assert call_args["changed"] is True
 
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
-    def test_main_import_cert_check_mode(self, mock_ansible_module, mock_get_system):
+    def test_main_import_cert_check_mode(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
         """Test BUG #3 fix: import_cert doesn't raise NameError in check_mode"""
         # Setup mock module
         mock_module = Mock()
@@ -284,6 +298,9 @@ class TestPurefbCerts:
         mock_version = Mock()
         mock_version.version = "2.10"
         mock_blade.get_versions.return_value.items = [mock_version]
+
+        # Mock API version checks - all feature gates OFF (pre-2.15 behavior)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
 
         # Certificate doesn't exist
         mock_blade.get_certificates.return_value.status_code = 400
@@ -572,12 +589,13 @@ class TestPurefbCerts:
         assert "Exporting Certificate failed" in call_args["msg"]
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_create_csr_success(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test create_csr successfully creates CSR"""
         # Setup mock module
@@ -614,6 +632,9 @@ class TestPurefbCerts:
         mock_version = Mock()
         mock_version.version = "2.20"
         mock_blade.get_versions.return_value.items = ["2.20"]
+
+        # Mock API version check - CSR min-version gate passes (API >= 2.20)
+        mock_loose_version.return_value.__gt__ = Mock(return_value=False)
 
         # Certificate exists
         mock_blade.get_certificates.return_value.status_code = 200
@@ -657,11 +678,14 @@ class TestPurefbCerts:
         call_args = mock_module.exit_json.call_args[1]
         assert call_args["changed"] is True
 
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
-    def test_main_create_csr_old_api_fails(self, mock_ansible_module, mock_get_system):
+    def test_main_create_csr_old_api_fails(
+        self, mock_ansible_module, mock_get_system, mock_loose_version
+    ):
         """Test create_csr fails on old API version"""
         # Setup mock module
         mock_module = Mock()
@@ -697,6 +721,9 @@ class TestPurefbCerts:
         mock_version = Mock()
         mock_version.version = "2.15"
         mock_blade.get_versions.return_value.items = ["2.15"]
+
+        # Mock API version check - CSR min-version gate fails (API < 2.20)
+        mock_loose_version.return_value.__gt__ = Mock(return_value=True)
 
         mock_get_system.return_value = mock_blade
 
@@ -964,12 +991,13 @@ class TestPurefbCerts:
         assert "pycountry sdk is required" in call_args["msg"]
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_update_cert_old_api(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test update_cert with old API version (< 2.20)"""
         # Setup mock module
@@ -1007,6 +1035,9 @@ class TestPurefbCerts:
         mock_version.version = "2.15"
         mock_blade.get_versions.return_value.items = ["2.15"]
 
+        # Mock API version check - CSR feature gate OFF (API < 2.20)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
+
         # Certificate exists
         mock_blade.get_certificates.return_value.status_code = 200
 
@@ -1039,12 +1070,13 @@ class TestPurefbCerts:
         assert call_args["changed"] is True
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_update_cert_new_api(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test update_cert with new API version (>= 2.20)"""
         # Setup mock module
@@ -1079,6 +1111,9 @@ class TestPurefbCerts:
         # Mock blade with new API version
         mock_blade = Mock()
         mock_blade.get_versions.return_value.items = ["2.20"]
+
+        # Mock API version check - CSR feature gate ON (API >= 2.20)
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
 
         # Certificate exists
         mock_blade.get_certificates.return_value.status_code = 200
@@ -1116,12 +1151,13 @@ class TestPurefbCerts:
         assert call_args["changed"] is True
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_update_cert_new_api_fails(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test update_cert fails with new API version"""
         # Setup mock module
@@ -1157,6 +1193,9 @@ class TestPurefbCerts:
         mock_blade = Mock()
         mock_blade.get_versions.return_value.items = ["2.20"]
 
+        # Mock API version check - CSR feature gate ON (API >= 2.20)
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
+
         # Certificate exists
         mock_blade.get_certificates.return_value.status_code = 200
 
@@ -1186,12 +1225,13 @@ class TestPurefbCerts:
         assert "Updating existing SSL certificate" in call_args["msg"]
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_update_cert_old_api_fails(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test update_cert fails with old API version"""
         # Setup mock module
@@ -1227,6 +1267,9 @@ class TestPurefbCerts:
         mock_blade = Mock()
         mock_blade.get_versions.return_value.items = ["2.15"]
 
+        # Mock API version check - CSR feature gate OFF (API < 2.20)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
+
         # Certificate exists
         mock_blade.get_certificates.return_value.status_code = 200
 
@@ -1252,12 +1295,13 @@ class TestPurefbCerts:
         assert "Updating existing SSL certificate" in call_args["msg"]
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_create_cert_new_api_fails(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test create_cert fails with new API version"""
         # Setup mock module
@@ -1292,6 +1336,9 @@ class TestPurefbCerts:
         # Mock blade with new API version
         mock_blade = Mock()
         mock_blade.get_versions.return_value.items = ["2.20"]
+
+        # Mock API version check - CSR feature gate ON (API >= 2.20)
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
 
         # Certificate doesn't exist
         mock_blade.get_certificates.return_value.status_code = 400
@@ -1451,12 +1498,13 @@ class TestPurefbCerts:
         assert "External Certificates cannot be reimported" in call_args["msg"]
 
     @patch("plugins.modules.purefb_certs.pycountry")
+    @patch("plugins.modules.purefb_certs.LooseVersion")
     @patch("plugins.modules.purefb_certs.get_system")
     @patch("plugins.modules.purefb_certs.AnsibleModule")
     @patch("plugins.modules.purefb_certs.HAS_PYPURECLIENT", True)
     @patch("plugins.modules.purefb_certs.HAS_PYCOUNTRY", True)
     def test_main_import_existing_cert(
-        self, mock_ansible_module, mock_get_system, mock_pycountry
+        self, mock_ansible_module, mock_get_system, mock_loose_version, mock_pycountry
     ):
         """Test importing over existing non-external certificate"""
         # Setup mock module
@@ -1491,6 +1539,9 @@ class TestPurefbCerts:
         # Mock blade
         mock_blade = Mock()
         mock_blade.get_versions.return_value.items = ["2.15"]
+
+        # Mock API version check - CSR feature gate OFF (API < 2.20)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
 
         # Certificate exists and is NOT external
         mock_cert_response = Mock()

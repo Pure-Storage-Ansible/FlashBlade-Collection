@@ -55,12 +55,19 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
+from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
+    get_error_message,
+    get_rest_api_version,
+)
 
 PART_NUMBER_API_VERSION = "2.8"
 
 
 def generate_hardware_dict(blade):
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     hw_info = {
         "modules": {},
         "ethernet": {},
@@ -83,7 +90,7 @@ def generate_hardware_dict(blade):
             "model": component.model,
             "identify": component.identify_enabled,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["modules"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='eth'").items)
     for component in components:
@@ -95,7 +102,7 @@ def generate_hardware_dict(blade):
             "model": component.model,
             "speed": component.speed,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["ethernet"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='mgmt_port'").items)
     for component in components:
@@ -107,7 +114,7 @@ def generate_hardware_dict(blade):
             "model": component.model,
             "speed": component.speed,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["mgmt_ports"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='fan'").items)
     for component in components:
@@ -117,7 +124,7 @@ def generate_hardware_dict(blade):
             "status": component.status,
             "identify": component.identify_enabled,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["fans"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='fb'").items)
     for component in components:
@@ -130,7 +137,7 @@ def generate_hardware_dict(blade):
             "temperature": component.temperature,
             "identify": component.identify_enabled,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["blades"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='pwr'").items)
     for component in components:
@@ -141,7 +148,7 @@ def generate_hardware_dict(blade):
             "serial": component.serial,
             "model": component.model,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["power"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='xfm'").items)
     for component in components:
@@ -152,7 +159,7 @@ def generate_hardware_dict(blade):
             "serial": component.serial,
             "model": component.model,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["switch"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='ch'").items)
     for component in components:
@@ -164,7 +171,7 @@ def generate_hardware_dict(blade):
             "serial": component.serial,
             "model": component.model,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["chassis"][component_name]["part_number"] = component.part_number
     components = list(blade.get_hardware(filter="type='bay'").items)
     for component in components:
@@ -177,7 +184,7 @@ def generate_hardware_dict(blade):
             "model": component.model,
             "identify": component.identify_enabled,
         }
-        if PART_NUMBER_API_VERSION in api_version:
+        if LooseVersion(PART_NUMBER_API_VERSION) <= LooseVersion(api_version):
             hw_info["bays"][component_name]["part_number"] = component.part_number
 
     return hw_info

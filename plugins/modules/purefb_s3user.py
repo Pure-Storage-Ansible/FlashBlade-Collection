@@ -172,8 +172,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 CONTEXT_API_VERSION = "2.17"
@@ -181,8 +185,11 @@ CONTEXT_API_VERSION = "2.17"
 
 def get_s3acc(module, blade):
     """Return Object Store Account or None"""
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_object_store_accounts(
             names=[module.params["account"]], context_names=[module.params["context"]]
         )
@@ -195,9 +202,12 @@ def get_s3acc(module, blade):
 
 def get_s3user(module, blade):
     """Return Object Store Account or None"""
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     full_user = module.params["account"] + "/" + module.params["name"]
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_object_store_users(
             names=[full_user], context_names=[module.params["context"]]
         )
@@ -211,13 +221,16 @@ def get_s3user(module, blade):
 def update_s3user(module, blade):
     """Update Object Store User"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     exists = False
     s3user_facts = {}
     user = module.params["account"] + "/" + module.params["name"]
     if module.params["access_key"] or module.params["imported_key"]:
         key_count = 0
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             keys = list(
                 blade.get_object_store_access_keys(
                     context_names=[module.params["context"]]
@@ -243,7 +256,8 @@ def update_s3user(module, blade):
                         changed = True
                         if not module.check_mode:
                             if (
-                                CONTEXT_API_VERSION in api_version
+                                LooseVersion(CONTEXT_API_VERSION)
+                                <= LooseVersion(api_version)
                                 and module.params["context"]
                             ):
                                 res = blade.post_object_store_access_keys(
@@ -262,7 +276,8 @@ def update_s3user(module, blade):
                                 result = list(res.items)[0]
                                 if not module.params["enable_key"]:
                                     if (
-                                        CONTEXT_API_VERSION in api_version
+                                        LooseVersion(CONTEXT_API_VERSION)
+                                        <= LooseVersion(api_version)
                                         and module.params["context"]
                                     ):
                                         blade.patch_object_store_access_keys(
@@ -297,7 +312,8 @@ def update_s3user(module, blade):
                     changed = True
                     if not module.check_mode:
                         if (
-                            CONTEXT_API_VERSION in api_version
+                            LooseVersion(CONTEXT_API_VERSION)
+                            <= LooseVersion(api_version)
                             and module.params["context"]
                         ):
                             res = blade.post_object_store_access_keys(
@@ -320,7 +336,8 @@ def update_s3user(module, blade):
                             result = list(res.items)[0]
                             if not module.params["enable_key"]:
                                 if (
-                                    CONTEXT_API_VERSION in api_version
+                                    LooseVersion(CONTEXT_API_VERSION)
+                                    <= LooseVersion(api_version)
                                     and module.params["context"]
                                 ):
                                     blade.patch_object_store_access_keys(
@@ -358,10 +375,13 @@ def create_s3user(module, blade):
     """Create Object Store Account"""
     s3user_facts = {}
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.post_object_store_users(
                 names=[user], context_names=[module.params["context"]]
             )
@@ -376,7 +396,10 @@ def create_s3user(module, blade):
         if module.params["access_key"] and module.params["imported_key"]:
             module.warn("'access_key: true' overrides imported keys")
         if module.params["access_key"]:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_object_store_access_keys(
                     object_store_access_key=ObjectStoreAccessKeyPost(
                         user={"name": user}
@@ -392,7 +415,10 @@ def create_s3user(module, blade):
             if res.status_code == 200:
                 result = list(res.items)[0]
                 if not module.params["enable_key"]:
-                    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                    if (
+                        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                        and module.params["context"]
+                    ):
                         blade.patch_object_store_access_keys(
                             names=[result.name],
                             object_store_access_key=ObjectStoreAccessKey(enabled=False),
@@ -418,7 +444,10 @@ def create_s3user(module, blade):
                 )
         else:
             if module.params["imported_key"]:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.post_object_store_access_keys(
                         names=[module.params["imported_key"]],
                         object_store_access_key=ObjectStoreAccessKeyPost(
@@ -439,7 +468,8 @@ def create_s3user(module, blade):
                     result = list(res.items)[0]
                     if not module.params["enable_key"]:
                         if (
-                            CONTEXT_API_VERSION in api_version
+                            LooseVersion(CONTEXT_API_VERSION)
+                            <= LooseVersion(api_version)
                             and module.params["context"]
                         ):
                             blade.patch_object_store_access_keys(
@@ -465,7 +495,10 @@ def create_s3user(module, blade):
         if module.params["policy"]:
             policy_list = module.params["policy"]
             for policy in policy_list:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.get_object_store_access_policies(
                         names=[policy],
                         context_names=[module.params["context"]],
@@ -477,7 +510,10 @@ def create_s3user(module, blade):
                     policy_list.remove(policy)
             username = module.params["account"] + "/" + module.params["name"]
             for policy in policy_list:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.get_object_store_users_object_store_access_policies(
                         member_names=[username],
                         policy_names=[policy],
@@ -488,7 +524,10 @@ def create_s3user(module, blade):
                         member_names=[username], policy_names=[policy]
                     )
                 if not list(res.items):
-                    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                    if (
+                        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                        and module.params["context"]
+                    ):
                         res = (
                             blade.post_object_store_access_policies_object_store_users(
                                 member_names=[username],
@@ -524,8 +563,11 @@ def create_s3user(module, blade):
 def remove_key(module, blade):
     """Remove Access Key from User"""
     changed = False
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_object_store_access_keys(
             names=[module.params["key_name"]], context_names=[module.params["context"]]
         )
@@ -534,7 +576,10 @@ def remove_key(module, blade):
     if res.status_code == 200:
         changed = True
         if not module.check_mode:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.delete_object_store_access_keys(
                     names=[module.params["key_name"]],
                     context_names=[module.params["context"]],
@@ -556,9 +601,12 @@ def remove_key(module, blade):
 def change_key(module, blade):
     """Change state of Access Key"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_object_store_access_keys(
                 names=[module.params["key_name"]],
                 context_names=[module.params["context"]],
@@ -569,7 +617,10 @@ def change_key(module, blade):
             key = list(res.items)[0]
             if key.enabled != module.params["enable_key"]:
                 changed = True
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_object_store_access_keys(
                         names=[module.params["key_name"]],
                         object_store_access_key=ObjectStoreAccessKey(
@@ -597,10 +648,13 @@ def change_key(module, blade):
 def delete_s3user(module, blade, internal=False):
     """Delete Object Store Account"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
         user = module.params["account"] + "/" + module.params["name"]
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.delete_object_store_users(
                 names=[user], context_names=[module.params["context"]]
             )
@@ -653,8 +707,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):

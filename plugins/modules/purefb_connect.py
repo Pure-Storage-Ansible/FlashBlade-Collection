@@ -142,8 +142,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
 from ansible_collections.everpure.flashblade.plugins.module_utils.time_utils import (
     time_to_milliseconds,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 CONTEXT_API_VERSION = "2.17"
@@ -152,8 +156,11 @@ FAN_OUT_MAXIMUM = 5
 
 
 def _check_connected(module, blade):
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         connected_blades = list(
             blade.get_array_connections(context_names=[module.params["context"]]).items
         )
@@ -188,10 +195,13 @@ def _check_connected(module, blade):
 
 def break_connection(module, blade, target_blade):
     """Break connection between arrays"""
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     changed = True
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             source_blade = (
                 blade.get_arrays(context_names=[module.params["context"]]).items[0].name
             )
@@ -201,7 +211,10 @@ def break_connection(module, blade, target_blade):
             module.fail_json(
                 msg="Disconnect can only happen from the array that formed the connection"
             )
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.delete_array_connections(
                 remote_names=[target_blade.remote.name],
                 context_names=[module.params["context"]],
@@ -221,9 +234,12 @@ def break_connection(module, blade, target_blade):
 
 def create_connection(module, blade):
     """Create connection between REST 2 capable arrays"""
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     changed = True
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_array_connections(context_names=[module.params["context"]])
     else:
         res = blade.get_array_connections()
@@ -295,7 +311,10 @@ def create_connection(module, blade):
             connection_key=connection_key,
         )
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.post_array_connections(
                 array_connection=connection_info,
                 context_names=[module.params["context"]],
@@ -314,7 +333,7 @@ def create_connection(module, blade):
 def update_connection(module, blade):
     """Update REST 2 based array connection"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     remote_blade = Client(
         target=module.params["target_url"], api_token=module.params["target_api"]
     )
@@ -327,7 +346,10 @@ def update_connection(module, blade):
             msg="Update can only happen from the array that formed the connection"
         )
     if module.params["encrypted"] != remote_connection.encrypted:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_file_system_replica_links(
                 context_names=[module.params["context"]]
             )
@@ -346,7 +368,10 @@ def update_connection(module, blade):
         not remote_connection.throttle.default_limit
         and not remote_connection.throttle.window_limit
     ):
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             blade.get_bucket_replica_links(context_names=[module.params["context"]])
         else:
             blade.get_bucket_replica_links()
@@ -417,7 +442,10 @@ def update_connection(module, blade):
                 encrypted=new_connection["encrypted"],
                 throttle=throttle,
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_array_connections(
                     remote_names=[remote_name],
                     array_connection=connection_info,
@@ -464,8 +492,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):

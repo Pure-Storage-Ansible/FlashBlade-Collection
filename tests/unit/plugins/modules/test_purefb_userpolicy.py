@@ -109,8 +109,9 @@ def _make_blade(already_assigned=False):
 class TestPurefbUserpolicyAddPolicy:
     """Regression tests for add_policy (issue #574)."""
 
+    @patch("plugins.modules.purefb_userpolicy.LooseVersion")
     @patch("plugins.modules.purefb_userpolicy._check_valid_policy", return_value=True)
-    def test_add_issues_single_context_scoped_post(self, _valid):
+    def test_add_issues_single_context_scoped_post(self, _valid, mock_loose_version):
         """On API >= 2.17 the add must issue exactly ONE context-scoped POST.
 
         Previously a second, non-context POST ran unconditionally (no else) and
@@ -119,6 +120,9 @@ class TestPurefbUserpolicyAddPolicy:
         """
         module = _make_module(context="array1")
         blade = _make_blade(already_assigned=False)
+
+        # API version check: context feature gate ON (2.17 <= api_version)
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
 
         try:
             add_policy(module, blade)
@@ -136,11 +140,15 @@ class TestPurefbUserpolicyAddPolicy:
         assert module.exit_json.call_args[1]["changed"] is True
         module.fail_json.assert_not_called()
 
+    @patch("plugins.modules.purefb_userpolicy.LooseVersion")
     @patch("plugins.modules.purefb_userpolicy._check_valid_policy", return_value=True)
-    def test_add_is_idempotent_when_already_assigned(self, _valid):
+    def test_add_is_idempotent_when_already_assigned(self, _valid, mock_loose_version):
         """If the policy is already assigned, no POST is issued and changed is False."""
         module = _make_module(context="array1")
         blade = _make_blade(already_assigned=True)
+
+        # API version check: context feature gate ON (2.17 <= api_version)
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
 
         try:
             add_policy(module, blade)

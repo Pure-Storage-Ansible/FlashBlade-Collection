@@ -89,6 +89,7 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 
@@ -114,7 +115,7 @@ def main():
         module.fail_json(msg="py-pure-client sdk is required for this module")
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
 
     if module.params["speed"]:
         speed = module.params["speed"] * 1000000000

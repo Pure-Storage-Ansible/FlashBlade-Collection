@@ -104,8 +104,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 DELETE_RL_API_VERSION = "2.10"
@@ -297,7 +301,7 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    versions = list(blade.get_versions().items)
+    versions = get_rest_api_version(blade)
 
     local_fs = get_local_fs(module, blade)
     local_replica_link = get_local_rl(module, blade)
@@ -325,7 +329,7 @@ def main():
     if state == "present" and not local_replica_link:
         create_rl(module, blade)
     elif state == "absent" and local_replica_link:
-        if DELETE_RL_API_VERSION not in versions:
+        if LooseVersion(DELETE_RL_API_VERSION) > LooseVersion(versions):
             module.fail_json("Deleting a replica link requires REST 2.10 or higher")
         else:
             delete_rl(module, blade)
