@@ -101,8 +101,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 SYSLOG_SERVICES_API = "2.14"
@@ -132,11 +136,11 @@ def add_syslog(module, blade):
         full_address = noport_address + ":" + module.params["port"]
     else:
         full_address = noport_address
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
 
     changed = True
     if not module.check_mode:
-        if SYSLOG_SERVICES_API in api_version:
+        if LooseVersion(SYSLOG_SERVICES_API) <= LooseVersion(api_version):
             res = blade.post_syslog_servers(
                 names=[module.params["name"]],
                 syslog_server=SyslogServerPost(
@@ -167,8 +171,8 @@ def add_syslog(module, blade):
 def update_syslog(module, blade):
     """Update Syslog Server"""
     changed = False
-    api_version = list(blade.get_versions().items)
-    if SYSLOG_SERVICES_API not in api_version:
+    api_version = get_rest_api_version(blade)
+    if LooseVersion(SYSLOG_SERVICES_API) > LooseVersion(api_version):
         module.exit_json(
             msg="Purity//FB needs upgrading to support modification of existing syslog server"
         )

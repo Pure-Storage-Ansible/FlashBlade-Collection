@@ -129,8 +129,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
@@ -142,8 +146,11 @@ CONTEXT_API_VERSION = "2.17"
 
 def get_s3acc(module, blade):
     """Return Object Store Account or None"""
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_object_store_accounts(
             names=[module.params["name"]], context_names=[module.params["context"]]
         )
@@ -157,9 +164,12 @@ def get_s3acc(module, blade):
 def update_s3acc(module, blade):
     """Update Object Store Account"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     public = False
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         acc_settings = list(
             blade.get_object_store_accounts(
                 names=[module.params["name"]], context_names=[module.params["context"]]
@@ -169,7 +179,7 @@ def update_s3acc(module, blade):
         acc_settings = list(
             blade.get_object_store_accounts(names=[module.params["name"]]).items
         )[0]
-    if PUBLIC_API_VERSION in api_version:
+    if LooseVersion(PUBLIC_API_VERSION) <= LooseVersion(api_version):
         public = True
         current_account = {
             "hard_limit": acc_settings.hard_limit_enabled,
@@ -263,7 +273,10 @@ def update_s3acc(module, blade):
                         quota_limit=new_account["default_quota"],
                     ),
                 )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_object_store_accounts(
                     object_store_account=osa,
                     names=[module.params["name"]],
@@ -285,9 +298,12 @@ def update_s3acc(module, blade):
 def create_s3acc(module, blade):
     """Create Object Store Account"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.post_object_store_accounts(
                 names=[module.params["name"]], context_names=[module.params["context"]]
             )
@@ -321,7 +337,10 @@ def create_s3acc(module, blade):
                     quota_limit=default_quota,
                 ),
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_object_store_accounts(
                     object_store_account=osa,
                     names=[module.params["name"]],
@@ -332,7 +351,10 @@ def create_s3acc(module, blade):
                     object_store_account=osa, names=[module.params["name"]]
                 )
             if res.status_code != 200:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     blade.object_store_accounts.delete_object_store_accounts(
                         names=[module.params["name"]],
                         context_names=[module.params["context"]],
@@ -345,7 +367,7 @@ def create_s3acc(module, blade):
                     msg="Failed to set quotas correctly for account {0}. "
                     "Error: {1}".format(module.params["name"], get_error_message(res))
                 )
-        if PUBLIC_API_VERSION in api_version:
+        if LooseVersion(PUBLIC_API_VERSION) <= LooseVersion(api_version):
             if not module.params["block_new_public_policies"]:
                 module.params["block_new_public_policies"] = False
             if not module.params["block_public_access"]:
@@ -358,7 +380,10 @@ def create_s3acc(module, blade):
                     block_public_access=module.params["block_public_access"],
                 )
             )
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_object_store_accounts(
                     object_store_account=osa,
                     names=[module.params["name"]],
@@ -380,9 +405,12 @@ def create_s3acc(module, blade):
 def delete_s3acc(module, blade):
     """Delete Object Store Account"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_object_store_users(
                 names=[module.params["name"] + "/*'"],
                 context_names=[module.params["context"]],
@@ -393,7 +421,10 @@ def delete_s3acc(module, blade):
             module.fail_json(msg="Remove all Users from Object Store Account {0} \
                                  before deletion".format(module.params["name"]))
         else:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.delete_object_store_accounts(
                     names=[module.params["name"]],
                     context_names=[module.params["context"]],
@@ -429,8 +460,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):

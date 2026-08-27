@@ -61,6 +61,12 @@ sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils"] = (
 sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.purefb"] = (
     MagicMock()
 )
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.common"] = (
+    MagicMock()
+)
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.version"] = (
+    MagicMock()
+)
 sys.modules[
     "ansible_collections.everpure.flashblade.plugins.module_utils.time_utils"
 ] = MagicMock()
@@ -250,6 +256,7 @@ class TestPurefbInfo:
         assert "capacity" in call_args["purefb_info"]
         assert "network" in call_args["purefb_info"]
 
+    @patch("plugins.modules.purefb_info.LooseVersion")
     @patch("plugins.modules.purefb_info.generate_perf_dict")
     @patch("plugins.modules.purefb_info.generate_config_dict")
     @patch("plugins.modules.purefb_info.generate_capacity_dict")
@@ -304,6 +311,7 @@ class TestPurefbInfo:
         mock_generate_capacity,
         mock_generate_config,
         mock_generate_perf,
+        mock_loose_version,
     ):
         """Test main with 'all' subset"""
         # Setup mocks
@@ -317,6 +325,10 @@ class TestPurefbInfo:
         mock_version.version = "2.0.0"
         mock_blade.get_versions.return_value.items = [mock_version]
         mock_get_system.return_value = mock_blade
+
+        # Version feature gates OFF (matches pre-migration behavior where the
+        # membership check against the versions list never matched)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
 
         # Set return values for all generators
         mock_generate_default.return_value = {}
@@ -367,7 +379,8 @@ class TestPurefbInfo:
         assert call_args["changed"] is False
         assert "purefb_info" in call_args
 
-    def test_generate_default_dict(self):
+    @patch("plugins.modules.purefb_info.LooseVersion")
+    def test_generate_default_dict(self, mock_loose_version):
         """Test generate_default_dict function"""
         # Setup mock blade
         mock_blade = Mock()
@@ -377,6 +390,10 @@ class TestPurefbInfo:
         mock_version.version = "2.7"  # Use version that supports SECURITY_API_VERSION
         mock_version.__contains__ = Mock(return_value=True)
         mock_blade.get_versions.return_value.items = [mock_version]
+
+        # Version feature gates ON (SECURITY/NAP/RA_DURATION) - matches the
+        # pre-migration mock where __contains__ returned True for every check
+        mock_loose_version.return_value.__le__ = Mock(return_value=True)
 
         # Mock array info
         mock_array = Mock()
@@ -615,7 +632,8 @@ class TestPurefbInfo:
         assert result["s3"]["read_bytes_per_sec"] == 200000
         assert result["nfs"]["read_bytes_per_sec"] == 300000
 
-    def test_generate_config_dict(self):
+    @patch("plugins.modules.purefb_info.LooseVersion")
+    def test_generate_config_dict(self, mock_loose_version):
         """Test generate_config_dict function"""
         # Setup mock blade
         mock_blade = Mock()
@@ -624,6 +642,10 @@ class TestPurefbInfo:
         mock_version = Mock()
         mock_version.version = "2.0.0"
         mock_blade.get_versions.return_value.items = [mock_version]
+
+        # SMTP_ENCRYPT feature gate OFF (matches pre-migration behavior where
+        # the membership check against the versions list never matched)
+        mock_loose_version.return_value.__le__ = Mock(return_value=False)
 
         # Mock DNS
         mock_dns = Mock()

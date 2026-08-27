@@ -83,6 +83,9 @@ sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.purefb
 sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.common"] = (
     mock_collections.everpure.flashblade.plugins.module_utils.common
 )
+sys.modules["ansible_collections.everpure.flashblade.plugins.module_utils.version"] = (
+    mock_collections.everpure.flashblade.plugins.module_utils.version
+)
 
 from plugins.modules.purefb_fs import (
     main,
@@ -91,6 +94,7 @@ from plugins.modules.purefb_fs import (
     eradicate_fs,
     modify_fs,
 )
+from plugins.module_utils.version import LooseVersion as RealLooseVersion
 
 
 class TestPurefbFs:
@@ -138,6 +142,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_main_create_filesystem(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem
     ):
@@ -205,6 +214,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_main_delete_filesystem(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem
     ):
@@ -251,6 +265,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_main_eradicate_filesystem(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem
     ):
@@ -299,6 +318,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.MultiProtocolPost")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_size(
         self,
         mock_human_to_bytes,
@@ -363,6 +387,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.MultiProtocolPost")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_nfs_rules(
         self,
         mock_human_to_bytes,
@@ -433,6 +462,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.MultiProtocolPost")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_no_context_omits_context_names(
         self,
         mock_human_to_bytes,
@@ -491,6 +525,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.MultiProtocolPost")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_with_context_sends_context_names(
         self,
         mock_human_to_bytes,
@@ -656,6 +695,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_main_filesystem_not_exists_absent(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem
     ):
@@ -690,6 +734,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_main_native_smb_aclmode_fails(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem
     ):
@@ -733,6 +782,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.FileSystemPatch")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_size_change(
         self, mock_fs_patch, mock_human_to_bytes, mock_get_filesystem
     ):
@@ -801,6 +855,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_no_changes(self, mock_get_filesystem):
         """Test modifying filesystem when no changes needed"""
         # Setup mocks
@@ -918,6 +977,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_main_eradicate_warning(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem
     ):
@@ -1003,6 +1067,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_snapshot_enabled(self, mock_get_filesystem):
         """Test creating filesystem with snapshot directory enabled"""
         # Setup mocks
@@ -1039,6 +1108,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_fastremove(self, mock_get_filesystem):
         """Test creating filesystem with fast remove enabled"""
         # Setup mocks
@@ -1075,6 +1149,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_hard_limit(self, mock_get_filesystem):
         """Test creating filesystem with hard limit enabled"""
         # Setup mocks
@@ -1111,6 +1190,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_failure(self, mock_get_filesystem):
         """Test filesystem creation failure"""
         # Setup mocks
@@ -1148,6 +1232,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_add_policy(self, mock_human_to_bytes, mock_get_filesystem):
         """Test adding a policy to filesystem"""
         # Setup mocks
@@ -1221,6 +1310,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_remove_policy(self, mock_human_to_bytes, mock_get_filesystem):
         """Test removing a policy from filesystem"""
         # Setup mocks
@@ -1290,6 +1384,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_user_quota(self, mock_human_to_bytes, mock_get_filesystem):
         """Test modifying filesystem user quota"""
         # Setup mocks
@@ -1352,6 +1451,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.human_to_bytes")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_group_quota(self, mock_human_to_bytes, mock_get_filesystem):
         """Test modifying filesystem group quota"""
         # Setup mocks
@@ -1413,6 +1517,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_enable_http(self, mock_get_filesystem):
         """Test enabling HTTP on filesystem"""
         # Setup mocks
@@ -1472,6 +1581,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_nfsv3_change(self, mock_get_filesystem):
         """Test modifying filesystem NFSv3 setting"""
         # Setup mocks
@@ -1531,6 +1645,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_nfsv4_change(self, mock_get_filesystem):
         """Test modifying filesystem NFSv4 setting"""
         # Setup mocks
@@ -1590,6 +1709,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_promote(self, mock_get_filesystem):
         """Test promoting a filesystem"""
         # Setup mocks
@@ -1649,6 +1773,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_writable_false(self, mock_get_filesystem):
         """Test making filesystem read-only"""
         # Setup mocks
@@ -1708,6 +1837,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_writable_true_promoted(self, mock_get_filesystem):
         """Test making promoted filesystem writable"""
         # Setup mocks
@@ -1767,6 +1901,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_snapshot_enable(self, mock_get_filesystem):
         """Test enabling snapshot directory on filesystem"""
         # Setup mocks
@@ -1826,6 +1965,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_fastremove_enable(self, mock_get_filesystem):
         """Test enabling fast remove on filesystem"""
         # Setup mocks
@@ -1885,6 +2029,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_hard_limit_enable(self, mock_get_filesystem):
         """Test enabling hard limit on filesystem"""
         # Setup mocks
@@ -1944,6 +2093,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_safeguard_acls_enable(self, mock_get_filesystem):
         """Test enabling safeguard ACLs on filesystem"""
         # Setup mocks
@@ -2003,6 +2157,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_access_control_change(self, mock_get_filesystem):
         """Test changing access control style on filesystem"""
         # Setup mocks
@@ -2062,6 +2221,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_recover_destroyed(self, mock_get_filesystem):
         """Test recovering a destroyed filesystem"""
         # Setup mocks
@@ -2121,6 +2285,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_policy(self, mock_get_filesystem):
         """Test creating filesystem with snapshot/access policy"""
         # Setup mocks
@@ -2161,6 +2330,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_invalid_policy(self, mock_get_filesystem):
         """Test creating filesystem with invalid policy"""
         # Setup mocks
@@ -2287,6 +2461,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.3"),
+    )
     def test_modify_fs_change_export_policy(self, mock_get_filesystem):
         """Test changing NFS export policy on existing filesystem"""
         # Setup mocks
@@ -2350,6 +2529,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.3"),
+    )
     def test_modify_fs_add_export_policy(self, mock_get_filesystem):
         """Test adding NFS export policy to filesystem without one"""
         # Setup mocks
@@ -2412,6 +2596,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_modify_fs_change_share_policy(self, mock_get_filesystem):
         """Test changing SMB share policy on existing filesystem"""
         # Setup mocks
@@ -2477,6 +2666,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_modify_fs_change_client_policy(self, mock_get_filesystem):
         """Test changing SMB client policy on existing filesystem"""
         # Setup mocks
@@ -2544,6 +2738,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.3"),
+    )
     def test_modify_fs_export_policy_failure(self, mock_get_filesystem):
         """Test export policy modification failure"""
         # Setup mocks
@@ -2611,6 +2810,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_modify_fs_share_policy_failure(self, mock_get_filesystem):
         """Test share policy modification failure"""
         # Setup mocks
@@ -2681,6 +2885,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_modify_fs_client_policy_failure(self, mock_get_filesystem):
         """Test client policy modification failure"""
         # Setup mocks
@@ -2753,6 +2962,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_user_quota(self, mock_get_filesystem):
         """Test creating filesystem with user quota"""
         # Setup mocks
@@ -2789,6 +3003,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_with_group_quota(self, mock_get_filesystem):
         """Test creating filesystem with group quota"""
         # Setup mocks
@@ -2864,6 +3083,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_smb_disabled_with_empty_nfs_rules(self, mock_get_filesystem):
         """Test creating filesystem with SMB disabled and empty NFS rules"""
         # Setup mocks
@@ -2901,6 +3125,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_add_policy_invalid(self, mock_get_filesystem):
         """Test adding invalid policy to filesystem"""
         # Setup mocks
@@ -2966,6 +3195,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_modify_fs_add_policy_attach_failure(self, mock_get_filesystem):
         """Test adding policy to filesystem with attach failure"""
         # Setup mocks
@@ -3041,6 +3275,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.3"),
+    )
     def test_create_fs_with_export_policy(self, mock_get_filesystem):
         """Test creating filesystem with export policy (API 2.3+)"""
         mock_module = Mock()
@@ -3088,6 +3327,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.3"),
+    )
     def test_create_fs_with_export_policy_failure(self, mock_get_filesystem):
         """Test creating filesystem with export policy assignment failure"""
         mock_module = Mock()
@@ -3137,6 +3381,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_create_fs_with_client_policy(self, mock_get_filesystem):
         """Test creating filesystem with SMB client policy (API 2.10+)"""
         mock_module = Mock()
@@ -3182,6 +3431,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_create_fs_with_client_policy_failure(self, mock_get_filesystem):
         """Test creating filesystem with SMB client policy assignment failure"""
         mock_module = Mock()
@@ -3231,6 +3485,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_create_fs_with_share_policy(self, mock_get_filesystem):
         """Test creating filesystem with SMB share policy (API 2.10+)"""
         mock_module = Mock()
@@ -3276,6 +3535,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.10"),
+    )
     def test_create_fs_with_share_policy_failure(self, mock_get_filesystem):
         """Test creating filesystem with SMB share policy assignment failure"""
         mock_module = Mock()
@@ -3325,6 +3589,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_without_size(self, mock_get_filesystem):
         """Test creating filesystem without size parameter (defaults to 0)"""
         mock_module = Mock()
@@ -3359,6 +3628,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_with_context_api(self, mock_get_filesystem):
         """Test creating filesystem with context API (API 2.17+)"""
         mock_module = Mock()
@@ -3397,6 +3671,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_with_policy_context_api(self, mock_get_filesystem):
         """Test creating filesystem with policy using context API (API 2.17+)"""
         mock_module = Mock()
@@ -3451,6 +3730,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_policy_attach_with_context(self, mock_get_filesystem):
         """Test policy attachment during creation with context API"""
         mock_module = Mock()
@@ -3588,6 +3872,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_policy_attach_failure_cleanup(self, mock_get_filesystem):
         """Test that filesystem is cleaned up when policy attachment fails during creation"""
         mock_module = Mock()
@@ -3645,6 +3934,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.0"),
+    )
     def test_create_fs_policy_check_failure_cleanup(self, mock_get_filesystem):
         """Test that filesystem is cleaned up when policy check fails during creation"""
         mock_module = Mock()
@@ -3701,6 +3995,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_export_policy_with_context(self, mock_get_filesystem):
         """Test creating filesystem with export policy using context API"""
         mock_module = Mock()
@@ -3747,6 +4046,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_client_policy_with_context(self, mock_get_filesystem):
         """Test creating filesystem with client policy using context API and SMB"""
         mock_module = Mock()
@@ -3796,6 +4100,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_share_policy_with_context(self, mock_get_filesystem):
         """Test creating filesystem with share policy using context API and SMB"""
         mock_module = Mock()
@@ -3845,6 +4154,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_continuous_availability_with_context(self, mock_get_filesystem):
         """Test creating filesystem with continuous availability using context API"""
         mock_module = Mock()
@@ -3887,6 +4201,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_group_ownership_with_context(self, mock_get_filesystem):
         """Test creating filesystem with group ownership using context API"""
         mock_module = Mock()
@@ -3929,6 +4248,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.HAS_PYPURECLIENT", True)
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.17"),
+    )
     def test_create_fs_storage_class_with_context(self, mock_get_filesystem):
         """Test creating filesystem with storage class using context API"""
         mock_module = Mock()
@@ -3971,6 +4295,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.get_system")
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.20"),
+    )
     def test_create_fs_with_realm_success(self, mock_get_system, mock_get_filesystem):
         """Test creating filesystem with realm succeeds on API 2.19+
 
@@ -4080,6 +4409,11 @@ class TestPurefbFs:
 
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.get_system")
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.19"),
+    )
     def test_create_fs_without_realm(self, mock_get_system, mock_get_filesystem):
         """Test creating filesystem without realm works as before"""
         mock_module = Mock()
@@ -4131,6 +4465,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.20"),
+    )
     def test_delete_fs_using_name_and_realm_params(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem, mock_delete_fs
     ):
@@ -4214,6 +4553,11 @@ class TestPurefbFs:
     @patch("plugins.modules.purefb_fs.get_filesystem")
     @patch("plugins.modules.purefb_fs.get_system")
     @patch("plugins.modules.purefb_fs.AnsibleModule")
+    @patch("plugins.modules.purefb_fs.LooseVersion", RealLooseVersion)
+    @patch(
+        "plugins.modules.purefb_fs.get_rest_api_version",
+        Mock(return_value="2.19"),
+    )
     def test_main_modify_fs_using_name_and_realm_params(
         self, mock_ansible_module, mock_get_system, mock_get_filesystem, mock_modify_fs
     ):

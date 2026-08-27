@@ -143,8 +143,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 import re
 
@@ -420,8 +424,8 @@ def main():
     )
 
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if MIN_LOCAL_USER not in api_version:
+    api_version = get_rest_api_version(blade)
+    if LooseVersion(MIN_LOCAL_USER) > LooseVersion(api_version):
         module.fail_json(
             msg="Purity//FB must be upgraded to support managing local users."
         )

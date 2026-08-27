@@ -132,11 +132,15 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.time_utils import (
     time_to_milliseconds,
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 from datetime import datetime
 
@@ -144,8 +148,11 @@ CONTEXT_API_VERSION = "2.17"
 
 
 def _get_bucket(module, blade):
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_buckets(
             names=[module.params["bucket"]], context_names=[module.params["context"]]
         )
@@ -173,9 +180,12 @@ def _convert_date_to_epoch(module):
 def delete_rule(module, blade):
     """Delete lifecycle rule"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.delete_lifecycle_rules(
                 names=[module.params["bucket"] + "/" + module.params["name"]],
                 context_names=[module.params["context"]],
@@ -198,7 +208,7 @@ def delete_rule(module, blade):
 def create_rule(module, blade):
     """Create lifecycle policy"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if (
         not module.params["keep_previous_for"]
         and not module.params["keep_current_until"]
@@ -232,7 +242,10 @@ def create_rule(module, blade):
             prefix=module.params["prefix"],
         )
         if attr.keep_current_version_until:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_lifecycle_rules(
                     rule=attr,
                     confirm_date=True,
@@ -241,7 +254,10 @@ def create_rule(module, blade):
             else:
                 res = blade.post_lifecycle_rules(rule=attr, confirm_date=True)
         else:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_lifecycle_rules(
                     rule=attr, context_names=[module.params["context"]]
                 )
@@ -257,7 +273,10 @@ def create_rule(module, blade):
             )
         if not module.params["enabled"]:
             attr = LifecycleRulePatch(enabled=module.params["enabled"])
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.patch_lifecycle_rules(
                     names=[module.params["bucket"] + "/" + module.params["name"]],
                     lifecycle=attr,
@@ -279,7 +298,7 @@ def create_rule(module, blade):
 def update_rule(module, blade, rule):
     """Update snapshot policy"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     current_rule = {
         "prefix": rule.prefix,
         "abort_incomplete_multipart_uploads_after": rule.abort_incomplete_multipart_uploads_after,
@@ -330,7 +349,10 @@ def update_rule(module, blade, rule):
                 enabled=new_rule["enabled"],
             )
             if attr.keep_current_version_until:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_lifecycle_rules(
                         names=[module.params["bucket"] + "/" + module.params["name"]],
                         lifecycle=attr,
@@ -344,7 +366,10 @@ def update_rule(module, blade, rule):
                         confirm_date=True,
                     )
             else:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_lifecycle_rules(
                         names=[module.params["bucket"] + "/" + module.params["name"]],
                         lifecycle=attr,
@@ -396,8 +421,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):
@@ -429,7 +457,10 @@ def main():
     rule = None
     if module.params["keep_current_until"]:
         module.params["keep_current_until"] = _convert_date_to_epoch(module)
-    if CONTEXT_API_VERSION in api_version and module.params["context"]:
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and module.params["context"]
+    ):
         res = blade.get_lifecycle_rules(
             names=[module.params["bucket"] + "/" + module.params["name"]],
             context_names=[module.params["context"]],

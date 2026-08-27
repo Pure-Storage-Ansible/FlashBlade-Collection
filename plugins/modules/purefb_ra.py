@@ -70,8 +70,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
@@ -84,7 +88,8 @@ def enable_ra(module, blade):
     """Enable Remote Assist"""
     changed = True
     if not module.check_mode:
-        if DURATION_API in list(blade.get_versions().items):
+        api_version = get_rest_api_version(blade)
+        if LooseVersion(DURATION_API) <= LooseVersion(api_version):
             duration = module.params["duration"] * 3600000
             ra_settings = Support(
                 remote_assist_active=True, remote_assist_duration=duration

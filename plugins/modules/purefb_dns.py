@@ -104,9 +104,13 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
-    remove_duplicates,
     get_error_message,
+    get_rest_api_version,
+    remove_duplicates,
 )
 
 NON_MGMT_DNS = "2.15"
@@ -275,11 +279,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if module.params["nameservers"]:
         module.params["nameservers"] = remove_duplicates(module.params["nameservers"])
 
-    if NON_MGMT_DNS in api_version:
+    if LooseVersion(NON_MGMT_DNS) <= LooseVersion(api_version):
         configs = list(blade.get_dns().items)
         exists = False
         for config in configs:

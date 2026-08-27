@@ -206,8 +206,12 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 
@@ -505,8 +509,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if NO_SMB_VERSION in api_version and module.params["dstype"] == "smb":
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(NO_SMB_VERSION) <= LooseVersion(api_version)
+        and module.params["dstype"] == "smb"
+    ):
         module.warn("Directory Service for SMB no longer supported by FlashBlade")
         module.exit_json(changed=False)
     ds_name = module.params["dstype"]

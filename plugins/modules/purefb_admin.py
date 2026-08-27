@@ -70,6 +70,7 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
     get_error_message,
+    get_rest_api_version,
 )
 
 
@@ -92,7 +93,7 @@ def main():
     if not 1 <= module.params["min_password"] <= 100:
         module.fail_json(msg="Minimum password length must be between 1 and 100")
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     changed = False
     current_settings = list(blade.get_admins_settings().items)[0]
     lockout = getattr(current_settings, "lockout_duration", None)

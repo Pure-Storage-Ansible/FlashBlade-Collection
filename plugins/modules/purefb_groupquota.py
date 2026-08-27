@@ -134,17 +134,24 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.purefb import 
     get_system,
     purefb_argument_spec,
 )
+from ansible_collections.everpure.flashblade.plugins.module_utils.version import (
+    LooseVersion,
+)
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
-    get_filesystem,
     get_error_message,
+    get_filesystem,
+    get_rest_api_version,
 )
 
 
 def get_quota(module, blade):
     """Return Filesystem User Quota or None"""
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if module.params["gid"]:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_quotas_groups(
                 file_system_names=[module.params["name"]],
                 filter="group.id=" + str(module.params["gid"]),
@@ -156,7 +163,10 @@ def get_quota(module, blade):
                 filter="group.id=" + str(module.params["gid"]),
             )
     else:
-        if CONTEXT_API_VERSION in api_version and module.params["context"]:
+        if (
+            LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+            and module.params["context"]
+        ):
             res = blade.get_quotas_groups(
                 file_system_names=[module.params["name"]],
                 filter="group.name='" + module.params["gname"] + "'",
@@ -175,10 +185,13 @@ def get_quota(module, blade):
 def create_quota(module, blade):
     """Create Filesystem User Quota"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
         if module.params["gid"]:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_quotas_groups(
                     file_system_names=[module.params["name"]],
                     gids=[module.params["gid"]],
@@ -204,7 +217,10 @@ def create_quota(module, blade):
                     )
                 )
         else:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.post_quotas_groups(
                     file_system_names=[module.params["name"]],
                     group_names=[module.params["gname"]],
@@ -235,13 +251,16 @@ def create_quota(module, blade):
 def update_quota(module, blade):
     """Upodate Filesystem User Quota"""
     changed = False
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     current_quota = get_quota(module, blade)
     if current_quota.quota != human_to_bytes(module.params["quota"]):
         changed = True
         if not module.check_mode:
             if module.params["gid"]:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_quotas_groups(
                         file_system_names=[module.params["name"]],
                         gids=[module.params["gid"]],
@@ -267,7 +286,10 @@ def update_quota(module, blade):
                         )
                     )
             else:
-                if CONTEXT_API_VERSION in api_version and module.params["context"]:
+                if (
+                    LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                    and module.params["context"]
+                ):
                     res = blade.patch_quotas_groups(
                         file_system_names=[module.params["name"]],
                         group_names=[module.params["gname"]],
@@ -298,10 +320,13 @@ def update_quota(module, blade):
 def delete_quota(module, blade):
     """Delete Filesystem User Quota"""
     changed = True
-    api_version = list(blade.get_versions().items)
+    api_version = get_rest_api_version(blade)
     if not module.check_mode:
         if module.params["gid"]:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.delete_quotas_groups(
                     file_system_names=[module.params["name"]],
                     gids=[module.params["gid"]],
@@ -319,7 +344,10 @@ def delete_quota(module, blade):
                     )
                 )
         else:
-            if CONTEXT_API_VERSION in api_version and module.params["context"]:
+            if (
+                LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+                and module.params["context"]
+            ):
                 res = blade.delete_quotas_groups(
                     file_system_names=[module.params["name"]],
                     group_names=[module.params["gname"]],
@@ -368,8 +396,11 @@ def main():
 
     state = module.params["state"]
     blade = get_system(module)
-    api_version = list(blade.get_versions().items)
-    if CONTEXT_API_VERSION in api_version and not module.params["context"]:
+    api_version = get_rest_api_version(blade)
+    if (
+        LooseVersion(CONTEXT_API_VERSION) <= LooseVersion(api_version)
+        and not module.params["context"]
+    ):
         # If no context is provided set the context to the local array name
         fleet_res = blade.get_fleets()
         if fleet_res.status_code == 200 and list(fleet_res.items):
