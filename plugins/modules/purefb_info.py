@@ -94,7 +94,6 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.version import
     LooseVersion,
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.common import (
-    get_error_message,
     get_rest_api_version,
 )
 from ansible_collections.everpure.flashblade.plugins.module_utils.time_utils import (
