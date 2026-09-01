@@ -106,6 +106,7 @@ NAP_API_VERSION = "2.13"
 RA_DURATION_API_VERSION = "2.14"
 SMTP_ENCRYPT_API_VERSION = "2.15"
 SERVERS_API_VERSION = "2.16"
+PASSWORD_POLICY_API_VERSION = "2.16"
 FLEET_API_VERSION = "2.17"
 
 
@@ -486,6 +487,29 @@ def generate_config_dict(blade):
                     ),
                     "sign_cred": getattr(saml2[0].sp.signing_credential, "name", None),
                 },
+            }
+    if PASSWORD_POLICY_API_VERSION in api_version:
+        config_info["password_policies"] = {}
+        for policy in list(blade.get_password_policies().items):
+            # Durations are reported as the API returns them: milliseconds.
+            config_info["password_policies"][policy.name] = {
+                "enabled": getattr(policy, "enabled", None),
+                "min_password_length": getattr(policy, "min_password_length", None),
+                "max_login_attempts": getattr(policy, "max_login_attempts", None),
+                "lockout_duration": getattr(policy, "lockout_duration", None),
+                "password_history": getattr(policy, "password_history", None),
+                "min_password_age": getattr(policy, "min_password_age", None),
+                "max_password_age": getattr(policy, "max_password_age", None),
+                "min_character_groups": getattr(policy, "min_character_groups", None),
+                "min_characters_per_group": getattr(
+                    policy, "min_characters_per_group", None
+                ),
+                "enforce_username_check": getattr(
+                    policy, "enforce_username_check", None
+                ),
+                "enforce_dictionary_check": getattr(
+                    policy, "enforce_dictionary_check", None
+                ),
             }
     return config_info
 

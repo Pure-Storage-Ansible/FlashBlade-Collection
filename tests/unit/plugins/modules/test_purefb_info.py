@@ -697,3 +697,182 @@ class TestPurefbInfo:
         assert result["dns"]["management"]["nameservers"] == ["8.8.8.8", "8.8.4.4"]
         assert "management_directory_service" in result
         assert "array_management" in result
+        # Version list has no real version strings, so gated sections are absent
+        assert "password_policies" not in result
+
+    def test_generate_config_dict_password_policies(self):
+        """Test generate_config_dict reports password policies on REST 2.16+"""
+        # Setup mock blade
+        mock_blade = Mock()
+
+        # Real version strings so the membership gates evaluate
+        mock_blade.get_versions.return_value.items = ["2.15", "2.16"]
+
+        # Mock DNS
+        mock_dns = Mock()
+        mock_dns.name = "management"
+        mock_dns.domain = "example.com"
+        mock_dns.nameservers = ["8.8.8.8"]
+        mock_blade.get_dns.return_value.items = [mock_dns]
+
+        # Mock SMTP
+        mock_blade.get_smtp_servers.return_value.items = []
+
+        # Mock alert watchers
+        mock_blade.get_alert_watchers.return_value.items = []
+
+        # Mock directory services - need at least management to avoid KeyError
+        mock_ds = Mock()
+        mock_ds.name = "management"
+        mock_ds.base_dn = "DC=example,DC=com"
+        mock_ds.bind_user = "admin"
+        mock_ds.ca_certificate = Mock()
+        mock_ds.ca_certificate.name = "ca-cert"
+        mock_ds.ca_certificate_group = Mock()
+        mock_ds.ca_certificate_group.name = "ca-group"
+        mock_ds.enabled = True
+        mock_ds.management = Mock()
+        mock_ds.management.user_login_attribute = "sAMAccountName"
+        mock_ds.management.user_object_class = "user"
+        mock_ds.nfs = Mock()
+        mock_ds.nfs.nis_servers = []
+        mock_ds.nfs.nis_domains = []
+        mock_ds.services = ["management"]
+        mock_ds.smb = Mock()
+        mock_ds.smb.join_ou = "OU=Computers"
+        mock_ds.uris = ["ldap://dc.example.com"]
+        mock_blade.get_directory_services.return_value.items = [mock_ds]
+
+        # Mock directory service roles
+        mock_blade.get_directory_services_roles.return_value.items = []
+
+        # Mock arrays for NTP
+        mock_array = Mock()
+        mock_array.name = "test-array"
+        mock_array.ntp_servers = ["time.google.com"]
+        mock_blade.get_arrays.return_value.items = [mock_array]
+
+        # Mock SSL certs
+        mock_blade.get_certificates.return_value.items = []
+
+        # Mock certificate groups
+        mock_blade.get_certificate_groups.return_value.items = []
+
+        # Mock syslog servers
+        mock_blade.get_syslog_servers.return_value.items = []
+
+        # Mock SNMP agents
+        mock_blade.get_snmp_agents.return_value.items = []
+
+        # Mock SNMP managers
+        mock_blade.get_snmp_managers.return_value.items = []
+
+        # Mock SAML2 SSO
+        mock_blade.get_sso_saml2_idps.return_value.items = []
+
+        # Mock the password policy singleton (API units - ms durations).
+        # spec-limited so getattr on absent fields returns the default.
+        fields = {
+            "name": "management",
+            "enabled": True,
+            "min_password_length": 8,
+            "max_login_attempts": 10,
+            "lockout_duration": 3600000,
+            "password_history": 5,
+            "min_password_age": 86400000,
+            "max_password_age": 8640000000,
+            "min_character_groups": 3,
+            "min_characters_per_group": 1,
+            "enforce_username_check": True,
+            "enforce_dictionary_check": False,
+        }
+        mock_policy = Mock(spec=list(fields))
+        for field, value in fields.items():
+            setattr(mock_policy, field, value)
+        mock_blade.get_password_policies.return_value.items = [mock_policy]
+
+        # Call function
+        result = generate_config_dict(mock_blade)
+
+        # Verify
+        assert "password_policies" in result
+        policy_info = result["password_policies"]["management"]
+        assert policy_info["enabled"] is True
+        assert policy_info["min_password_length"] == 8
+        assert policy_info["max_login_attempts"] == 10
+        assert policy_info["lockout_duration"] == 3600000
+        assert policy_info["password_history"] == 5
+        assert policy_info["min_password_age"] == 86400000
+        assert policy_info["max_password_age"] == 8640000000
+        assert policy_info["min_character_groups"] == 3
+        assert policy_info["min_characters_per_group"] == 1
+        assert policy_info["enforce_username_check"] is True
+        assert policy_info["enforce_dictionary_check"] is False
+
+    def test_generate_config_dict_password_policies_pre_218_field(self):
+        """Test a policy lacking max_password_age (REST 2.16/2.17) reports None"""
+        mock_blade = Mock()
+        mock_blade.get_versions.return_value.items = ["2.16"]
+
+        # Minimal mocks for the sections before the password policy block
+        mock_dns = Mock()
+        mock_dns.name = "management"
+        mock_dns.domain = "example.com"
+        mock_dns.nameservers = []
+        mock_blade.get_dns.return_value.items = [mock_dns]
+        mock_blade.get_smtp_servers.return_value.items = []
+        mock_blade.get_alert_watchers.return_value.items = []
+        mock_ds = Mock()
+        mock_ds.name = "management"
+        mock_ds.base_dn = "DC=example,DC=com"
+        mock_ds.bind_user = "admin"
+        mock_ds.ca_certificate = Mock()
+        mock_ds.ca_certificate.name = "ca-cert"
+        mock_ds.ca_certificate_group = Mock()
+        mock_ds.ca_certificate_group.name = "ca-group"
+        mock_ds.enabled = True
+        mock_ds.management = Mock()
+        mock_ds.management.user_login_attribute = "sAMAccountName"
+        mock_ds.management.user_object_class = "user"
+        mock_ds.nfs = Mock()
+        mock_ds.nfs.nis_servers = []
+        mock_ds.nfs.nis_domains = []
+        mock_ds.services = ["management"]
+        mock_ds.smb = Mock()
+        mock_ds.smb.join_ou = "OU=Computers"
+        mock_ds.uris = []
+        mock_blade.get_directory_services.return_value.items = [mock_ds]
+        mock_blade.get_directory_services_roles.return_value.items = []
+        mock_array = Mock()
+        mock_array.name = "test-array"
+        mock_array.ntp_servers = []
+        mock_blade.get_arrays.return_value.items = [mock_array]
+        mock_blade.get_certificates.return_value.items = []
+        mock_blade.get_certificate_groups.return_value.items = []
+        mock_blade.get_syslog_servers.return_value.items = []
+        mock_blade.get_snmp_agents.return_value.items = []
+        mock_blade.get_snmp_managers.return_value.items = []
+        mock_blade.get_sso_saml2_idps.return_value.items = []
+
+        # Policy object without the max_password_age field at all
+        fields = {
+            "name": "management",
+            "enabled": True,
+            "min_password_length": 1,
+            "max_login_attempts": 10,
+            "lockout_duration": 1000,
+            "password_history": 0,
+            "min_password_age": 0,
+            "min_character_groups": 1,
+            "min_characters_per_group": 1,
+            "enforce_username_check": False,
+            "enforce_dictionary_check": False,
+        }
+        mock_policy = Mock(spec=list(fields))
+        for field, value in fields.items():
+            setattr(mock_policy, field, value)
+        mock_blade.get_password_policies.return_value.items = [mock_policy]
+
+        result = generate_config_dict(mock_blade)
+
+        assert result["password_policies"]["management"]["max_password_age"] is None
