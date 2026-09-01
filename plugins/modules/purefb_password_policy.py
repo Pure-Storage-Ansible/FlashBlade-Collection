@@ -32,6 +32,12 @@ author:
 notes:
 - Options that are omitted leave the corresponding policy setting unchanged.
 - Durations are given in seconds; the array stores them in milliseconds.
+- Rules disabled by setting 0 are reported by the array as absent (null)
+  values; the GUI displays them as 0.
+- The array only allows I(max_login) and I(lockout) to transition between
+  enabled (non-zero) and disabled (0) together, so supply both in the same
+  task when enabling or disabling the lockout rules. Once both are enabled,
+  each can be changed independently.
 - Password policies require FlashBlade REST API 2.16 (Purity//FB 4.5.2) or
   higher; I(max_password_age) additionally requires REST API 2.18
   (Purity//FB 4.6.0) or higher.
@@ -59,12 +65,14 @@ options:
     - Maximum number of failed login attempts allowed before the user is
       locked out.
     - Range between 1 and 100.
+    - Set to 0 to disable the maximum login attempts rule.
     type: int
   lockout:
     description:
     - Duration, in seconds, of the account lockout after I(max_login)
       is exceeded.
     - Range between 1 second and 90 days (7776000 seconds).
+    - Set to 0 to disable the lockout duration rule.
     type: int
   password_history:
     description:
@@ -201,18 +209,27 @@ SECONDS_PARAMS = {
 }
 # Inclusive (min, max) bounds in module units; None means unbounded.
 PARAM_RANGES = {
-    "max_login": (1, 100),
+    "max_login": (0, 100),
     "min_password": (1, 100),
     "password_history": (0, 64),
     "min_character_groups": (1, 4),
     "min_characters_per_group": (1, None),
-    "lockout": (1, 7776000),
+    "lockout": (0, 7776000),
     "min_password_age": (0, 604800),
     "max_password_age": (0, 8639913600),
 }
 # The array stores password ages with one-hour precision; finer values
 # would either be rejected or silently rounded, breaking idempotency.
 HOUR_PRECISION_PARAMS = ("min_password_age", "max_password_age")
+# A rule set to 0 (disabled) is reported by the array as an absent field,
+# so a missing attribute on the current policy compares equal to 0.
+NULL_WHEN_DISABLED_FIELDS = (
+    "lockout_duration",
+    "max_login_attempts",
+    "max_password_age",
+    "min_password_age",
+    "password_history",
+)
 
 
 def _validate_params(module):
@@ -270,16 +287,23 @@ def get_policy(module, blade):
     return items[0]
 
 
+def _current_value(current, field):
+    value = getattr(current, field, None)
+    if value is None and field in NULL_WHEN_DISABLED_FIELDS:
+        return 0
+    return value
+
+
 def update_policy(module, blade, current):
     """PATCH only the settings that differ from the current policy."""
     patch_kwargs = {}
     for param, field in PLAIN_PARAMS.items():
         value = module.params[param]
-        if value is not None and value != getattr(current, field, None):
+        if value is not None and value != _current_value(current, field):
             patch_kwargs[field] = value
     for param, field in SECONDS_PARAMS.items():
         value = module.params[param]
-        if value is not None and value * 1000 != getattr(current, field, None):
+        if value is not None and value * 1000 != _current_value(current, field):
             patch_kwargs[field] = value * 1000
 
     changed = bool(patch_kwargs)

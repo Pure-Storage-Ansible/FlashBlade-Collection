@@ -158,9 +158,9 @@ class TestPurefbPasswordPolicy:
         out_of_range = [
             ("min_password", 0),
             ("min_password", 101),
-            ("max_login", 0),
+            ("max_login", -1),
             ("max_login", 101),
-            ("lockout", 0),
+            ("lockout", -1),
             ("lockout", 7776001),
             ("password_history", -1),
             ("password_history", 65),
@@ -215,6 +215,12 @@ class TestPurefbPasswordPolicy:
     def test_validate_params_accepts_zero_max_age(self):
         """Test _validate_params allows 0 (expiration disabled)"""
         mock_module = _mock_module(max_password_age=0)
+        _validate_params(mock_module)
+        mock_module.fail_json.assert_not_called()
+
+    def test_validate_params_accepts_zero_lockout_controls(self):
+        """Test _validate_params allows 0 (rule disabled) for lockout controls"""
+        mock_module = _mock_module(max_login=0, lockout=0)
         _validate_params(mock_module)
         mock_module.fail_json.assert_not_called()
 
@@ -397,6 +403,49 @@ class TestPurefbPasswordPolicy:
             pass
         mock_policy_class.assert_called_once_with(max_password_age=0)
         mock_module.exit_json.assert_called_once_with(changed=True)
+
+    @patch(MODULE_PATH + ".PasswordPolicy")
+    def test_update_policy_disables_lockout_controls_with_zero(self, mock_policy_class):
+        """Test update_policy sends 0 to disable max_login and lockout rules"""
+        mock_module = _mock_module(max_login=0, lockout=0)
+        mock_blade = Mock()
+        response = Mock()
+        response.status_code = 200
+        mock_blade.patch_password_policies.return_value = response
+
+        try:
+            update_policy(mock_module, mock_blade, _mock_policy())
+        except SystemExit:
+            pass
+        mock_policy_class.assert_called_once_with(
+            max_login_attempts=0, lockout_duration=0
+        )
+        mock_module.exit_json.assert_called_once_with(changed=True)
+
+    def test_update_policy_zero_idempotent_when_rules_disabled(self):
+        """Test a requested 0 matches a disabled rule the API reports as null"""
+        mock_module = _mock_module(
+            max_login=0,
+            lockout=0,
+            password_history=0,
+            min_password_age=0,
+            max_password_age=0,
+        )
+        mock_blade = Mock()
+        current = _mock_policy(
+            max_login_attempts=None,
+            lockout_duration=None,
+            password_history=None,
+            min_password_age=None,
+            max_password_age=None,
+        )
+
+        try:
+            update_policy(mock_module, mock_blade, current)
+        except SystemExit:
+            pass
+        mock_blade.patch_password_policies.assert_not_called()
+        mock_module.exit_json.assert_called_once_with(changed=False)
 
     @patch(MODULE_PATH + ".PasswordPolicy")
     def test_update_policy_patches_field_missing_from_current(self, mock_policy_class):
