@@ -128,6 +128,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_mgmt_role - manage FlashBlade custom management roles, permissions, and policy attachment
 - purefb_network - manage the network settings for a FlashBlade
 - purefb_ntp - manage the NTP settings for a FlashBlade
+- purefb_password_policy - manage the FlashBlade management password policy
 - purefb_phonehome - manage the phone home settings for a FlashBlade
 - purefb_pingtrace - perform FlashBlade network diagnostics
 - purefb_policy - manage the filesystem snapshot policies for a FlashBlade
