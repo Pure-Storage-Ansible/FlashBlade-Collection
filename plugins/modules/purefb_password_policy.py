@@ -35,6 +35,9 @@ notes:
 - Password policies require FlashBlade REST API 2.16 (Purity//FB 4.5.2) or
   higher; I(max_password_age) additionally requires REST API 2.18
   (Purity//FB 4.6.0) or higher.
+- The I(min_password), I(max_login) and I(lockout) options use the same
+  names and units as the equivalent options of
+  M(everpure.flashblade.purefb_admin).
 options:
   name:
     description:
@@ -46,20 +49,20 @@ options:
     description:
     - Whether policy enforcement is enabled.
     type: bool
-  min_password_length:
+  min_password:
     description:
     - Minimum number of characters required in a password.
     - Range between 1 and 100.
     type: int
-  max_login_attempts:
+  max_login:
     description:
     - Maximum number of failed login attempts allowed before the user is
       locked out.
     - Range between 1 and 100.
     type: int
-  lockout_duration:
+  lockout:
     description:
-    - Duration, in seconds, of the account lockout after I(max_login_attempts)
+    - Duration, in seconds, of the account lockout after I(max_login)
       is exceeded.
     - Range between 1 second and 90 days (7776000 seconds).
     type: int
@@ -117,7 +120,7 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Enforce password complexity and length
   everpure.flashblade.purefb_password_policy:
-    min_password_length: 12
+    min_password: 12
     min_character_groups: 3
     min_characters_per_group: 1
     enforce_username_check: true
@@ -127,8 +130,8 @@ EXAMPLES = r"""
 
 - name: Lock accounts for 30 minutes after 5 failed logins
   everpure.flashblade.purefb_password_policy:
-    max_login_attempts: 5
-    lockout_duration: 1800
+    max_login: 5
+    lockout: 1800
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 
@@ -178,31 +181,32 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.version import
 MIN_PASSWORD_POLICY_API_VERSION = "2.16"
 MAX_PASSWORD_AGE_API_VERSION = "2.18"
 
-# Module params passed to the API unchanged.
-PLAIN_PARAMS = (
-    "enabled",
-    "enforce_dictionary_check",
-    "enforce_username_check",
-    "max_login_attempts",
-    "min_character_groups",
-    "min_characters_per_group",
-    "min_password_length",
-    "password_history",
-)
-# Module params in seconds; the API stores milliseconds.
-SECONDS_PARAMS = (
-    "lockout_duration",
-    "min_password_age",
-    "max_password_age",
-)
+# Module option -> API field, value passed unchanged. The settings shared
+# with purefb_admin (max_login, min_password) reuse its option names.
+PLAIN_PARAMS = {
+    "enabled": "enabled",
+    "enforce_dictionary_check": "enforce_dictionary_check",
+    "enforce_username_check": "enforce_username_check",
+    "max_login": "max_login_attempts",
+    "min_character_groups": "min_character_groups",
+    "min_characters_per_group": "min_characters_per_group",
+    "min_password": "min_password_length",
+    "password_history": "password_history",
+}
+# Module option in seconds -> API field in milliseconds.
+SECONDS_PARAMS = {
+    "lockout": "lockout_duration",
+    "min_password_age": "min_password_age",
+    "max_password_age": "max_password_age",
+}
 # Inclusive (min, max) bounds in module units; None means unbounded.
 PARAM_RANGES = {
-    "max_login_attempts": (1, 100),
-    "min_password_length": (1, 100),
+    "max_login": (1, 100),
+    "min_password": (1, 100),
     "password_history": (0, 64),
     "min_character_groups": (1, 4),
     "min_characters_per_group": (1, None),
-    "lockout_duration": (1, 7776000),
+    "lockout": (1, 7776000),
     "min_password_age": (0, 604800),
     "max_password_age": (0, 8639913600),
 }
@@ -269,14 +273,14 @@ def get_policy(module, blade):
 def update_policy(module, blade, current):
     """PATCH only the settings that differ from the current policy."""
     patch_kwargs = {}
-    for param in PLAIN_PARAMS:
+    for param, field in PLAIN_PARAMS.items():
         value = module.params[param]
-        if value is not None and value != getattr(current, param, None):
-            patch_kwargs[param] = value
-    for param in SECONDS_PARAMS:
+        if value is not None and value != getattr(current, field, None):
+            patch_kwargs[field] = value
+    for param, field in SECONDS_PARAMS.items():
         value = module.params[param]
-        if value is not None and value * 1000 != getattr(current, param, None):
-            patch_kwargs[param] = value * 1000
+        if value is not None and value * 1000 != getattr(current, field, None):
+            patch_kwargs[field] = value * 1000
 
     changed = bool(patch_kwargs)
     if changed and not module.check_mode:
@@ -299,9 +303,9 @@ def main():
         dict(
             name=dict(type="str", default="management"),
             enabled=dict(type="bool"),
-            min_password_length=dict(type="int", no_log=False),
-            max_login_attempts=dict(type="int"),
-            lockout_duration=dict(type="int"),
+            min_password=dict(type="int", no_log=False),
+            max_login=dict(type="int"),
+            lockout=dict(type="int"),
             password_history=dict(type="int", no_log=False),
             min_password_age=dict(type="int", no_log=False),
             max_password_age=dict(type="int", no_log=False),

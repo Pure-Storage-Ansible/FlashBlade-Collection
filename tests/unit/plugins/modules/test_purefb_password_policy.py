@@ -103,13 +103,13 @@ def _base_params(**overrides):
         "enabled": None,
         "enforce_dictionary_check": None,
         "enforce_username_check": None,
-        "lockout_duration": None,
-        "max_login_attempts": None,
+        "lockout": None,
+        "max_login": None,
         "max_password_age": None,
         "min_character_groups": None,
         "min_characters_per_group": None,
+        "min_password": None,
         "min_password_age": None,
-        "min_password_length": None,
         "password_history": None,
     }
     params.update(overrides)
@@ -156,12 +156,12 @@ class TestPurefbPasswordPolicy:
     def test_validate_params_rejects_out_of_range_values(self):
         """Test _validate_params rejects values outside documented ranges"""
         out_of_range = [
-            ("min_password_length", 0),
-            ("min_password_length", 101),
-            ("max_login_attempts", 0),
-            ("max_login_attempts", 101),
-            ("lockout_duration", 0),
-            ("lockout_duration", 7776001),
+            ("min_password", 0),
+            ("min_password", 101),
+            ("max_login", 0),
+            ("max_login", 101),
+            ("lockout", 0),
+            ("lockout", 7776001),
             ("password_history", -1),
             ("password_history", 65),
             ("min_character_groups", 0),
@@ -239,9 +239,9 @@ class TestPurefbPasswordPolicy:
     def test_validate_params_accepts_boundary_values(self):
         """Test _validate_params passes documented boundary values"""
         mock_module = _mock_module(
-            min_password_length=100,
-            max_login_attempts=1,
-            lockout_duration=7776000,
+            min_password=100,
+            max_login=1,
+            lockout=7776000,
             password_history=64,
             min_character_groups=4,
             min_characters_per_group=1,
@@ -320,11 +320,11 @@ class TestPurefbPasswordPolicy:
         mock_module = _mock_module(
             enabled=True,
             enforce_dictionary_check=True,
-            lockout_duration=3600,
-            max_login_attempts=10,
+            lockout=3600,
+            max_login=10,
             max_password_age=8640000,
+            min_password=8,
             min_password_age=86400,
-            min_password_length=8,
             password_history=5,
         )
         mock_blade = Mock()
@@ -341,7 +341,7 @@ class TestPurefbPasswordPolicy:
         """Test update_policy sends only the fields that differ"""
         mock_module = _mock_module(
             enabled=True,  # matches current -> omitted
-            min_password_length=12,  # differs -> patched
+            min_password=12,  # differs -> patched
         )
         mock_blade = Mock()
         response = Mock()
@@ -362,7 +362,7 @@ class TestPurefbPasswordPolicy:
     def test_update_policy_converts_seconds_to_milliseconds(self, mock_policy_class):
         """Test update_policy converts duration params to milliseconds"""
         mock_module = _mock_module(
-            lockout_duration=1800,
+            lockout=1800,
             min_password_age=7200,
             max_password_age=7776000,
         )
@@ -430,8 +430,7 @@ class TestPurefbPasswordPolicy:
         mock_module.exit_json.assert_called_once_with(changed=True)
 
     @patch(MODULE_PATH + ".get_error_message")
-    @patch(MODULE_PATH + ".PasswordPolicy")
-    def test_update_policy_fails_on_patch_error(self, mock_policy_class, mock_gem):
+    def test_update_policy_fails_on_patch_error(self, mock_gem):
         """Test update_policy fails the task when the PATCH is rejected"""
         mock_gem.return_value = "Test error message"
         mock_module = _mock_module(enabled=False)
@@ -530,7 +529,7 @@ class TestPurefbPasswordPolicy:
         mock_policy_class,
     ):
         """Test main end-to-end: read the singleton, patch the difference"""
-        mock_module = _mock_module(max_login_attempts=5)
+        mock_module = _mock_module(max_login=5)
         mock_ansible_module.return_value = mock_module
 
         mock_blade = Mock()
@@ -563,7 +562,7 @@ class TestPurefbPasswordPolicy:
         self, mock_ansible_module, mock_get_system, mock_get_version, mock_loose
     ):
         """Test main end-to-end: matching settings make no PATCH call"""
-        mock_module = _mock_module(min_password_length=8, lockout_duration=3600)
+        mock_module = _mock_module(min_password=8, lockout=3600)
         mock_ansible_module.return_value = mock_module
 
         mock_blade = Mock()
