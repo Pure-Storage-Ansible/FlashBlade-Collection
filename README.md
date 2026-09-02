@@ -136,6 +136,7 @@ All modules are idempotent with the exception of modules that change or set pass
 - purefb_ra - manage the Remote Assist connections on a FlashBlade
 - purefb_realm - manage the Realms for a FlashBlade
 - purefb_remote_cred - manage the Object Store Remote Credentials on a FlashBlade
+- purefb_resource_access - manage resource access for a FlashBlade
 - purefb_s3_export_policy - manage FlashBlade S3 export policies and their rules
 - purefb_s3acc - manage the object store accounts on a FlashBlade
 - purefb_s3acc_export - manage FlashBlade object store account exports
