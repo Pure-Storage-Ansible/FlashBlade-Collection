@@ -70,6 +70,7 @@ from plugins.modules.purefb_info import (
     generate_default_dict,
     generate_perf_dict,
     generate_config_dict,
+    generate_password_policies_dict,
 )
 
 
@@ -697,3 +698,74 @@ class TestPurefbInfo:
         assert result["dns"]["management"]["nameservers"] == ["8.8.8.8", "8.8.4.4"]
         assert "management_directory_service" in result
         assert "array_management" in result
+
+    def test_generate_password_policies_dict(self):
+        """Test generate_password_policies_dict reports all fields in seconds"""
+        mock_blade = Mock()
+
+        # Policy as the GET endpoint returns it: durations in milliseconds.
+        # spec-limited so getattr on absent fields returns the default.
+        fields = {
+            "name": "management",
+            "enabled": True,
+            "min_password_length": 8,
+            "max_login_attempts": 10,
+            "lockout_duration": 3600000,
+            "password_history": 5,
+            "min_password_age": 86400000,
+            "max_password_age": 8640000000,
+            "min_character_groups": 3,
+            "min_characters_per_group": 1,
+            "enforce_username_check": True,
+            "enforce_dictionary_check": False,
+        }
+        mock_policy = Mock(spec=list(fields))
+        for field, value in fields.items():
+            setattr(mock_policy, field, value)
+        mock_blade.get_password_policies.return_value.items = [mock_policy]
+
+        result = generate_password_policies_dict(mock_blade)
+
+        policy_info = result["management"]
+        assert policy_info["enabled"] is True
+        assert policy_info["min_password_length"] == 8
+        assert policy_info["max_login_attempts"] == 10
+        assert policy_info["lockout_duration"] == 3600
+        assert policy_info["password_history"] == 5
+        assert policy_info["min_password_age"] == 86400
+        assert policy_info["max_password_age"] == 8640000
+        assert policy_info["min_character_groups"] == 3
+        assert policy_info["min_characters_per_group"] == 1
+        assert policy_info["enforce_username_check"] is True
+        assert policy_info["enforce_dictionary_check"] is False
+
+    def test_generate_password_policies_dict_null_disabled_rules(self):
+        """Test rules absent from the API object are reported as None
+
+        Disabled rules (set to 0) read back as absent, and older REST
+        versions lack max_password_age entirely; both report as None.
+        """
+        mock_blade = Mock()
+
+        fields = {
+            "name": "management",
+            "enabled": True,
+            "min_password_length": 1,
+            "min_character_groups": 1,
+            "min_characters_per_group": 1,
+            "enforce_username_check": False,
+            "enforce_dictionary_check": False,
+        }
+        mock_policy = Mock(spec=list(fields))
+        for field, value in fields.items():
+            setattr(mock_policy, field, value)
+        mock_blade.get_password_policies.return_value.items = [mock_policy]
+
+        result = generate_password_policies_dict(mock_blade)
+
+        policy_info = result["management"]
+        assert policy_info["max_login_attempts"] is None
+        assert policy_info["lockout_duration"] is None
+        assert policy_info["password_history"] is None
+        assert policy_info["min_password_age"] is None
+        assert policy_info["max_password_age"] is None

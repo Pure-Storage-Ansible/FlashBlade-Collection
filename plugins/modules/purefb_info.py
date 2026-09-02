@@ -106,6 +106,7 @@ NAP_API_VERSION = "2.13"
 RA_DURATION_API_VERSION = "2.14"
 SMTP_ENCRYPT_API_VERSION = "2.15"
 SERVERS_API_VERSION = "2.16"
+PASSWORD_POLICY_API_VERSION = "2.16"
 FLEET_API_VERSION = "2.17"
 
 
@@ -1119,6 +1120,37 @@ def generate_smb_client_policies_dict(blade):
     return policies_info
 
 
+def generate_password_policies_dict(blade):
+    policies_info = {}
+    policies = list(blade.get_password_policies().items)
+    for policy in policies:
+        # Rules disabled on the array (set to 0) read back as absent and
+        # are reported as null. Durations are reported in seconds, matching
+        # the purefb_password_policy module and the admin settings values
+        # in the default subset; the API stores milliseconds.
+        lockout = getattr(policy, "lockout_duration", None)
+        min_age = getattr(policy, "min_password_age", None)
+        max_age = getattr(policy, "max_password_age", None)
+        policies_info[policy.name] = {
+            "enabled": getattr(policy, "enabled", None),
+            "min_password_length": getattr(policy, "min_password_length", None),
+            "max_login_attempts": getattr(policy, "max_login_attempts", None),
+            "lockout_duration": (int(lockout / 1000) if lockout is not None else None),
+            "password_history": getattr(policy, "password_history", None),
+            "min_password_age": (int(min_age / 1000) if min_age is not None else None),
+            "max_password_age": (int(max_age / 1000) if max_age is not None else None),
+            "min_character_groups": getattr(policy, "min_character_groups", None),
+            "min_characters_per_group": getattr(
+                policy, "min_characters_per_group", None
+            ),
+            "enforce_username_check": getattr(policy, "enforce_username_check", None),
+            "enforce_dictionary_check": getattr(
+                policy, "enforce_dictionary_check", None
+            ),
+        }
+    return policies_info
+
+
 def generate_object_store_accounts_dict(blade):
     account_info = {}
 
@@ -1440,6 +1472,8 @@ def main():
         info["export_policies"] = generate_nfs_export_policies_dict(blade)
         if SMB_CLIENT_API_VERSION in api_versions:
             info["share_policies"] = generate_smb_client_policies_dict(blade)
+        if PASSWORD_POLICY_API_VERSION in api_versions:
+            info["password_policies"] = generate_password_policies_dict(blade)
         if FLEET_API_VERSION in api_versions:
             info["fleet"] = generate_fleet_dict(blade)
     if "drives" in subset or "all" in subset and DRIVES_API_VERSION in api_versions:
