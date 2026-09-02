@@ -38,8 +38,11 @@ options:
   versioning:
     description:
       - State of S3 bucket versioning
+      - If not specified, the current versioning state of the bucket is
+        left unchanged
+      - S3 versioning cannot be removed once enabled, so I(absent) on an
+        already versioned bucket suspends versioning rather than removing it
     required: false
-    default: absent
     type: str
     choices: [ "enabled", "suspended", "absent" ]
   state:
@@ -358,7 +361,7 @@ def create_bucket(module, blade):
                         get_error_message(res),
                     )
                 )
-            if module.params["versioning"] != "absent":
+            if module.params["versioning"] not in [None, "absent"]:
                 if QUOTA_VERSION in api_version:
                     bucket = BucketPatch(
                         retention_lock=module.params["retention_lock"],
@@ -432,7 +435,7 @@ def create_bucket(module, blade):
                         get_error_message(res),
                     )
                 )
-            if module.params["versioning"] != "absent":
+            if module.params["versioning"] not in [None, "absent"]:
                 if CONTEXT_API_VERSION in api_version and module.params["context"]:
                     res = blade.buckets.patch_buckets(
                         names=[module.params["name"]],
@@ -689,8 +692,11 @@ def update_bucket(module, blade, bucket):
                     "Default retention can only be reduced by Pure Technical Support."
                 )
 
-    if bucket.versioning != "none":
-        if module.params["versioning"] == "absent" and bucket.versioning == "enabled":
+    if module.params["versioning"] is not None and bucket.versioning != "none":
+        # "absent" is the module's sentinel, not a valid API value, and versioning
+        # can never return to "none" once enabled, so it always maps to "suspended"
+        # whether the bucket is currently "enabled" or already "suspended".
+        if module.params["versioning"] == "absent":
             versioning = "suspended"
         else:
             versioning = module.params["versioning"]
@@ -714,7 +720,7 @@ def update_bucket(module, blade, bucket):
                             module.params["name"], get_error_message(res)
                         )
                     )
-    elif module.params["versioning"] != "absent":
+    elif module.params["versioning"] not in [None, "absent"]:
         changed = True
         if not module.check_mode:
             if CONTEXT_API_VERSION in api_version and module.params["context"]:
@@ -919,9 +925,7 @@ def main():
             object_lock_enabled=dict(type="bool", default=False),
             freeze_locked_objects=dict(type="bool", default=False),
             quota=dict(type="str"),
-            versioning=dict(
-                default="absent", choices=["enabled", "suspended", "absent"]
-            ),
+            versioning=dict(type="str", choices=["enabled", "suspended", "absent"]),
             state=dict(default="present", choices=["present", "absent"]),
             eradication_delay=dict(type="int"),
             eradication_mode=dict(
