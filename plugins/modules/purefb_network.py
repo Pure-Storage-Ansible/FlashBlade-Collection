@@ -59,6 +59,20 @@ options:
     choices: [ "vip" ]
     default: vip
     type: str
+  attached_server:
+    description:
+      - Server that the interface should attach to.
+      - Only works when creating a new interface.
+    required: false
+    type: dict
+    suboptions:
+      name:
+        description:
+          - Name of the server you want to attach to the interface
+          - To attach to a server on a Realm, set the value to realm-1::server-1
+          - Only 1 server per Network Interface.
+        required: false
+        type: str
 extends_documentation_fragment:
     - everpure.flashblade.everpure.fb
 """
@@ -68,6 +82,16 @@ EXAMPLES = """
   everpure.flashblade.purefb_network:
     name: foo
     address: 10.21.200.23
+    state: present
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Create a new network interface named foo with attached server named server-1 in a Realm named realm-1
+  everpure.flashblade.purefb_network:
+    name: foo
+    address: 10.21.200.23
+    attached_server:
+      name: realm-1::server-1
     state: present
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
@@ -106,6 +130,8 @@ from ansible_collections.everpure.flashblade.plugins.module_utils.common import 
     get_error_message,
 )
 
+CONTEXT_API_VERSION = "2.16"
+
 
 def get_iface(module, blade):
     """Return Filesystem or None"""
@@ -117,15 +143,19 @@ def get_iface(module, blade):
 
 def create_iface(module, blade):
     """Create Network Interface"""
+    api_version = list(blade.get_versions().items)
     changed = True
     if not module.check_mode:
+        network_interface = NetworkInterface(
+            address=module.params["address"],
+            services=[module.params["services"]],
+            type=module.params["itype"],
+        )
+        if CONTEXT_API_VERSION in api_version and module.params["attached_server"]:
+            network_interface.attached_servers = [module.params["attached_server"]]
         res = blade.post_network_interfaces(
             names=[module.params["name"]],
-            network_interface=NetworkInterface(
-                address=module.params["address"],
-                services=[module.params["services"]],
-                type=module.params["itype"],
-            ),
+            network_interface=network_interface,
         )
         if res.status_code != 200:
             module.fail_json(
@@ -181,6 +211,10 @@ def main():
             address=dict(type="str"),
             services=dict(type="str", default="data", choices=["data", "replication"]),
             itype=dict(type="str", default="vip", choices=["vip"]),
+            attached_server=dict(
+                type="dict",
+                options=dict(name=dict(type="str")),
+            ),
         )
     )
 
