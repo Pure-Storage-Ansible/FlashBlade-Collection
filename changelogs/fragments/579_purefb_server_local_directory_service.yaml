@@ -1,0 +1,3 @@
+minor_changes:
+  - purefb_server - Add ``local_directory_service`` option to manage the server's local directory service reference on both create and update.
+  - purefb_server - Switch REST API version gating from membership-style ``not in api_version`` to the standard ``LooseVersion`` comparison used by the rest of the collection.
