@@ -164,13 +164,17 @@ class TestPurefbExport:
         blade.get_file_system_exports.return_value = res
 
         _warn_type_transition(self._mk_module(type="NFS"), blade)
-        assert "policy_type='SMB'" in blade.get_file_system_exports.call_args[1]["filter"]
+        assert (
+            "policy_type='SMB'" in blade.get_file_system_exports.call_args[1]["filter"]
+        )
 
         blade.reset_mock()
         blade.get_file_system_exports.return_value = res
 
         _warn_type_transition(self._mk_module(type="SMB"), blade)
-        assert "policy_type='NFS'" in blade.get_file_system_exports.call_args[1]["filter"]
+        assert (
+            "policy_type='NFS'" in blade.get_file_system_exports.call_args[1]["filter"]
+        )
 
     # ==== create_export POST body ====
 
