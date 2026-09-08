@@ -116,6 +116,36 @@ EXAMPLES = """
     state: absent
     fb_url: 10.10.10.2
     api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Attach NFS export policy to filesystem bar (replaces purefb_fs export_policy)
+  everpure.flashblade.purefb_export:
+    name: bar_nfs
+    filesystem: bar
+    type: NFS
+    export_policy: nfs_pol1
+    state: present
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Attach SMB share policy to filesystem bar (replaces purefb_fs share_policy)
+  everpure.flashblade.purefb_export:
+    name: bar_smb
+    filesystem: bar
+    type: SMB
+    share_policy: smb_share_pol1
+    state: present
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
+
+- name: Attach SMB client policy to filesystem bar (replaces purefb_fs client_policy)
+  everpure.flashblade.purefb_export:
+    name: bar_smb
+    filesystem: bar
+    type: SMB
+    client_policy: smb_client_pol1
+    state: present
+    fb_url: 10.10.10.2
+    api_token: T-55a68eb5-c785-4720-a2ca-8b03903bf641
 """
 
 RETURN = """
@@ -154,8 +184,93 @@ def _context_kwargs(module):
     return {}
 
 
+def _warn_fs_policy_collision(module, blade):
+    """Warn when the underlying filesystem still carries a legacy
+    filesystem-level policy on the protocol the caller is touching.
+
+    Purity//FB 4.8.1 permits both surfaces to co-exist during the
+    deprecation window, so this is a warning rather than a hard fail.
+    The purefb_export attachment is the surface Purity treats as
+    authoritative going forward.
+
+    NFS is user-driven: nothing is written unless the caller supplied
+    export_policy, so we only look at the FS when they did.
+
+    SMB is different: create_export always POSTs both client_policy
+    and share_policy on the new export, defaulting to
+    _smb_client_allow_everyone / _smb_share_allow_everyone when the
+    caller omits them. Any legacy smb.share_policy or smb.client_policy
+    on the FS will therefore be silently shadowed by the export-level
+    write - so we warn whenever the legacy value exists, regardless of
+    which SMB fields the caller passed.
+    """
+    if module.params["type"] == "NFS" and not module.params["export_policy"]:
+        return
+    res = blade.get_file_systems(
+        names=[module.params["filesystem"]], **_context_kwargs(module)
+    )
+    if res.status_code != 200:
+        return
+    items = list(res.items)
+    if not items:
+        return
+    fsys = items[0]
+
+    nfs = getattr(fsys, "nfs", None)
+    smb = getattr(fsys, "smb", None)
+    fs_export_policy = getattr(getattr(nfs, "export_policy", None), "name", None)
+    fs_share_policy = getattr(getattr(smb, "share_policy", None), "name", None)
+    fs_client_policy = getattr(getattr(smb, "client_policy", None), "name", None)
+    if module.params["type"] == "NFS":
+        if fs_export_policy:
+            module.warn(
+                "Filesystem {0} still has filesystem-level "
+                "nfs.export_policy={1} set. The purefb_export "
+                "attachment {2} is the surface Purity treats as "
+                "authoritative; migrate off purefb_fs: export_policy "
+                "to avoid confusion.".format(
+                    module.params["filesystem"],
+                    fs_export_policy,
+                    module.params["export_policy"],
+                )
+            )
+    else:
+        if fs_share_policy:
+            module.warn(
+                "Filesystem {0} still has filesystem-level "
+                "smb.share_policy={1} set. The export-level "
+                "share_policy is the surface Purity treats as "
+                "authoritative and will shadow it; migrate off "
+                "purefb_fs: share_policy to avoid confusion.".format(
+                    module.params["filesystem"],
+                    fs_share_policy,
+                )
+            )
+        if fs_client_policy:
+            module.warn(
+                "Filesystem {0} still has filesystem-level "
+                "smb.client_policy={1} set. The export-level "
+                "client_policy is the surface Purity treats as "
+                "authoritative and will shadow it; migrate off "
+                "purefb_fs: client_policy to avoid confusion.".format(
+                    module.params["filesystem"],
+                    fs_client_policy,
+                )
+            )
+
+
 def get_export(module, blade):
-    """Return Filesystem export true name or None"""
+    """Return Filesystem export true name or None.
+
+    The filter includes policy_type so only an export of the requested
+    protocol is returned. This is the invariant that lets modify_export
+    branch on module.params["type"] safely: an existing SMB export named
+    foo will never be returned when the caller asked for type=NFS. Admin
+    guide p60 permits one FileSystemExport per protocol per (filesystem,
+    server), so two same-named exports of different types can coexist.
+    _warn_type_transition below flags that case so a caller who fat-
+    fingered the type does not silently spawn a parallel export.
+    """
     filter_string = (
         "export_name='"
         + module.params["name"]
@@ -173,9 +288,48 @@ def get_export(module, blade):
     return None
 
 
+def _warn_type_transition(module, blade):
+    """Warn when a same-address export of the OTHER protocol exists.
+
+    Called only when get_export returned None for the requested type.
+    If an export at the same (name, filesystem, server) exists under
+    the other protocol, creating this one adds a second export rather
+    than modifying the existing one - admin guide p60 permits both,
+    but this is almost always a mis-typed `type:` parameter.
+    """
+    other_type = "SMB" if module.params["type"] == "NFS" else "NFS"
+    filter_string = (
+        "export_name='"
+        + module.params["name"]
+        + "' and policy_type='"
+        + other_type
+        + "' and member.name='"
+        + module.params["filesystem"]
+        + "' and server.name='"
+        + module.params["server"]
+        + "'"
+    )
+    res = blade.get_file_system_exports(filter=filter_string, **_context_kwargs(module))
+    if res.status_code == 200 and res.total_item_count != 0:
+        module.warn(
+            "A {0} export named {1} already exists on filesystem {2} "
+            "server {3}. Creating a {4} export in addition rather than "
+            "modifying the existing one - admin guide p60 permits one "
+            "FileSystemExport per protocol per filesystem. If this was "
+            "not intentional, check the `type:` parameter.".format(
+                other_type,
+                module.params["name"],
+                module.params["filesystem"],
+                module.params["server"],
+                module.params["type"],
+            )
+        )
+
+
 def create_export(module, blade):
     """Create Filesystem Export"""
     changed = True
+    _warn_fs_policy_collision(module, blade)
     if not module.check_mode:
         if module.params["type"] == "NFS":
             exp_obj = FileSystemExportPost(
@@ -218,6 +372,7 @@ def create_export(module, blade):
 
 def modify_export(module, blade, export):
     """Modify Filesystem"""
+    _warn_fs_policy_collision(module, blade)
     changed_export = False
     changed_policy = False
     if module.params["rename"] and module.params["rename"] != module.params["name"]:
@@ -355,6 +510,7 @@ def main():
     export = get_export(module, blade)
 
     if state == "present" and not export and not module.params["rename"]:
+        _warn_type_transition(module, blade)
         create_export(module, blade)
     elif state == "present" and export:
         modify_export(module, blade, export)
