@@ -260,17 +260,7 @@ def _warn_fs_policy_collision(module, blade):
 
 
 def get_export(module, blade):
-    """Return Filesystem export true name or None.
-
-    The filter includes policy_type so only an export of the requested
-    protocol is returned. This is the invariant that lets modify_export
-    branch on module.params["type"] safely: an existing SMB export named
-    foo will never be returned when the caller asked for type=NFS. Admin
-    guide p60 permits one FileSystemExport per protocol per (filesystem,
-    server), so two same-named exports of different types can coexist.
-    _warn_type_transition below flags that case so a caller who fat-
-    fingered the type does not silently spawn a parallel export.
-    """
+    """Return Filesystem export true name or None"""
     filter_string = (
         "export_name='"
         + module.params["name"]
