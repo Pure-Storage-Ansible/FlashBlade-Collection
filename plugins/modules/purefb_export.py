@@ -185,24 +185,13 @@ def _context_kwargs(module):
 
 
 def _warn_fs_policy_collision(module, blade):
-    """Warn when the underlying filesystem still carries a legacy
-    filesystem-level policy on the protocol the caller is touching.
+    """Warn when the filesystem still carries a legacy filesystem-level
+    policy on the protocol being touched.
 
-    Purity//FB 4.8.1 permits both surfaces to co-exist during the
-    deprecation window, so this is a warning rather than a hard fail.
-    The purefb_export attachment is the surface Purity treats as
-    authoritative going forward.
-
-    NFS is user-driven: nothing is written unless the caller supplied
-    export_policy, so we only look at the FS when they did.
-
-    SMB is different: create_export always POSTs both client_policy
-    and share_policy on the new export, defaulting to
-    _smb_client_allow_everyone / _smb_share_allow_everyone when the
-    caller omits them. Any legacy smb.share_policy or smb.client_policy
-    on the FS will therefore be silently shadowed by the export-level
-    write - so we warn whenever the legacy value exists, regardless of
-    which SMB fields the caller passed.
+    SMB warns even when the caller omits the matching field, because
+    create_export always writes both client_policy and share_policy on a
+    new SMB export (defaulting to the built-in allow-everyone policies)
+    and would otherwise silently shadow the legacy value.
     """
     if module.params["type"] == "NFS" and not module.params["export_policy"]:
         return
@@ -281,11 +270,9 @@ def get_export(module, blade):
 def _warn_type_transition(module, blade):
     """Warn when a same-address export of the OTHER protocol exists.
 
-    Called only when get_export returned None for the requested type.
-    If an export at the same (name, filesystem, server) exists under
-    the other protocol, creating this one adds a second export rather
-    than modifying the existing one - admin guide p60 permits both,
-    but this is almost always a mis-typed `type:` parameter.
+    Admin guide p60 permits one export per protocol per filesystem, so
+    both can legitimately coexist, but this almost always indicates a
+    mistyped ``type:`` parameter.
     """
     other_type = "SMB" if module.params["type"] == "NFS" else "NFS"
     filter_string = (
